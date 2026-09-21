@@ -1,0 +1,138 @@
+{
+  "productTitle": "Rassvet over Ukraine",
+  "productSubtitle": "Unofficial geometric coverage estimate from public orbit catalogs",
+  "badge": "Not affiliated with Bureau 1440 or any government",
+  "nav": {
+    "ukraine": "Ukraine today",
+    "constellation": "Constellation",
+    "method": "Method"
+  },
+  "lang": { "en": "EN", "uk": "UK", "ru": "RU" },
+  "header": {
+    "catalogEpoch": "Newest element-set epoch",
+    "fetchedAt": "Last successful fetch",
+    "sourceLive": "CelesTrak GP",
+    "sourceSeed": "checked-in snapshot",
+    "utc": "UTC"
+  },
+  "tiles": {
+    "now": "Now",
+    "nowHint": "catalogued objects above the mask",
+    "today": "Today",
+    "todayHint": "union of geometric windows",
+    "windows": "windows",
+    "longest": "Longest window today",
+    "longestHint": "start–end, duration, peak elevation",
+    "next": "Next window",
+    "windowOpen": "Window open",
+    "toLos": "to line-of-sight end",
+    "toAos": "to next acquisition",
+    "none": "No window in the computed span",
+    "emptyNow": "None above the mask",
+    "more": "+{n} more"
+  },
+  "units": {
+    "min": "min",
+    "deg": "°",
+    "km": "km"
+  },
+  "sentence": "At {el}° minimum elevation over {place}, the current catalog produces {n} {windows} today totalling {minutes} minutes. This is geometric line-of-sight from public orbit data, not proof that a terminal can attach, that capacity exists, or that inter-satellite links are on.",
+  "windowWordOne": "window",
+  "windowWordMany": "windows",
+  "controls": {
+    "location": "Location",
+    "minEl": "Min elevation",
+    "population": "Population",
+    "timezone": "Timezone",
+    "custom": "Custom lat/lon",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "apply": "Apply"
+  },
+  "places": {
+    "kyiv": "Kyiv",
+    "kharkiv": "Kharkiv",
+    "dnipro": "Dnipro",
+    "odesa": "Odesa",
+    "zaporizhzhia": "Zaporizhzhia",
+    "donetsk": "Donetsk",
+    "sevastopol": "Sevastopol",
+    "custom": "Custom point"
+  },
+  "population": {
+    "raised": "Raised only (≥ 480 km)",
+    "all": "All catalogued Rassvet",
+    "climbing": "Climbing (< 480 km)",
+    "exp-2023": "Experimental 2023",
+    "exp-2024": "Experimental 2024",
+    "prod-2026-03": "Production Mar 2026",
+    "prod-2026-07": "Production Jul 2026"
+  },
+  "tz": {
+    "kyiv": "Kyiv",
+    "utc": "UTC",
+    "moscow": "Moscow"
+  },
+  "passList": {
+    "title": "Next 36 hours",
+    "hint": "Per-object geometric passes. Overlapping objects are listed separately; the Today tile unions them into windows. AOS/LOS stepped at 30 s with linear interpolation, labelled ±30 s.",
+    "aos": "AOS",
+    "los": "LOS",
+    "duration": "Duration",
+    "maxEl": "Max el.",
+    "objects": "Object",
+    "batch": "Batch",
+    "altitude": "Altitude",
+    "status": "Status",
+    "empty": "No geometric passes in the next 36 hours for this point, mask, and population."
+  },
+  "status": {
+    "climbing": "climbing",
+    "raised": "raised",
+    "decayed": "decayed",
+    "missing": "missing",
+    "stale": "stale TLE"
+  },
+  "map": {
+    "reset": "Reset view",
+    "observer": "Ground point",
+    "mask": "min elevation"
+  },
+  "cityStrip": {
+    "label": "Same mask and population, other cities",
+    "hint": "Does not follow the location picker. Minutes are today’s union at the selected elevation."
+  },
+  "constellation": {
+    "title": "Constellation",
+    "caption": "Each point is a public catalog element set. Objects raise themselves over weeks to months. A launch does not equal coverage that week.",
+    "xAxis": "Days since launch",
+    "yAxis": "Approx. altitude (a − Re), km",
+    "onOrbit": "Catalogued on orbit",
+    "raised": "Raised (≥ 480 km)",
+    "climbing": "Climbing",
+    "decayed": "Decayed / lost",
+    "groups": "Launch groups",
+    "hideDecayed": "Hide decayed",
+    "filterGroup": "Launch group",
+    "allGroups": "All groups",
+    "table": {
+      "name": "Name",
+      "norad": "NORAD",
+      "group": "Launch group",
+      "status": "Status",
+      "alt": "Approx. alt. km",
+      "inc": "Incl. deg",
+      "period": "Period min",
+      "perigee": "Perigee km",
+      "apogee": "Apogee km",
+      "epoch": "TLE epoch",
+      "sets": "Element sets"
+    }
+  },
+  "method": {
+    "title": "Method",
+    "lede": "This page is the contract. Numbers on the other screens are only as good as the definitions below."
+  },
+  "warning": "Warning",
+  "staleBanner": "One or more element sets are older than 72 hours. Positions are still propagated, with a stale mark."
+}

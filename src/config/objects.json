@@ -1,0 +1,88 @@
+{
+  "updated": "2026-09-20",
+  "raisedAltitudeKm": 480,
+  "staleHours": 72,
+  "stepSeconds": 30,
+  "minPassSeconds": 60,
+  "earthRadiusKm": 6371,
+  "muKm3s2": 398600.4418,
+  "decayPerigeeKm": 150,
+  "userAgent": "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker; not affiliated with Bureau 1440)",
+  "celestrak": {
+    "queries": [
+      "https://celestrak.org/NORAD/elements/gp.php?NAME=RASSVET&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?INTDES=2026-061&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?INTDES=2026-165&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?INTDES=2024-092&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?INTDES=2023-091&FORMAT=json"
+    ]
+  },
+  "groups": [
+    {
+      "id": "exp-2023",
+      "launchDate": "2023-06-27",
+      "label": { "en": "Experimental 2023", "uk": "Експериментальні 2023", "ru": "Экспериментальные 2023" }
+    },
+    {
+      "id": "exp-2024",
+      "launchDate": "2024-05-16",
+      "label": { "en": "Experimental 2024", "uk": "Експериментальні 2024", "ru": "Экспериментальные 2024" }
+    },
+    {
+      "id": "prod-2026-03",
+      "launchDate": "2026-03-23",
+      "label": { "en": "Production Mar 2026", "uk": "Серійні, бер. 2026", "ru": "Серийные, март 2026" }
+    },
+    {
+      "id": "prod-2026-07",
+      "launchDate": "2026-07-19",
+      "label": { "en": "Production Jul 2026", "uk": "Серійні, лип. 2026", "ru": "Серийные, июль 2026" }
+    },
+    {
+      "id": "unassigned",
+      "launchDate": null,
+      "label": { "en": "Unassigned", "uk": "Без групи", "ru": "Без группы" }
+    }
+  ],
+  "decayed": [68363],
+  "objects": [
+    { "norad": 57179, "name": "Rassvet-1 No. 1", "catalogName": "OBJECT P", "cospar": "2023-091P", "group": "exp-2023" },
+    { "norad": 57183, "name": "Rassvet-1 No. 2", "catalogName": "OBJECT T", "cospar": "2023-091T", "group": "exp-2023" },
+    { "norad": 57170, "name": "Rassvet-1 No. 3", "catalogName": "OBJECT E", "cospar": "2023-091E", "group": "exp-2023" },
+    { "norad": 59779, "name": "Rassvet-2 No. 1", "catalogName": "OBJECT G", "cospar": "2024-092G", "group": "exp-2024" },
+    { "norad": 59780, "name": "Rassvet-2 No. 2", "catalogName": "OBJECT H", "cospar": "2024-092H", "group": "exp-2024" },
+    { "norad": 59781, "name": "Rassvet-2 No. 3", "catalogName": "OBJECT J", "cospar": "2024-092J", "group": "exp-2024" },
+    { "norad": 68360, "name": "RASSVET-3 1", "catalogName": "RASSVET-3 1", "cospar": "2026-061A", "group": "prod-2026-03" },
+    { "norad": 68361, "name": "RASSVET-3 2", "catalogName": "RASSVET-3 2", "cospar": "2026-061B", "group": "prod-2026-03" },
+    { "norad": 68362, "name": "RASSVET-3 3", "catalogName": "RASSVET-3 3", "cospar": "2026-061C", "group": "prod-2026-03" },
+    { "norad": 68363, "name": "RASSVET-3 4", "catalogName": "RASSVET-3 4", "cospar": "2026-061D", "group": "prod-2026-03" },
+    { "norad": 68364, "name": "RASSVET-3 5", "catalogName": "RASSVET-3 5", "cospar": "2026-061E", "group": "prod-2026-03" },
+    { "norad": 68365, "name": "RASSVET-3 6", "catalogName": "RASSVET-3 6", "cospar": "2026-061F", "group": "prod-2026-03" },
+    { "norad": 68366, "name": "RASSVET-3 7", "catalogName": "RASSVET-3 7", "cospar": "2026-061G", "group": "prod-2026-03" },
+    { "norad": 68367, "name": "RASSVET-3 8", "catalogName": "RASSVET-3 8", "cospar": "2026-061H", "group": "prod-2026-03" },
+    { "norad": 68368, "name": "RASSVET-3 9", "catalogName": "RASSVET-3 9", "cospar": "2026-061J", "group": "prod-2026-03" },
+    { "norad": 68369, "name": "RASSVET-3 10", "catalogName": "RASSVET-3 10", "cospar": "2026-061K", "group": "prod-2026-03" },
+    { "norad": 68370, "name": "RASSVET-3 11", "catalogName": "RASSVET-3 11", "cospar": "2026-061L", "group": "prod-2026-03" },
+    { "norad": 68371, "name": "RASSVET-3 12", "catalogName": "RASSVET-3 12", "cospar": "2026-061M", "group": "prod-2026-03" },
+    { "norad": 68372, "name": "RASSVET-3 13", "catalogName": "RASSVET-3 13", "cospar": "2026-061N", "group": "prod-2026-03" },
+    { "norad": 68373, "name": "RASSVET-3 14", "catalogName": "RASSVET-3 14", "cospar": "2026-061P", "group": "prod-2026-03" },
+    { "norad": 68374, "name": "RASSVET-3 15", "catalogName": "RASSVET-3 15", "cospar": "2026-061Q", "group": "prod-2026-03" },
+    { "norad": 68375, "name": "RASSVET-3 16", "catalogName": "RASSVET-3 16", "cospar": "2026-061R", "group": "prod-2026-03" },
+    { "norad": 100083, "name": "RASSVET-3 17", "catalogName": "RASSVET-3 17", "cospar": "2026-165A", "group": "prod-2026-07" },
+    { "norad": 100084, "name": "RASSVET-3 18", "catalogName": "RASSVET-3 18", "cospar": "2026-165B", "group": "prod-2026-07" },
+    { "norad": 100085, "name": "RASSVET-3 19", "catalogName": "RASSVET-3 19", "cospar": "2026-165C", "group": "prod-2026-07" },
+    { "norad": 100086, "name": "RASSVET-3 20", "catalogName": "RASSVET-3 20", "cospar": "2026-165D", "group": "prod-2026-07" },
+    { "norad": 100087, "name": "RASSVET-3 21", "catalogName": "RASSVET-3 21", "cospar": "2026-165E", "group": "prod-2026-07" },
+    { "norad": 100088, "name": "RASSVET-3 22", "catalogName": "RASSVET-3 22", "cospar": "2026-165F", "group": "prod-2026-07" },
+    { "norad": 100089, "name": "RASSVET-3 23", "catalogName": "RASSVET-3 23", "cospar": "2026-165G", "group": "prod-2026-07" },
+    { "norad": 100090, "name": "RASSVET-3 24", "catalogName": "RASSVET-3 24", "cospar": "2026-165H", "group": "prod-2026-07" },
+    { "norad": 100091, "name": "RASSVET-3 25", "catalogName": "RASSVET-3 25", "cospar": "2026-165J", "group": "prod-2026-07" },
+    { "norad": 100092, "name": "RASSVET-3 26", "catalogName": "RASSVET-3 26", "cospar": "2026-165K", "group": "prod-2026-07" },
+    { "norad": 100093, "name": "RASSVET-3 27", "catalogName": "RASSVET-3 27", "cospar": "2026-165L", "group": "prod-2026-07" },
+    { "norad": 100094, "name": "RASSVET-3 28", "catalogName": "RASSVET-3 28", "cospar": "2026-165M", "group": "prod-2026-07" },
+    { "norad": 100095, "name": "RASSVET-3 29", "catalogName": "RASSVET-3 29", "cospar": "2026-165N", "group": "prod-2026-07" },
+    { "norad": 100096, "name": "RASSVET-3 30", "catalogName": "RASSVET-3 30", "cospar": "2026-165P", "group": "prod-2026-07" },
+    { "norad": 100097, "name": "RASSVET-3 31", "catalogName": "RASSVET-3 31", "cospar": "2026-165Q", "group": "prod-2026-07" },
+    { "norad": 100098, "name": "RASSVET-3 32", "catalogName": "RASSVET-3 32", "cospar": "2026-165R", "group": "prod-2026-07" }
+  ]
+}
