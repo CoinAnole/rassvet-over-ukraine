@@ -4,6 +4,13 @@ import { unionIntervals, unionMinutes, clipIntervals } from "./union.ts";
 import { coverageSentence } from "../i18n/index.ts";
 import { buildCatalog, indexOmms } from "../catalog/build.ts";
 import { inPopulation } from "./coverage.ts";
+import {
+  footprintRing,
+  maxLonJump,
+  ringIsDrawable,
+  ringLonSpan,
+  splitAntimeridianRing,
+} from "./footprint.ts";
 import { orbitFromOmm } from "./kepler.ts";
 import { zonedDayBounds } from "./time.ts";
 import { json2satrec, propagate } from "./satellite-js.ts";
@@ -143,5 +150,35 @@ describe("timezone day bounds", () => {
     const { start, end } = zonedDayBounds(noonUtc, "Europe/Kyiv");
     assert.equal(start.toISOString(), "2026-09-19T21:00:00.000Z");
     assert.equal(end.toISOString(), "2026-09-20T21:00:00.000Z");
+  });
+});
+
+describe("footprint antimeridian split", () => {
+  it("keeps a Ukraine-local ring as one drawable polygon", () => {
+    const ring = footprintRing(50.45, 30.52, 500, 25);
+    assert.equal(ringIsDrawable(ring), true);
+    const parts = splitAntimeridianRing(ring);
+    assert.equal(parts.length, 1);
+    assert.equal(ringIsDrawable(parts[0]), true);
+    assert.ok(ringLonSpan(parts[0]) < 40);
+  });
+
+  it("does not hand Leaflet a world-spanning band near ±180", () => {
+    const ring = footprintRing(48, 179.5, 800, 25);
+    // Raw normalized coordinates jump across the date line — that is the bug.
+    assert.ok(maxLonJump(ring) > 180 || ringLonSpan(ring) >= 180);
+    const parts = splitAntimeridianRing(ring);
+    assert.ok(parts.length >= 1);
+    for (const part of parts) {
+      assert.equal(ringIsDrawable(part), true);
+      assert.ok(maxLonJump(part) < 180, `jump ${maxLonJump(part)}`);
+      assert.ok(ringLonSpan(part) < 180, `span ${ringLonSpan(part)}`);
+    }
+  });
+
+  it("drops a polar wrap instead of filling a latitude band", () => {
+    const ring = footprintRing(88, 30, 800, 10);
+    const parts = splitAntimeridianRing(ring);
+    assert.equal(parts.length, 0);
   });
 });

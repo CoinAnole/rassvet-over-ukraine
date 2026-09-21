@@ -2,12 +2,147 @@ import { i as __toESM } from "../_runtime.mjs";
 import { d as tzName, f as zonedDayBounds, i as MAP_CENTER, n as EARTH_RADIUS_KM, o as PLACES, r as MAP_BOUNDS, t as CITY_STRIP } from "./time-BqVPJKsl.mjs";
 import { n as require_jsx_runtime, r as require_react } from "../_libs/react+tanstack__react-query.mjs";
 import { v as useNavigate } from "../_libs/@tanstack/react-router+[...].mjs";
-import { i as Route$3 } from "./router-CCWJ48vk.mjs";
+import { i as Route$3 } from "./router-D7mrBxJ1.mjs";
 import { i as getDict, t as LangFrame } from "./lang-frame-Ch5hd8Ay.mjs";
 import { a as UkraineBoard, n as CityStrip, o as useSelection, r as PassTable, t as Button } from "./ukraine-board-DjWwiutf.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-CDZFODv_.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-C1uDl_q0.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
+/**
+* Earth-central half-angle of the locus of points that see a satellite
+* at elevation ≥ E, spherical Earth, Re = 6371 km.
+*
+* γ = acos( ρ · cos E ) − E   where ρ = Re / (Re + h)
+*/
+function footprintHalfAngleRad(altitudeKm, minElevationDeg, re = EARTH_RADIUS_KM) {
+	const h = Math.max(altitudeKm, 1);
+	const el = minElevationDeg * Math.PI / 180;
+	const rho = re / (re + h);
+	const arg = Math.min(1, Math.max(-1, rho * Math.cos(el)));
+	return Math.acos(arg) - el;
+}
+function destinationPoint(latDeg, lonDeg, distanceKm, bearingDeg, re = EARTH_RADIUS_KM) {
+	const δ = distanceKm / re;
+	const θ = bearingDeg * Math.PI / 180;
+	const φ1 = latDeg * Math.PI / 180;
+	const λ1 = lonDeg * Math.PI / 180;
+	const sinφ1 = Math.sin(φ1);
+	const cosφ1 = Math.cos(φ1);
+	const sinδ = Math.sin(δ);
+	const cosδ = Math.cos(δ);
+	const φ2 = Math.asin(sinφ1 * cosδ + cosφ1 * sinδ * Math.cos(θ));
+	const λ2 = λ1 + Math.atan2(Math.sin(θ) * sinδ * cosφ1, cosδ - sinφ1 * Math.sin(φ2));
+	return [φ2 * 180 / Math.PI, normalizeLon(λ2 * 180 / Math.PI)];
+}
+function normalizeLon(lon) {
+	let x = lon;
+	while (x > 180) x -= 360;
+	while (x < -180) x += 360;
+	return x;
+}
+function footprintRing(lat, lon, altitudeKm, minElevationDeg, steps = 64) {
+	const dist = footprintHalfAngleRad(altitudeKm, minElevationDeg) * EARTH_RADIUS_KM;
+	const ring = [];
+	for (let i = 0; i <= steps; i += 1) ring.push(destinationPoint(lat, lon, dist, 360 * i / steps));
+	return ring;
+}
+/** Consecutive longitudes made continuous so a ring can cross ±180 without jumping. */
+function unwrapRing(ring) {
+	if (ring.length === 0) return [];
+	const out = [[ring[0][0], ring[0][1]]];
+	for (let i = 1; i < ring.length; i += 1) {
+		let lon = ring[i][1];
+		const prev = out[i - 1][1];
+		while (lon - prev > 180) lon -= 360;
+		while (lon - prev < -180) lon += 360;
+		out.push([ring[i][0], lon]);
+	}
+	return out;
+}
+function almostClosed(a, b) {
+	if (Math.abs(a[0] - b[0]) > 1e-9) return false;
+	const d = Math.abs(a[1] - b[1]);
+	return d < 1e-9 || Math.abs(d - 360) < 1e-9;
+}
+function dropClosingDup(pts) {
+	if (pts.length < 2) return pts;
+	const first = pts[0];
+	const last = pts[pts.length - 1];
+	return almostClosed(first, last) ? pts.slice(0, -1) : pts;
+}
+function closeRing(pts) {
+	if (pts.length === 0) return pts;
+	const first = pts[0];
+	const last = pts[pts.length - 1];
+	if (almostClosed(first, last)) return pts;
+	return [...pts, [first[0], first[1]]];
+}
+function intersectAtLon(a, b, lon) {
+	const denom = b[1] - a[1];
+	const t = Math.abs(denom) < 1e-12 ? 0 : (lon - a[1]) / denom;
+	return [a[0] + t * (b[0] - a[0]), lon];
+}
+/** Sutherland–Hodgman clip of a closed ring against a longitude half-plane. */
+function clipLonHalfPlane(pts, inside, edgeLon) {
+	if (pts.length < 3) return [];
+	const out = [];
+	for (let i = 0; i < pts.length; i += 1) {
+		const a = pts[i];
+		const b = pts[(i + 1) % pts.length];
+		const aIn = inside(a);
+		const bIn = inside(b);
+		if (aIn && bIn) out.push(b);
+		else if (aIn && !bIn) out.push(intersectAtLon(a, b, edgeLon));
+		else if (!aIn && bIn) {
+			out.push(intersectAtLon(a, b, edgeLon));
+			out.push(b);
+		}
+	}
+	return out;
+}
+function clipLonWindow(pts, minLon, maxLon) {
+	let cur = dropClosingDup(pts);
+	cur = clipLonHalfPlane(cur, (p) => p[1] <= maxLon, maxLon);
+	cur = clipLonHalfPlane(cur, (p) => p[1] >= minLon, minLon);
+	if (cur.length < 3) return [];
+	return closeRing(cur.map(([lat, lon]) => [lat, normalizeLon(lon)]));
+}
+function ringLonSpan(ring) {
+	if (ring.length === 0) return 0;
+	const lons = ring.map((p) => p[1]);
+	return Math.max(...lons) - Math.min(...lons);
+}
+function maxLonJump(ring) {
+	let max = 0;
+	for (let i = 1; i < ring.length; i += 1) max = Math.max(max, Math.abs(ring[i][1] - ring[i - 1][1]));
+	return max;
+}
+/**
+* True when Leaflet can fill this ring without painting a world-spanning band.
+* A jump or bbox wider than 180° of longitude is the classic antimeridian artefact.
+*/
+function ringIsDrawable(ring) {
+	if (ring.length < 4) return false;
+	if (ring.some((p) => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) return false;
+	if (ringLonSpan(ring) >= 180) return false;
+	if (maxLonJump(ring) > 180) return false;
+	return true;
+}
+/**
+* Split a coverage ring on the antimeridian so each piece stays inside (−180, 180).
+* Polar wraps (the ring goes around a pole) cannot be a simple lat/lon polygon
+* without becoming a false global band — those are dropped.
+*/
+function splitAntimeridianRing(ring) {
+	if (ring.length < 4) return [];
+	const unwrapped = unwrapRing(ring);
+	if (ringLonSpan(unwrapped) > 270) return [];
+	return [
+		clipLonWindow(unwrapped, -180, 180),
+		clipLonWindow(unwrapped, 180, 540),
+		clipLonWindow(unwrapped, -540, -180)
+	].filter(ringIsDrawable);
+}
 var region_default = {
 	type: "FeatureCollection",
 	features: [
@@ -2989,7 +3124,8 @@ function UkraineMap({ lang, result, lat, lon, el, placeLabel }) {
 				const selectedSat = sat.norad === selected;
 				const color = sat.status === "climbing" ? "var(--color-status-climbing)" : "var(--color-status-raised)";
 				const fillOp = selectedSat ? .22 : .08;
-				L.polygon(sat.footprint, {
+				const rings = splitAntimeridianRing(sat.footprint);
+				for (const ring of rings) L.polygon(ring, {
 					color,
 					weight: selectedSat ? 1.4 : 1,
 					opacity: sat.stale ? .4 : .7,
@@ -3062,44 +3198,6 @@ function splitTrack(track) {
 	}
 	if (cur.length) segs.push(cur);
 	return segs;
-}
-/**
-* Earth-central half-angle of the locus of points that see a satellite
-* at elevation ≥ E, spherical Earth, Re = 6371 km.
-*
-* γ = acos( ρ · cos E ) − E   where ρ = Re / (Re + h)
-*/
-function footprintHalfAngleRad(altitudeKm, minElevationDeg, re = EARTH_RADIUS_KM) {
-	const h = Math.max(altitudeKm, 1);
-	const el = minElevationDeg * Math.PI / 180;
-	const rho = re / (re + h);
-	const arg = Math.min(1, Math.max(-1, rho * Math.cos(el)));
-	return Math.acos(arg) - el;
-}
-function destinationPoint(latDeg, lonDeg, distanceKm, bearingDeg, re = EARTH_RADIUS_KM) {
-	const δ = distanceKm / re;
-	const θ = bearingDeg * Math.PI / 180;
-	const φ1 = latDeg * Math.PI / 180;
-	const λ1 = lonDeg * Math.PI / 180;
-	const sinφ1 = Math.sin(φ1);
-	const cosφ1 = Math.cos(φ1);
-	const sinδ = Math.sin(δ);
-	const cosδ = Math.cos(δ);
-	const φ2 = Math.asin(sinφ1 * cosδ + cosφ1 * sinδ * Math.cos(θ));
-	const λ2 = λ1 + Math.atan2(Math.sin(θ) * sinδ * cosφ1, cosδ - sinφ1 * Math.sin(φ2));
-	return [φ2 * 180 / Math.PI, normalizeLon(λ2 * 180 / Math.PI)];
-}
-function normalizeLon(lon) {
-	let x = lon;
-	while (x > 180) x -= 360;
-	while (x < -180) x += 360;
-	return x;
-}
-function footprintRing(lat, lon, altitudeKm, minElevationDeg, steps = 64) {
-	const dist = footprintHalfAngleRad(altitudeKm, minElevationDeg) * EARTH_RADIUS_KM;
-	const ring = [];
-	for (let i = 0; i <= steps; i += 1) ring.push(destinationPoint(lat, lon, dist, 360 * i / steps));
-	return ring;
 }
 var pi = Math.PI;
 var twoPi = pi * 2;

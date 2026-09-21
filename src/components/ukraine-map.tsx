@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { splitAntimeridianRing } from "@/lib/orbit/footprint";
 import type { CoverageResult, SatMapState } from "@/lib/orbit/coverage";
 import { MAP_BOUNDS, MAP_CENTER, MAP_DEFAULT_ZOOM } from "@/lib/orbit/constants";
 import { useSelection } from "@/lib/selection";
@@ -92,13 +93,16 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
             ? "var(--color-status-climbing)"
             : "var(--color-status-raised)";
         const fillOp = selectedSat ? 0.22 : 0.08;
-        L.polygon(sat.footprint, {
-          color,
-          weight: selectedSat ? 1.4 : 1,
-          opacity: sat.stale ? 0.4 : 0.7,
-          fillColor: color,
-          fillOpacity: fillOp,
-        }).addTo(layers);
+        const rings = splitAntimeridianRing(sat.footprint);
+        for (const ring of rings) {
+          L.polygon(ring, {
+            color,
+            weight: selectedSat ? 1.4 : 1,
+            opacity: sat.stale ? 0.4 : 0.7,
+            fillColor: color,
+            fillOpacity: fillOp,
+          }).addTo(layers);
+        }
 
         const track = splitTrack(sat.track);
         for (const seg of track) {

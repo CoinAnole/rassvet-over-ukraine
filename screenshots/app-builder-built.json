@@ -7,8 +7,8 @@
       "status": 200,
       "title": "Rassvet over Ukraine",
       "hasCanvas": false,
-      "bodyTextLen": 6857,
-      "bodyTextHash": "bdf143fb978492508a687b8f4352e3cfc13a02745bf4d6d3d3255d77fb2e28ca",
+      "bodyTextLen": 7264,
+      "bodyTextHash": "e985dca13808434676669f5b5ba203a98e9aca630e2ad00719bbe460d7c20d61",
       "bodyTextPrefix": "Rassvet over Ukraine Not affiliated with Bureau 1440 or any gove",
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -21,8 +21,8 @@
       "status": 200,
       "title": "Rassvet over Ukraine",
       "hasCanvas": false,
-      "bodyTextLen": 6857,
-      "bodyTextHash": "2d8989d65fa8fcede95fc1842f93bcc2e0425e4f7423071cb930ae2daddac7f0",
+      "bodyTextLen": 7264,
+      "bodyTextHash": "d00c7a5468a161cd3a2c51ae6782697f7c5895058f3d862db903eaf0866fb645",
       "bodyTextPrefix": "Rassvet over Ukraine Not affiliated with Bureau 1440 or any gove",
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -35,9 +35,6 @@
   ],
   "authWarnings": [],
   "verdictFile": "/workspace/screenshots/app-builder-built.json",
-  "divergesFromBaseline": true,
-  "baselineReasons": [
-    "desktop: body text changed (7856 -> 6857 chars, hash mismatch)",
-    "mobile: body text changed (7856 -> 6857 chars, hash mismatch)"
-  ]
+  "divergesFromBaseline": false,
+  "baselineReasons": []
 }

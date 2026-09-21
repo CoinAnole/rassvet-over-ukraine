@@ -1,5 +1,5 @@
 import { n as TSS_SERVER_FUNCTION, t as createServerFn } from "./ssr.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/get-catalog-04-saiC6.js
+//#region node_modules/.nitro/vite/services/ssr/assets/get-catalog-C7vgo5o0.js
 var createServerRpc = (serverFnMeta, splitImportFn) => {
 	const url = "/_serverFn/" + serverFnMeta.id;
 	return Object.assign(splitImportFn, {
@@ -14,7 +14,7 @@ var getCatalog_createServerFn_handler = createServerRpc({
 	filename: "src/lib/catalog/get-catalog.ts"
 }, (opts) => getCatalog.__executeServer(opts));
 var getCatalog = createServerFn({ method: "POST" }).handler(getCatalog_createServerFn_handler, async () => {
-	const { loadCatalog } = await import("./fetch.server-DFzvfJGE.mjs");
+	const { loadCatalog } = await import("./fetch.server-C6S9UFBf.mjs");
 	return loadCatalog();
 });
 //#endregion

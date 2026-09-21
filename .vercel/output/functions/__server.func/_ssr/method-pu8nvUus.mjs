@@ -1,7 +1,7 @@
 import { n as require_jsx_runtime } from "../_libs/react+tanstack__react-query.mjs";
-import { n as Route$1 } from "./router-CCWJ48vk.mjs";
+import { n as Route$1 } from "./router-D7mrBxJ1.mjs";
 import { i as getDict, t as LangFrame } from "./lang-frame-Ch5hd8Ay.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/method-DwiiR8Pa.js
+//#region node_modules/.nitro/vite/services/ssr/assets/method-pu8nvUus.js
 var import_jsx_runtime = require_jsx_runtime();
 function methodSections(lang) {
 	return CONTENT[lang];

@@ -20,7 +20,7 @@ var createSsrRpc = (functionId) => {
 };
 var getCatalog = createServerFn({ method: "POST" }).handler(createSsrRpc("1694116c1d8fc9956879cdccc6ec90b9031a50c881637cf210aa4a7f3ce2778f"));
 //#endregion
-//#region node_modules/.nitro/vite/services/ssr/assets/router-CCWJ48vk.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-D7mrBxJ1.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var __defProp = Object.defineProperty;
@@ -395,7 +395,7 @@ var Route$4 = createRootRoute({
 		] })]
 	})
 });
-var $$splitComponentImporter$2 = () => import("./routes-CDZFODv_.mjs");
+var $$splitComponentImporter$2 = () => import("./routes-C1uDl_q0.mjs");
 function parseSearch(raw) {
 	const num = (v) => {
 		if (typeof v === "number") return v;
@@ -421,18 +421,18 @@ var Route$3 = createFileRoute("/")({
 	},
 	component: lazyRouteComponent($$splitComponentImporter$2, "component")
 });
-var $$splitComponentImporter$1 = () => import("./constellation-DqIg206v.mjs");
+var $$splitComponentImporter$1 = () => import("./constellation-DthZagfW.mjs");
 var Route$2 = createFileRoute("/constellation")({
 	loader: async () => ({ catalog: await getCatalog() }),
 	component: lazyRouteComponent($$splitComponentImporter$1, "component")
 });
-var $$splitComponentImporter = () => import("./method-DwiiR8Pa.mjs");
+var $$splitComponentImporter = () => import("./method-pu8nvUus.mjs");
 var Route$1 = createFileRoute("/method")({
 	loader: async () => ({ catalog: await getCatalog() }),
 	component: lazyRouteComponent($$splitComponentImporter, "component")
 });
 var Route = createFileRoute("/api/catalog")({ server: { handlers: { GET: async () => {
-	const { loadCatalog } = await import("./fetch.server-DFzvfJGE.mjs");
+	const { loadCatalog } = await import("./fetch.server-C6S9UFBf.mjs");
 	const payload = await loadCatalog();
 	return Response.json(payload, { headers: { "Cache-Control": "public, max-age=120, stale-while-revalidate=600" } });
 } } } });

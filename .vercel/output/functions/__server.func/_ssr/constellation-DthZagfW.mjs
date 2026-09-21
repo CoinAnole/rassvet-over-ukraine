@@ -1,11 +1,11 @@
 import { i as __toESM } from "../_runtime.mjs";
 import { n as getObjectsConfig } from "./build-DrYIAIh6.mjs";
 import { n as require_jsx_runtime, r as require_react } from "../_libs/react+tanstack__react-query.mjs";
-import { r as Route$2 } from "./router-CCWJ48vk.mjs";
+import { r as Route$2 } from "./router-D7mrBxJ1.mjs";
 import { a as groupLabel, i as getDict, n as cn, t as LangFrame } from "./lang-frame-Ch5hd8Ay.mjs";
 import { i as StatusChip, o as useSelection } from "./ukraine-board-DjWwiutf.mjs";
 import { a as CartesianGrid, i as Scatter, n as YAxis, o as ResponsiveContainer, r as XAxis, s as Tooltip, t as ScatterChart } from "../_libs/recharts+[...].mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/constellation-DqIg206v.js
+//#region node_modules/.nitro/vite/services/ssr/assets/constellation-DthZagfW.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var GROUP_COLORS = {

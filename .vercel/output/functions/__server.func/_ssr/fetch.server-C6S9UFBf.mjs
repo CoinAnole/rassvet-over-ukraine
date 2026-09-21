@@ -1,5 +1,5 @@
 import { n as getObjectsConfig, r as indexOmms, t as buildCatalog } from "./build-DrYIAIh6.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/fetch.server-DFzvfJGE.js
+//#region node_modules/.nitro/vite/services/ssr/assets/fetch.server-C6S9UFBf.js
 var catalog_seed_default = {
 	fetched_at: "2026-09-20T12:32:36Z",
 	source: "celestrak-gp-snapshot",
@@ -649,6 +649,63 @@ var catalog_seed_default = {
 			"REV_AT_EPOCH": 17491,
 			"BSTAR": 18932e-8,
 			"MEAN_MOTION_DOT": 3959e-8,
+			"MEAN_MOTION_DDOT": 0
+		},
+		{
+			"OBJECT_NAME": "OBJECT G",
+			"OBJECT_ID": "2024-092G",
+			"EPOCH": "2026-09-20T21:20:40.687584",
+			"MEAN_MOTION": 14.31872806,
+			"ECCENTRICITY": .0010829,
+			"INCLINATION": 98.6804,
+			"RA_OF_ASC_NODE": 22.8782,
+			"ARG_OF_PERICENTER": 288.6039,
+			"MEAN_ANOMALY": 71.3967,
+			"EPHEMERIS_TYPE": 0,
+			"CLASSIFICATION_TYPE": "U",
+			"NORAD_CAT_ID": 59779,
+			"ELEMENT_SET_NO": 999,
+			"REV_AT_EPOCH": 12259,
+			"BSTAR": 45553e-9,
+			"MEAN_MOTION_DOT": 77e-8,
+			"MEAN_MOTION_DDOT": 0
+		},
+		{
+			"OBJECT_NAME": "OBJECT H",
+			"OBJECT_ID": "2024-092H",
+			"EPOCH": "2026-09-20T21:20:17.300832",
+			"MEAN_MOTION": 14.31877036,
+			"ECCENTRICITY": .0011162,
+			"INCLINATION": 98.6802,
+			"RA_OF_ASC_NODE": 22.8697,
+			"ARG_OF_PERICENTER": 289.9419,
+			"MEAN_ANOMALY": 70.0561,
+			"EPHEMERIS_TYPE": 0,
+			"CLASSIFICATION_TYPE": "U",
+			"NORAD_CAT_ID": 59780,
+			"ELEMENT_SET_NO": 999,
+			"REV_AT_EPOCH": 12259,
+			"BSTAR": 47436e-9,
+			"MEAN_MOTION_DOT": 82e-8,
+			"MEAN_MOTION_DDOT": 0
+		},
+		{
+			"OBJECT_NAME": "OBJECT J",
+			"OBJECT_ID": "2024-092J",
+			"EPOCH": "2026-09-20T22:58:47.064288",
+			"MEAN_MOTION": 14.31877309,
+			"ECCENTRICITY": .0011049,
+			"INCLINATION": 98.6802,
+			"RA_OF_ASC_NODE": 22.9439,
+			"ARG_OF_PERICENTER": 289.9756,
+			"MEAN_ANOMALY": 70.0237,
+			"EPHEMERIS_TYPE": 0,
+			"CLASSIFICATION_TYPE": "U",
+			"NORAD_CAT_ID": 59781,
+			"ELEMENT_SET_NO": 999,
+			"REV_AT_EPOCH": 12260,
+			"BSTAR": 50326e-9,
+			"MEAN_MOTION_DOT": 9e-7,
 			"MEAN_MOTION_DDOT": 0
 		}
 	]
