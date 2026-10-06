@@ -6,10 +6,9 @@ import { CLOCK_WINDOW_MS, formatClockOffset } from "./orbit/clock.ts";
 import { PLACES } from "./orbit/constants.ts";
 import {
   canonicalSearch,
-  clockHoursFromOffsetMs,
   defaultView,
-  heldFromClockHours,
-  parseClockHours,
+  heldFromClockInstant,
+  parseClockInstant,
   searchFromView,
   shareSearchString,
   shareUrl,
@@ -23,7 +22,7 @@ const wall = Date.parse("2026-10-06T12:00:00Z");
 describe("short view query", () => {
   it("omits every default, including a live clock", () => {
     const view = defaultView("en");
-    assert.deepEqual(searchFromView(view, 0), {});
+    assert.deepEqual(searchFromView(view, null), {});
     assert.equal(shareSearchString({}), "");
     assert.deepEqual(viewFromSearch({}, "en"), view);
   });
@@ -38,7 +37,7 @@ describe("short view query", () => {
       set: "all",
       tz: "utc",
     };
-    const search = searchFromView(view, 0);
+    const search = searchFromView(view, null);
     assert.deepEqual(search, {
       place: "odesa",
       el: 10,
@@ -57,7 +56,7 @@ describe("short view query", () => {
       lat: 49.123456,
       lon: 32.987654,
     };
-    const search = searchFromView(custom, 0);
+    const search = searchFromView(custom, null);
     assert.deepEqual(search, { lat: 49.1235, lon: 32.9877 });
     const back = viewFromSearch(search, "en");
     assert.equal(back.place, "custom");
@@ -85,72 +84,83 @@ describe("short view query", () => {
     const view = viewFromSearch(incoming, "uk");
     assert.equal(view.lang, "en");
     assert.equal(view.set, "raised");
-    assert.deepEqual(canonicalSearch(incoming, view, 0), {});
+    assert.deepEqual(canonicalSearch(incoming, view, null), {});
 
     const detected = viewFromSearch({}, "uk");
     assert.equal(detected.lang, "uk");
-    assert.deepEqual(canonicalSearch({}, detected, 0), {});
-    assert.deepEqual(canonicalSearch({ lang: "uk" }, detected, 0), { lang: "uk" });
+    assert.deepEqual(canonicalSearch({}, detected, null), {});
+    assert.deepEqual(canonicalSearch({ lang: "uk" }, detected, null), { lang: "uk" });
   });
 });
 
 describe("held clock query", () => {
-  it("parses a relative hour offset and treats zero or junk as live", () => {
-    assert.equal(parseClockHours("-21"), -21);
-    assert.equal(parseClockHours(-21.5), -21.5);
-    assert.equal(parseClockHours(0), undefined);
-    assert.equal(parseClockHours("0"), undefined);
-    assert.equal(parseClockHours("nope"), undefined);
-    assert.equal(parseClockHours(""), undefined);
-    assert.equal(heldFromClockHours(undefined, wall), null);
-    assert.equal(heldFromClockHours(0, wall), null);
+  it("parses an absolute UTC instant and treats junk as live", () => {
+    assert.equal(parseClockInstant("2026-10-05T15:00:00.000Z"), "2026-10-05T15:00:00.000Z");
+    assert.equal(parseClockInstant("2026-10-05T18:00:00+03:00"), "2026-10-05T15:00:00.000Z");
+    assert.equal(parseClockInstant("2026-10-05T15:00:00Z"), "2026-10-05T15:00:00.000Z");
+    assert.equal(parseClockInstant("nope"), undefined);
+    assert.equal(parseClockInstant(""), undefined);
+    assert.equal(parseClockInstant(21), undefined);
+    assert.equal(heldFromClockInstant(undefined, wall), null);
+    assert.equal(heldFromClockInstant(new Date(wall).toISOString(), wall), null);
   });
 
-  it("round-trips every minute inside ±48 h onto the same offset label", () => {
+  it("round-trips every minute inside ±48 h onto the same instant", () => {
     for (let minutes = -48 * 60; minutes <= 48 * 60; minutes += 1) {
-      const offsetMs = minutes * 60_000;
-      const encoded = clockHoursFromOffsetMs(offsetMs);
+      const atMs = wall + minutes * 60_000;
       if (minutes === 0) {
-        assert.equal(encoded, undefined);
-        assert.equal(searchFromView(defaultView(), offsetMs).h, undefined);
+        assert.equal(searchFromView(defaultView(), null).at, undefined);
+        assert.equal(heldFromClockInstant(new Date(atMs).toISOString(), wall), null);
         continue;
       }
-      assert.ok(encoded != null);
-      const held = heldFromClockHours(encoded, wall);
+      const iso = new Date(atMs).toISOString();
+      const held = heldFromClockInstant(iso, wall);
       assert.ok(held);
       assert.equal(held.clamped, false);
-      assert.equal(formatClockOffset(held.at - held.wall), formatClockOffset(offsetMs));
-      const search = searchFromView(defaultView(), offsetMs);
-      assert.equal(search.h, encoded);
-      assert.equal(viewFromSearch(search, "en").place, "kyiv");
+      assert.equal(held.at, atMs);
+      assert.equal(formatClockOffset(held.at - held.wall), formatClockOffset(minutes * 60_000));
+      const search = searchFromView(defaultView(), atMs);
+      assert.equal(search.at, iso);
+      const again = canonicalSearch({ at: iso }, defaultView(), { at: atMs, wall });
+      assert.equal(again.at, iso);
     }
   });
 
-  it("keeps an out-of-range h so the next open still clamps", () => {
-    const held = heldFromClockHours(72, wall);
+  it("clamps an instant outside ±48 h and keeps that at so a refresh still clamps", () => {
+    const future = new Date(wall + 72 * 3_600_000).toISOString();
+    const held = heldFromClockInstant(future, wall);
     assert.ok(held);
     assert.equal(held.clamped, true);
     assert.equal(held.at, wall + CLOCK_WINDOW_MS);
     const view = defaultView();
-    const search = canonicalSearch({ h: 72 }, view, held.at - held.wall);
-    assert.deepEqual(search, { h: 72 });
-    assert.equal(shareSearchString(search), "?h=72");
+    const search = canonicalSearch({ at: future }, view, { at: held.at, wall: held.wall });
+    assert.equal(search.at, future);
+    assert.equal(new URLSearchParams(shareSearchString(search).slice(1)).get("at"), future);
 
-    const past = heldFromClockHours(-100, wall);
+    const pastIso = new Date(wall - 100 * 3_600_000).toISOString();
+    const past = heldFromClockInstant(pastIso, wall);
     assert.ok(past);
     assert.equal(past.clamped, true);
     assert.equal(past.at, wall - CLOCK_WINDOW_MS);
-    assert.equal(canonicalSearch({ h: -100 }, view, past.at - past.wall).h, -100);
+    assert.equal(
+      canonicalSearch({ at: pastIso }, view, { at: past.at, wall: past.wall }).at,
+      pastIso,
+    );
   });
 
-  it("replaces the authored clock once the scrubber leaves the clamped edge", () => {
+  it("replaces the authored instant once the scrubber leaves the clamped edge", () => {
     const view = defaultView();
+    const future = new Date(wall + 72 * 3_600_000).toISOString();
+    const movedAt = wall - 5 * 3_600_000;
     const moved = canonicalSearch(
-      { h: 72, place: "lviv" },
+      { at: future, place: "lviv" },
       { ...view, place: "lviv" },
-      -5 * 3_600_000,
+      {
+        at: movedAt,
+        wall,
+      },
     );
-    assert.deepEqual(moved, { place: "lviv", h: -5 });
+    assert.deepEqual(moved, { place: "lviv", at: new Date(movedAt).toISOString() });
   });
 
   it("matches the query string the router writes", () => {
@@ -161,16 +171,20 @@ describe("held clock query", () => {
       tz: "moscow",
       set: "climbing",
     };
-    const search = searchFromView(view, -90 * 60_000);
+    const atMs = wall - 90 * 60_000;
+    const search = searchFromView(view, atMs);
     assert.equal(defaultStringifySearch(search), shareSearchString(search));
     assert.equal(defaultStringifySearch({}), shareSearchString({}));
+    assert.equal(search.at, new Date(atMs).toISOString());
   });
 
-  it("builds an absolute share URL without a clock param while live", () => {
+  it("builds a share URL without a clock param while live", () => {
     const href = shareUrl("https://rassvet-over-ukraine.vercel.app", "/", { el: 40 });
     assert.equal(href, "https://rassvet-over-ukraine.vercel.app/?el=40");
-    assert.equal(viewSearchEqual({ el: 40 }, { el: 40, h: undefined }), true);
-    assert.equal(viewSearchEqual({ h: -21 }, { h: -5 }), false);
+    assert.equal(viewSearchEqual({ el: 40 }, { el: 40, at: undefined }), true);
+    const a = new Date(wall - 21 * 3_600_000).toISOString();
+    const b = new Date(wall - 5 * 3_600_000).toISOString();
+    assert.equal(viewSearchEqual({ at: a }, { at: b }), false);
   });
 });
 

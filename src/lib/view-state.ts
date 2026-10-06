@@ -1,5 +1,5 @@
 import type { Lang, PopulationFilter, TimezoneId } from "./catalog/types.ts";
-import { CLOCK_WINDOW_MS, holdFromHours, type HeldClock } from "./orbit/clock.ts";
+import { holdFromTarget, type HeldClock } from "./orbit/clock.ts";
 import { PLACES, type PlaceId } from "./orbit/constants.ts";
 
 export type ViewSearch = {
@@ -11,18 +11,19 @@ export type ViewSearch = {
   tz?: TimezoneId;
   place?: PlaceId | "custom";
   /**
-   * Held clock as hours relative to the reader's wall-clock now.
-   * Omitted when the clock is live. Values outside ±48 are kept so a
-   * refresh still clamps and shows the existing clamped banner.
+   * Held clock as an absolute ISO-8601 UTC instant (`Date.toISOString()`).
+   * Omitted when the clock is live. An instant outside ±48 h of the opener's
+   * wall now is clamped to the nearest edge; the original `at` stays in the
+   * URL until the scrubber leaves that edge, so a refresh still shows the
+   * clamped banner.
    */
-  h?: number;
+  at?: string;
 };
 
-/** `h` is rounded to this many decimal hours after snapping to the nearest minute. */
-const CLOCK_URL_HOUR_DIGITS = 4;
-const WINDOW_HOURS = CLOCK_WINDOW_MS / 3_600_000;
+const SEARCH_KEYS = ["place", "lat", "lon", "el", "set", "tz", "lang", "at"] as const;
 
-const SEARCH_KEYS = ["place", "lat", "lon", "el", "set", "tz", "lang", "h"] as const;
+/** The held instant written into `at`, plus the wall now used to clamp it. */
+export type UrlClock = { at: number; wall: number };
 
 export type ViewState = {
   place: PlaceId | "custom";
@@ -113,45 +114,31 @@ export function viewFromSearch(search: ViewSearch, lang: Lang): ViewState {
   return { place, lat, lon, el, set, tz, lang: search.lang ?? lang };
 }
 
-/** Finite non-zero hour offset from a query value. `0` and junk mean live. */
-export function parseClockHours(v: unknown): number | undefined {
-  let n: number;
-  if (typeof v === "number") n = v;
-  else if (typeof v === "string" && v.trim() !== "") n = Number(v);
-  else return undefined;
-  if (!Number.isFinite(n) || n === 0) return undefined;
-  return n;
+/**
+ * Normalize a query value to ISO-8601 UTC. Junk and empty values mean live.
+ * Accepts any `Date.parse` instant, including offsets, then stores `Z`.
+ */
+export function parseClockInstant(v: unknown): string | undefined {
+  if (typeof v !== "string" || v.trim() === "") return undefined;
+  const ms = Date.parse(v.trim());
+  if (!Number.isFinite(ms)) return undefined;
+  return new Date(ms).toISOString();
 }
 
 /**
- * Nearest-minute offset expressed in hours, so the restored clock matches the
- * minute label on the scrubber. `undefined` means live (omit `h`).
- * 0.0001 h is about 0.36 s, which stays inside the same displayed minute.
+ * Hold `at` against `wallNowMs`.
+ * `null` means stay on the live tick (missing instant, or exactly wall now).
+ * Instants outside ±48 h come back clamped with `clamped: true`.
  */
-export function clockHoursFromOffsetMs(offsetMs: number): number | undefined {
-  if (!Number.isFinite(offsetMs)) return undefined;
-  const minutes = Math.round(offsetMs / 60_000);
-  if (minutes === 0) return undefined;
-  const scale = 10 ** CLOCK_URL_HOUR_DIGITS;
-  const hours = Math.round((minutes / 60) * scale) / scale;
-  if (hours === 0) return undefined;
-  return hours;
+export function heldFromClockInstant(at: string | undefined, wallNowMs: number): HeldClock | null {
+  if (!at) return null;
+  const target = Date.parse(at);
+  if (!Number.isFinite(target)) return null;
+  return holdFromTarget(target, wallNowMs);
 }
 
-/**
- * Apply `h` to `wallNowMs` and clamp to ±48 h.
- * `null` means stay on the live tick. Out-of-range hours come back clamped
- * with `clamped: true` (the existing banner). Overflowing magnitudes are
- * bounded before the multiply so they clamp instead of collapsing to live.
- */
-export function heldFromClockHours(hours: number | undefined, wallNowMs: number): HeldClock | null {
-  if (hours == null || !Number.isFinite(hours) || hours === 0) return null;
-  const bounded = Math.max(-1e6, Math.min(1e6, hours));
-  return holdFromHours(bounded, wallNowMs);
-}
-
-/** Short query for this view. Defaults are omitted; live omits `h`. */
-export function searchFromView(view: ViewState, offsetMs = 0): ViewSearch {
+/** Short query for this view. Defaults are omitted; live omits `at`. */
+export function searchFromView(view: ViewState, heldAtMs?: number | null): ViewSearch {
   const search: ViewSearch = {};
   if (view.place === "custom") {
     search.lat = Number(view.lat.toFixed(4));
@@ -165,8 +152,7 @@ export function searchFromView(view: ViewState, offsetMs = 0): ViewSearch {
   if (view.set !== "raised") search.set = view.set;
   if (view.tz !== "kyiv") search.tz = view.tz;
   if (view.lang !== "en") search.lang = view.lang;
-  const h = clockHoursFromOffsetMs(offsetMs);
-  if (h != null) search.h = h;
+  if (heldAtMs != null && Number.isFinite(heldAtMs)) search.at = new Date(heldAtMs).toISOString();
   return search;
 }
 
@@ -180,21 +166,22 @@ export function viewSearchEqual(a: ViewSearch, b: ViewSearch): boolean {
 /**
  * Address-bar form of `view` + clock.
  * Language is taken from the incoming query so a detected UI language is not
- * written until the visitor actually picks one. An out-of-range `h` is kept
- * while the on-screen clock is still the clamped edge of that request.
+ * written until the visitor actually picks one. `clock` is the on-screen hold
+ * (`null` when live). An out-of-range `at` is kept while the on-screen clock
+ * is still the clamp of that instant, so a refresh shows the clamped banner.
  */
 export function canonicalSearch(
   incoming: ViewSearch,
   view: ViewState,
-  offsetMs: number,
+  clock: UrlClock | null,
 ): ViewSearch {
   const lang: Lang = incoming.lang === "uk" || incoming.lang === "ru" ? incoming.lang : "en";
-  const next = searchFromView({ ...view, lang }, offsetMs);
-  const authored = incoming.h;
-  if (authored != null && Math.abs(authored) > WINDOW_HOURS) {
-    const edge = authored > 0 ? WINDOW_HOURS : -WINDOW_HOURS;
-    if (next.h === edge) next.h = authored;
-  }
+  const next = searchFromView({ ...view, lang }, clock?.at ?? null);
+  if (!clock || !incoming.at) return next;
+  const authoredMs = Date.parse(incoming.at);
+  if (!Number.isFinite(authoredMs)) return next;
+  const clamped = holdFromTarget(authoredMs, clock.wall);
+  if (clamped?.clamped && clamped.at === clock.at) next.at = new Date(authoredMs).toISOString();
   return next;
 }
 
