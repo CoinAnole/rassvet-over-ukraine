@@ -81,14 +81,26 @@ export function appNameFromHost(hostHeader) {
   );
 }
 
-/** True for Vercel system domains. Envoy rewrites origin Host to these; they SSO-protect `/og.jpg`. */
+/**
+ * Platform deployment hosts that SSO-protect `/og.jpg`.
+ * Envoy rewrites origin Host onto UUID / team deployment URLs; those are not
+ * public image origins. A stable project alias (`{project}.vercel.app`) is the
+ * public production host for apps that are not published on `*.grok.me`, and
+ * `/og.jpg` on that same origin is what link scrapers must fetch.
+ */
+const VERCEL_DEPLOYMENT_UUID =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+
 function isVercelSystemHost(host) {
-  return (
-    host === "vercel.app" ||
-    host.endsWith(".vercel.app") ||
-    host === "vercel.com" ||
-    host.endsWith(".vercel.com")
-  );
+  if (host === "vercel.app" || host === "vercel.com" || host.endsWith(".vercel.com")) {
+    return true;
+  }
+  if (!host.endsWith(".vercel.app")) return false;
+  const label = host.slice(0, -".vercel.app".length);
+  if (!label || label === "www" || label.includes(".")) return true;
+  if (VERCEL_DEPLOYMENT_UUID.test(label)) return true;
+  if (label.endsWith("-xai-org")) return true;
+  return false;
 }
 
 /** Hostname suitable for absolute og:image URLs. Preview guests (X-Forwarded-Host) are allowed. */
@@ -364,6 +376,10 @@ export function grokOgHeadTags({
     tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
     tags.push(`<meta property="og:image:width" content="1200">`);
     tags.push(`<meta property="og:image:height" content="630">`);
+    tags.push(`<meta name="twitter:image" content="${escapeHtml(image)}">`);
+    if (description) {
+      tags.push(`<meta name="twitter:description" content="${escapeHtml(description)}">`);
+    }
     const banner = String(site.banner ?? "").trim();
     if (banner) {
       const bannerUrl = `https://${publicHost}${banner.startsWith("/") ? banner : `/${banner}`}`;
