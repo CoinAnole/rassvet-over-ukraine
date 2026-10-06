@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { CatalogPayload, Lang, PopulationFilter, TimezoneId } from "@/lib/catalog/types";
-import type { CoverageResult } from "@/lib/orbit/coverage";
+import { inPopulation, type CoverageResult } from "@/lib/orbit/coverage";
+import { dataFreshness } from "@/lib/catalog/freshness";
 import { PLACES, type PlaceId } from "@/lib/orbit/constants";
 import { getDict, coverageSentence, groupLabel } from "@/lib/i18n";
 import { formatClock, formatCountdown, formatDayClock, tzName } from "@/lib/orbit/time";
@@ -34,9 +35,16 @@ export function UkraineBoard({
   onChange: (next: Partial<ViewState>) => void;
 }) {
   const t = getDict(lang);
+  const freshness = dataFreshness(catalog);
+  const populationStale = catalog.objects.some((o) => o.stale && inPopulation(o, view.set));
+  const todayNote =
+    freshness.kind === "seed"
+      ? t.freshness.todaySeed
+      : populationStale
+        ? t.freshness.todayStale
+        : null;
   const zone = tzName(view.tz);
-  const placeLabel =
-    view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
+  const placeLabel = view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
   const sentence = result
     ? coverageSentence(lang, {
         el: view.el,
@@ -76,6 +84,11 @@ export function UkraineBoard({
           <p className="mt-1 text-xs text-muted">
             {result ? `${result.todayWindowCount} ${t.tiles.windows}` : "—"}
           </p>
+          {todayNote ? (
+            <p className="mt-1 text-[11px] font-medium leading-snug text-status-decay">
+              {todayNote}
+            </p>
+          ) : null}
         </Tile>
         <Tile label={t.tiles.longest} hint={t.tiles.longestHint}>
           {result?.longestToday ? (
@@ -122,7 +135,10 @@ export function UkraineBoard({
         </Tile>
       </section>
 
-      <p key={`${lang}-${placeLabel}-${result?.todayMinutes}`} className="max-w-[75ch] text-[13px] leading-snug text-fg/90">
+      <p
+        key={`${lang}-${placeLabel}-${result?.todayMinutes}`}
+        className="max-w-[75ch] text-[13px] leading-snug text-fg/90"
+      >
         {sentence}
       </p>
 
@@ -227,6 +243,7 @@ function ControlRow({
           </select>
         </Field>
       </div>
+      <p className="text-xs leading-snug text-muted">{t.altitudeGloss}</p>
       {view.place === "custom" ? (
         <div className="flex flex-wrap items-end gap-2">
           <Field label={t.controls.lat}>
@@ -275,13 +292,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function CityStrip({
-  lang,
-  result,
-}: {
-  lang: Lang;
-  result: CoverageResult | null;
-}) {
+export function CityStrip({ lang, result }: { lang: Lang; result: CoverageResult | null }) {
   const t = getDict(lang);
   return (
     <section className="flex flex-col gap-2">
@@ -380,8 +391,7 @@ export function PassTable({
                       {row.maxElevationDeg.toFixed(0)}°
                     </td>
                     <td className="px-3 py-2">
-                      {row.name}{" "}
-                      <span className="font-mono text-xs text-muted">{row.norad}</span>
+                      {row.name} <span className="font-mono text-xs text-muted">{row.norad}</span>
                       {row.stale ? (
                         <span className="ml-2 text-[10px] uppercase text-status-stale">
                           {t.status.stale}

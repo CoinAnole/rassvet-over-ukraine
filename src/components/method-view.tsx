@@ -23,6 +23,13 @@ export function MethodView({ lang }: { lang: Lang }) {
                 {p}
               </p>
             ))}
+            {section.bullets?.length ? (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-relaxed text-fg/90">
+                {section.bullets.map((item) => (
+                  <li key={item.slice(0, 48)}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
           </section>
         ))}
       </div>

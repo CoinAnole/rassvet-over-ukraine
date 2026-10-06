@@ -1,6 +1,11 @@
 import type { Lang } from "@/lib/catalog/types";
 
-export type MethodSection = { heading: string; paragraphs: string[]; quote?: string };
+export type MethodSection = {
+  heading: string;
+  paragraphs: string[];
+  quote?: string;
+  bullets?: string[];
+};
 
 export function methodSections(lang: Lang): MethodSection[] {
   return CONTENT[lang];
@@ -31,13 +36,15 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
-      heading: "What the numbers are not",
+      heading: "Geometric line-of-sight only",
       paragraphs: [
-        "Not “a terminal has a lock”.",
-        "Not “capacity for N users”.",
-        "Not “24-hour service”.",
-        "Not “the constellation is operational at 800 km”.",
-        "Not proof of encryption, inter-satellite links, gateway routing, or any military function. Geometric line-of-sight is a necessary condition for a link, not a sufficient one.",
+        "Every minute, window, and footprint is geometric line-of-sight: at least one catalogued object above the elevation mask. That is the whole claim.",
+      ],
+      bullets: [
+        "Never linked — not a terminal attached, not a session, not inter-satellite links.",
+        "Never encrypted.",
+        "Never military-ready.",
+        "Never 24-hour service.",
       ],
     },
     {
@@ -63,6 +70,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Stale element sets",
       paragraphs: [
         "If the newest GP epoch for an object is older than 72 hours, the object is marked stale and still propagated, with a warning. Missing IDs that remain in the curated list but have no TLE are marked missing and are omitted from Now / Today / footprints. Decayed IDs on the manual override list (and any object whose perigee is persistently below 150 km) are excluded from coverage.",
+        "A failed live fetch, or any element set past 72 hours, is called out in the header. Today minutes stay on screen, with a short mark when that snapshot or those element sets are what the count uses.",
       ],
     },
     {
@@ -99,13 +107,15 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
-      heading: "Чим ці числа не є",
+      heading: "Лише геометрична пряма видимість",
       paragraphs: [
-        "Не «термінал захопив сигнал».",
-        "Не «ємність на N користувачів».",
-        "Не «цілодобова служба».",
-        "Не «угруповання робоче на 800 км».",
-        "Не доказ шифрування, міжсупутникових каналів, маршрутизації через шлюзи чи будь-якої військової функції. Геометрична пряма видимість — необхідна, але не достатня умова зв’язку.",
+        "Кожна хвилина, вікно й контур — геометрична пряма видимість: принаймні один каталожний об’єкт вище маски кута місця. Це й усе твердження.",
+      ],
+      bullets: [
+        "Ніколи не зв’язок — не захоплений термінал, не сеанс, не міжсупутникові канали.",
+        "Ніколи не шифрування.",
+        "Ніколи не військова готовність.",
+        "Ніколи не цілодобова служба.",
       ],
     },
     {
@@ -131,6 +141,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Застарілі набори елементів",
       paragraphs: [
         "Якщо найновіша епоха GP для об’єкта старіша за 72 години, об’єкт позначається як застарілий і все одно прогнозується, з попередженням. Ідентифікатори з курованого списку без TLE позначаються як відсутні й не входять у «Зараз» / «Сьогодні» / контури. Зійшлі ідентифікатори з ручного списку (і будь-який об’єкт із перигеєм нижче 150 км) з покриття виключені.",
+        "Невдале живе завантаження або набір елементів старший за 72 години позначено в шапці. Хвилини «Сьогодні» лишаються на екрані, з короткою позначкою, якщо лік узято з того знімка чи з тих наборів.",
       ],
     },
     {
@@ -167,13 +178,15 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
-      heading: "Чем эти числа не являются",
+      heading: "Только геометрическая прямая видимость",
       paragraphs: [
-        "Не «терминал захватил сигнал».",
-        "Не «ёмкость на N пользователей».",
-        "Не «круглосуточная служба».",
-        "Не «группировка рабочая на 800 км».",
-        "Не доказательство шифрования, межспутниковых каналов, маршрутизации через шлюзы или какой-либо военной функции. Геометрическая прямая видимость — необходимое, но не достаточное условие связи.",
+        "Каждая минута, окно и контур — геометрическая прямая видимость: по крайней мере один каталожный объект выше маски угла места. Это и всё утверждение.",
+      ],
+      bullets: [
+        "Никогда не связь — не захваченный терминал, не сеанс, не межспутниковые каналы.",
+        "Никогда не шифрование.",
+        "Никогда не военная готовность.",
+        "Никогда не круглосуточная служба.",
       ],
     },
     {
@@ -199,6 +212,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Устаревшие наборы элементов",
       paragraphs: [
         "Если новейшая эпоха GP для объекта старше 72 часов, объект помечается как устаревший и всё равно прогнозируется, с предупреждением. Идентификаторы из курируемого списка без TLE помечаются как отсутствующие и не входят в «Сейчас» / «Сегодня» / контуры. Сошедшие идентификаторы из ручного списка (и любой объект с перигеем ниже 150 км) из покрытия исключены.",
+        "Неудавшаяся живая загрузка или набор элементов старше 72 часов отмечены в шапке. Минуты «Сегодня» остаются на экране, с короткой пометкой, если счёт взят из того снимка или из тех наборов.",
       ],
     },
     {

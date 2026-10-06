@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { getDict } from "@/lib/i18n";
 import type { Lang } from "@/lib/catalog/types";
+import type { DataFreshness } from "@/lib/catalog/freshness";
 import { cn } from "@/lib/cn";
 
 const NAV = [
@@ -15,6 +16,7 @@ export function AppShell({
   fetchedAt,
   newestEpoch,
   source,
+  freshness,
   warning,
   children,
   current,
@@ -24,11 +26,21 @@ export function AppShell({
   fetchedAt: string | null;
   newestEpoch: string | null;
   source: "live" | "seed" | null;
+  freshness: DataFreshness;
   warning: string | null;
   current: "/" | "/constellation" | "/method";
   children: React.ReactNode;
 }) {
   const t = getDict(lang);
+  const freshnessText =
+    freshness.kind === "seed"
+      ? (freshness.staleCount > 0 ? t.freshness.seedStale : t.freshness.seed).replaceAll(
+          "{date}",
+          freshness.snapshotDate,
+        )
+      : freshness.kind === "stale"
+        ? t.freshness.stale
+        : null;
   return (
     <div className="min-h-dvh bg-bg text-fg">
       <header className="border-b border-border bg-bg">
@@ -65,7 +77,9 @@ export function AppShell({
                 <div>
                   {t.header.fetchedAt}{" "}
                   <span className="text-fg">{fetchedAt ? `${fetchedAt} UTC` : "—"}</span>
-                  {source ? ` · ${source === "live" ? t.header.sourceLive : t.header.sourceSeed}` : null}
+                  {source
+                    ? ` · ${source === "live" ? t.header.sourceLive : t.header.sourceSeed}`
+                    : null}
                 </div>
               </div>
             </div>
@@ -88,11 +102,22 @@ export function AppShell({
               ))}
             </nav>
             {warning ? (
-              <p className="max-w-[60ch] text-[11px] text-status-climbing">
+              <p className="max-w-[60ch] text-[11px] leading-snug text-fg/80">
                 {t.warning}: {warning}
               </p>
             ) : null}
           </div>
+          {freshnessText ? (
+            <p
+              role="status"
+              className="border-l-2 border-status-decay bg-elevated px-3 py-2 text-[13px] leading-snug text-fg"
+            >
+              <span className="mr-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-status-decay">
+                {freshness.kind === "seed" ? t.freshness.seedKicker : t.freshness.staleKicker}
+              </span>
+              {freshnessText}
+            </p>
+          ) : null}
         </div>
       </header>
       <main className="mx-auto max-w-[1400px] px-4 py-3 md:px-6">{children}</main>
