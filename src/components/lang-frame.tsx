@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { detectLang, persistLang, isLang } from "@/lib/i18n";
+import { dataFreshness } from "@/lib/catalog/freshness";
 import type { Lang, CatalogPayload } from "@/lib/catalog/types";
 
 function newestEpoch(catalog: CatalogPayload | undefined): string | null {
@@ -56,7 +57,8 @@ export function LangFrame({
       fetchedAt={fetchedLabel(catalog)}
       newestEpoch={newestEpoch(catalog)}
       source={catalog.source}
-      warning={catalog.warning}
+      freshness={dataFreshness(catalog)}
+      warning={catalog.source === "seed" ? null : catalog.warning}
       current={current}
     >
       {children(lang)}

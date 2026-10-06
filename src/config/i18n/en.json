@@ -59,7 +59,7 @@
     "custom": "Custom point"
   },
   "population": {
-    "raised": "Raised only (≥ 480 km)",
+    "raised": "Raised (≥ 480 km)",
     "all": "All catalogued Rassvet",
     "climbing": "Climbing (< 480 km)",
     "exp-2023": "Experimental 2023",
@@ -86,8 +86,8 @@
     "empty": "No geometric passes in the next 36 hours for this point, mask, and population."
   },
   "status": {
-    "climbing": "climbing",
-    "raised": "raised",
+    "climbing": "climbing <480 km",
+    "raised": "raised ≥480 km",
     "decayed": "decayed",
     "missing": "missing",
     "stale": "stale TLE"
@@ -95,7 +95,9 @@
   "map": {
     "reset": "Reset view",
     "observer": "Ground point",
-    "mask": "min elevation"
+    "mask": "min elevation",
+    "raised": "Raised ≥480 km",
+    "climbing": "Climbing <480 km"
   },
   "cityStrip": {
     "label": "Same mask and population, other cities",
@@ -103,12 +105,12 @@
   },
   "constellation": {
     "title": "Constellation",
-    "caption": "Each point is a public catalog element set. Objects raise themselves over weeks to months. A launch does not equal coverage that week.",
+    "caption": "Raised is at least 480 km. Climbing is still below 480 km. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
     "xAxis": "Days since launch",
     "yAxis": "Approx. altitude (a − Re), km",
     "onOrbit": "Catalogued on orbit",
     "raised": "Raised (≥ 480 km)",
-    "climbing": "Climbing",
+    "climbing": "Climbing (< 480 km)",
     "decayed": "Decayed / lost",
     "groups": "Launch groups",
     "hideDecayed": "Hide decayed",
@@ -133,5 +135,14 @@
     "lede": "This page is the contract. Numbers on the other screens are only as good as the definitions below."
   },
   "warning": "Warning",
-  "staleBanner": "One or more element sets are older than 72 hours. Positions are still propagated, with a stale mark."
+  "freshness": {
+    "seedKicker": "Not live",
+    "staleKicker": "Stale GP",
+    "seed": "Live GP fetch failed. Showing the checked-in snapshot from {date}, not a current element set.",
+    "seedStale": "Live GP fetch failed. The checked-in snapshot from {date} is older than 72 hours. Positions are still propagated.",
+    "stale": "One or more element sets are older than 72 hours. Positions are still propagated, with a stale mark.",
+    "todaySeed": "Snapshot — live fetch failed",
+    "todayStale": "Includes TLEs older than 72 h"
+  },
+  "altitudeGloss": "Raised means at least 480 km. Climbing means still below 480 km."
 }

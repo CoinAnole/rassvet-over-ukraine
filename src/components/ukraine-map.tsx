@@ -89,9 +89,7 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
       for (const sat of result.map) {
         const selectedSat = sat.norad === selected;
         const color =
-          sat.status === "climbing"
-            ? "var(--color-status-climbing)"
-            : "var(--color-status-raised)";
+          sat.status === "climbing" ? "var(--color-status-climbing)" : "var(--color-status-raised)";
         const fillOp = selectedSat ? 0.22 : 0.08;
         const rings = splitAntimeridianRing(sat.footprint);
         for (const ring of rings) {
@@ -124,7 +122,7 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
             ? `${sat.elevationDeg.toFixed(1)}°`
             : "—";
         marker.bindTooltip(
-          `${sat.name} · ${sat.norad}<br/>${sat.altitudeKm.toFixed(0)} km · el ${elNow}${sat.stale ? " · stale" : ""}`,
+          `${sat.name} · ${sat.norad}<br/>${sat.altitudeKm.toFixed(0)} km · el ${elNow}${sat.stale ? ` · ${t.status.stale}` : ""}`,
           { className: "rassvet-tip", sticky: true, opacity: 1 },
         );
         marker.on("click", () => select(sat.norad));
@@ -134,16 +132,34 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [result, lat, lon, el, placeLabel, selected, select, t.map.mask, t.map.observer]);
+  }, [
+    result,
+    lat,
+    lon,
+    el,
+    placeLabel,
+    selected,
+    select,
+    t.map.mask,
+    t.map.observer,
+    t.status.stale,
+  ]);
 
   return (
     <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
       <div ref={mapEl} className="h-[340px] w-full md:h-[420px]" />
+      <div className="pointer-events-none absolute bottom-3 left-3 z-[400] flex flex-wrap gap-x-3 gap-y-1 rounded-[var(--radius-sm)] border border-border bg-bg/90 px-2.5 py-1.5 text-[11px] text-fg">
+        <span className="flex items-center gap-1.5">
+          <i className="sat-dot sat-dot-raised inline-block size-2.5" />
+          {t.map.raised}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="sat-dot sat-dot-climbing inline-block size-2.5" />
+          {t.map.climbing}
+        </span>
+      </div>
       <div className="absolute right-3 top-3 z-[400]">
-        <Button
-          variant="outline"
-          onClick={() => mapRef.current?.fitBounds(MAP_BOUNDS)}
-        >
+        <Button variant="outline" onClick={() => mapRef.current?.fitBounds(MAP_BOUNDS)}>
           {t.map.reset}
         </Button>
       </div>
