@@ -5,17 +5,13 @@ import { UkraineBoard, CityStrip, PassTable } from "@/components/ukraine-board";
 import { UkraineMap } from "@/components/ukraine-map";
 import { holdFromHours, holdFromTarget, type HeldClock } from "@/lib/orbit/clock";
 import { computeCoverage } from "@/lib/orbit/coverage";
+import { findScrubWindows, scrubAnchorMs } from "@/lib/orbit/scrub-windows";
 import { parseCivilInput, tzName } from "@/lib/orbit/time";
 import { getDict } from "@/lib/i18n";
 import { getCatalog } from "@/lib/catalog/get-catalog";
 import type { Lang } from "@/lib/catalog/types";
 import type { PlaceId } from "@/lib/orbit/constants";
-import {
-  searchFromView,
-  viewFromSearch,
-  type ViewSearch,
-  type ViewState,
-} from "@/lib/view-state";
+import { searchFromView, viewFromSearch, type ViewSearch, type ViewState } from "@/lib/view-state";
 
 function parseSearch(raw: Record<string, unknown>): ViewSearch {
   const num = (v: unknown) => {
@@ -80,9 +76,22 @@ function UkraineToday({ lang }: { lang: Lang }) {
 
   const coverageNow = held ? new Date(held.at) : liveNow;
   const displayNow = preview ? new Date(preview.at) : liveNow;
-  const coverageKey = held
-    ? `h:${held.at}`
-    : `l:${Math.floor(coverageNow.getTime() / 30_000)}`;
+  const wallMs = preview ? preview.wall : liveNow.getTime();
+  const coverageKey = held ? `h:${held.at}` : `l:${Math.floor(coverageNow.getTime() / 30_000)}`;
+  const scrubAnchor = scrubAnchorMs(wallMs);
+
+  const scrubWindows = useMemo(
+    () =>
+      findScrubWindows({
+        catalog,
+        lat: view.lat,
+        lon: view.lon,
+        minElevationDeg: view.el,
+        filter: view.set,
+        wallNowMs: scrubAnchor,
+      }),
+    [catalog, view.lat, view.lon, view.el, view.set, scrubAnchor],
+  );
 
   const result = useMemo(() => {
     return computeCoverage({
@@ -124,6 +133,11 @@ function UkraineToday({ lang }: { lang: Lang }) {
     remember(holdFromTarget(parsed.getTime(), Date.now()), true);
   };
 
+  const onWindow = (aosMs: number) => {
+    const wall = previewRef.current ? previewRef.current.wall : wallMs;
+    remember(holdFromTarget(aosMs, wall), true);
+  };
+
   const onChange = (patch: Partial<ViewState>) => {
     const next = { ...view, lang, ...patch };
     void navigate({
@@ -133,8 +147,7 @@ function UkraineToday({ lang }: { lang: Lang }) {
   };
 
   const t = getDict(lang);
-  const placeLabel =
-    view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
+  const placeLabel = view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
 
   return (
     <div className="flex flex-col gap-4">
@@ -154,6 +167,8 @@ function UkraineToday({ lang }: { lang: Lang }) {
           onCommit,
           onAbsolute,
           onLive,
+          windows: scrubWindows,
+          onWindow,
         }}
         onChange={onChange}
       />

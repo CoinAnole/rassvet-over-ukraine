@@ -60,6 +60,9 @@
     "absolute": "Date and time",
     "scrub": "Offset from real now",
     "hint": "Set the clock within ±48 hours of real now. The live tick pauses until you return to Live.",
+    "bands": "Shaded bands are geometric line-of-sight over this point across ±48 hours. Tap a band to hold the clock at acquisition (AOS).",
+    "band": "Geometric line-of-sight {start}–{end}, {minutes} min. Hold the clock at acquisition.",
+    "bandsEmpty": "No geometric line-of-sight in this ±48 hour span for this point, mask, and population.",
     "banner": "Held at {when} ({offset}). Still geometric line-of-sight from the latest public GP, not an archived element set. Accuracy falls off away from the element epoch; climbing or maneuvering objects can look wrong.",
     "clamped": "That time is outside ±48 hours of real now, so it was clamped."
   },

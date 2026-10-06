@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogPayload, Lang, PopulationFilter, TimezoneId } from "@/lib/catalog/types";
 import { inPopulation, type CoverageResult } from "@/lib/orbit/coverage";
 import { dataFreshness } from "@/lib/catalog/freshness";
 import { CLOCK_WINDOW_MS, formatClockOffset } from "@/lib/orbit/clock";
+import {
+  scrubBandAtFraction,
+  scrubBandFrame,
+  scrubBands,
+  type ScrubBand,
+} from "@/lib/orbit/scrub-windows";
+import type { Interval } from "@/lib/orbit/union";
 import { PLACES, type PlaceId } from "@/lib/orbit/constants";
 import { getDict, coverageSentence, groupLabel } from "@/lib/i18n";
 import {
@@ -32,6 +39,10 @@ export type ClockControl = {
   onCommit: () => void;
   onAbsolute: (civil: string) => void;
   onLive: () => void;
+  /** Unioned geometric LOS, possibly extending past the visible ±48 h edges. */
+  windows: Interval[];
+  /** Hold the clock at this window's acquisition. */
+  onWindow: (aosMs: number) => void;
 };
 
 const ELS = [10, 25, 40] as const;
@@ -329,19 +340,15 @@ function ControlRow({
   );
 }
 
-function ClockScrub({
-  lang,
-  tz,
-  clock,
-}: {
-  lang: Lang;
-  tz: TimezoneId;
-  clock: ClockControl;
-}) {
+function ClockScrub({ lang, tz, clock }: { lang: Lang; tz: TimezoneId; clock: ClockControl }) {
   const t = getDict(lang);
   const zone = tzName(tz);
   const offsetLabel = formatClockOffset(clock.offsetMs, t.units.hour, t.units.min);
   const hours = clock.live ? 0 : clock.offsetMs / 3_600_000;
+  const bands = useMemo(
+    () => scrubBands(clock.windows, clock.wallMs),
+    [clock.windows, clock.wallMs],
+  );
   const minCivil = formatCivilInput(new Date(clock.wallMs - CLOCK_WINDOW_MS), zone);
   const maxCivil = formatCivilInput(new Date(clock.wallMs + CLOCK_WINDOW_MS), zone);
 
@@ -382,21 +389,13 @@ function ClockScrub({
         </Button>
       </div>
       <div className="flex flex-col gap-1">
-        <input
-          type="range"
-          className="clock-range"
-          min={-48}
-          max={48}
-          step="any"
-          value={Number.isFinite(hours) ? Math.max(-48, Math.min(48, hours)) : 0}
-          aria-label={t.clock.scrub}
-          aria-valuemin={-48}
-          aria-valuemax={48}
-          aria-valuenow={Math.round(hours * 100) / 100}
-          aria-valuetext={offsetLabel}
-          onChange={(e) => clock.onHours(Number(e.target.value))}
-          onPointerUp={clock.onCommit}
-          onKeyUp={clock.onCommit}
+        <ScrubTrack
+          bands={bands}
+          clock={clock}
+          hours={hours}
+          offsetLabel={offsetLabel}
+          scrubLabel={t.clock.scrub}
+          bandLabel={(band) => scrubBandText(t.clock.band, band, zone)}
         />
         <div className="flex justify-between font-mono text-[10px] text-subtle tabular">
           <span>−48 {t.units.hour}</span>
@@ -414,9 +413,201 @@ function ClockScrub({
         onAbsolute={clock.onAbsolute}
       />
       <p className="text-xs normal-case tracking-normal text-subtle">{t.clock.hint}</p>
-      {clock.clamped ? (
-        <p className="text-xs normal-case tracking-normal text-status-climbing">{t.clock.clamped}</p>
+      <p id="clock-scrub-bands" className="text-xs normal-case tracking-normal text-subtle">
+        {t.clock.bands}
+      </p>
+      {bands.length === 0 ? (
+        <p className="text-xs normal-case tracking-normal text-muted">{t.clock.bandsEmpty}</p>
       ) : null}
+      {clock.clamped ? (
+        <p className="text-xs normal-case tracking-normal text-status-climbing">
+          {t.clock.clamped}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Matches the styled range thumb so bands and clicks share the thumb's travel. */
+const SCRUB_THUMB_PX = 16;
+/** Short windows stay visible. Pointer hits snap to the nearest window within this many pixels. */
+const SCRUB_BAND_MIN_PX = 4;
+const SCRUB_HIT_PX = 10;
+
+function scrubBandText(template: string, band: ScrubBand, zone: string): string {
+  const minutes = Math.max(1, Math.round((band.visibleEnd - band.visibleStart) / 60_000));
+  return template
+    .replaceAll("{start}", formatDayClock(new Date(band.visibleStart), zone))
+    .replaceAll("{end}", formatDayClock(new Date(band.visibleEnd), zone))
+    .replaceAll("{minutes}", String(minutes));
+}
+
+function hoursFromClientX(clientX: number, rect: DOMRect): number {
+  const usable = rect.width - SCRUB_THUMB_PX;
+  const x = clientX - rect.left - SCRUB_THUMB_PX / 2;
+  const frac = usable <= 0 ? 0.5 : Math.min(1, Math.max(0, x / usable));
+  return -48 + frac * 96;
+}
+
+function ScrubTrack({
+  bands,
+  clock,
+  hours,
+  offsetLabel,
+  scrubLabel,
+  bandLabel,
+}: {
+  bands: ScrubBand[];
+  clock: ClockControl;
+  hours: number;
+  offsetLabel: string;
+  scrubLabel: string;
+  bandLabel: (band: ScrubBand) => string;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+  const tapRef = useRef<{ aos: number; x: number; y: number; pointerId: number } | null>(null);
+  const scrubDragRef = useRef(false);
+  const [roving, setRoving] = useState<number | null>(null);
+  const displayMs = clock.displayAt.getTime();
+  const suggested = useMemo(() => {
+    const open = bands.findIndex((b) => displayMs >= b.visibleStart && displayMs < b.visibleEnd);
+    if (open >= 0) return open;
+    const upcoming = bands.findIndex((b) => b.aos >= displayMs);
+    return upcoming >= 0 ? upcoming : 0;
+  }, [bands, displayMs]);
+  const tabAt = roving != null && roving >= 0 && roving < bands.length ? roving : suggested;
+
+  useEffect(() => {
+    if (roving == null) return;
+    const el = buttons.current[roving];
+    if (el && document.activeElement !== el) el.focus();
+  }, [roving]);
+
+  const bandAtClientX = (clientX: number): ScrubBand | null => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const usable = rect.width - SCRUB_THUMB_PX;
+    const x = clientX - rect.left - SCRUB_THUMB_PX / 2;
+    const fraction = usable <= 0 ? 0 : x / usable;
+    return scrubBandAtFraction(
+      bands,
+      fraction,
+      usable,
+      clock.wallMs,
+      CLOCK_WINDOW_MS,
+      SCRUB_BAND_MIN_PX,
+      SCRUB_HIT_PX,
+    );
+  };
+
+  const focusBand = (index: number) => {
+    setRoving(Math.max(0, Math.min(bands.length - 1, index)));
+  };
+
+  return (
+    <div ref={trackRef} className="clock-scrub">
+      <div className="clock-scrub-rail" aria-hidden="true" />
+      <div className="scrub-bands" role="group" aria-labelledby="clock-scrub-bands">
+        {bands.map((band, i) => {
+          const frame = scrubBandFrame(band, clock.wallMs);
+          const open = displayMs >= band.visibleStart && displayMs < band.visibleEnd;
+          const label = bandLabel(band);
+          return (
+            <button
+              key={`${band.aos}:${band.los}`}
+              ref={(node) => {
+                buttons.current[i] = node;
+              }}
+              type="button"
+              className="scrub-band"
+              data-scrub-band=""
+              data-aos={String(band.aos)}
+              data-open={open ? "true" : "false"}
+              aria-current={open ? "true" : undefined}
+              aria-label={label}
+              tabIndex={i === tabAt ? 0 : -1}
+              style={{
+                left: `min(${frame.leftPct}%, calc(100% - ${SCRUB_BAND_MIN_PX}px))`,
+                width: `max(${frame.widthPct}%, ${SCRUB_BAND_MIN_PX}px)`,
+              }}
+              onClick={() => {
+                setRoving(i);
+                clock.onWindow(band.aos);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  focusBand(i + 1);
+                } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  focusBand(i - 1);
+                } else if (e.key === "Home") {
+                  e.preventDefault();
+                  focusBand(0);
+                } else if (e.key === "End") {
+                  e.preventDefault();
+                  focusBand(bands.length - 1);
+                } else if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setRoving(i);
+                  clock.onWindow(band.aos);
+                }
+              }}
+            >
+              <span className="scrub-band-fill" />
+            </button>
+          );
+        })}
+      </div>
+      <input
+        type="range"
+        className="clock-range"
+        min={-48}
+        max={48}
+        step="any"
+        value={Number.isFinite(hours) ? Math.max(-48, Math.min(48, hours)) : 0}
+        aria-label={scrubLabel}
+        aria-valuemin={-48}
+        aria-valuemax={48}
+        aria-valuenow={Math.round(hours * 100) / 100}
+        aria-valuetext={offsetLabel}
+        onChange={(e) => clock.onHours(Number(e.target.value))}
+        onKeyUp={clock.onCommit}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          const band = bandAtClientX(e.clientX);
+          if (!band) return;
+          e.preventDefault();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          tapRef.current = { aos: band.aos, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+          scrubDragRef.current = false;
+        }}
+        onPointerMove={(e) => {
+          const tap = tapRef.current;
+          if (!tap || tap.pointerId !== e.pointerId) return;
+          if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) <= 6) return;
+          scrubDragRef.current = true;
+          const rect = trackRef.current?.getBoundingClientRect();
+          if (rect) clock.onHours(hoursFromClientX(e.clientX, rect));
+        }}
+        onPointerUp={(e) => {
+          const tap = tapRef.current;
+          tapRef.current = null;
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+          if (tap && tap.pointerId === e.pointerId && !scrubDragRef.current) {
+            const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y);
+            if (moved <= 6) {
+              clock.onWindow(tap.aos);
+              return;
+            }
+          }
+          scrubDragRef.current = false;
+          clock.onCommit();
+        }}
+      />
     </div>
   );
 }
@@ -542,7 +733,9 @@ export function PassTable({
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-medium">{held ? t.passList.titleHeld : t.passList.title}</h2>
-      <p className="max-w-[75ch] text-xs text-muted">{held ? t.passList.hintHeld : t.passList.hint}</p>
+      <p className="max-w-[75ch] text-xs text-muted">
+        {held ? t.passList.hintHeld : t.passList.hint}
+      </p>
       <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
         <table className="w-full min-w-[860px] border-collapse text-left text-sm">
           <thead className="bg-elevated text-[11px] uppercase tracking-[0.12em] text-muted">

@@ -77,6 +77,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Clock within ±48 hours",
       paragraphs: [
         "The Ukraine page can hold its clock anywhere within 48 hours of wall-clock now. While the clock is held, the live tick pauses. Map positions, who is above the mask, footprints, tracks, the Today tile, city minutes, the next-window countdown, and the pass list are recomputed at that instant. “Today” is the held clock’s calendar day in the timezone you picked (Kyiv, UTC, or Moscow). The pass list is the 36 hours after the held clock, not the next 36 hours from wall-clock now.",
+        "The scrubber shades the union of geometric line-of-sight windows across the whole ±48 hours. Those bands are sampled every 60 seconds so the strip can be recomputed without following the one-second tick; the pass list stays on a 30-second step. Choosing a band holds the clock at that window’s acquisition, not at peak elevation.",
         "The elements are still the latest public GP from CelesTrak, not an archived historical set. Geometric line-of-sight is propagated from those elements to the selected instant. Accuracy degrades away from the element epoch. Climbing or maneuvering objects can look wrong in the past or the future, because an orbit raise is not replayed.",
       ],
     },
@@ -146,6 +147,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Годинник у межах ±48 годин",
       paragraphs: [
         "Сторінка «Україна» може утримати годинник будь-де в межах 48 годин від стінного зараз. Поки годинник утримано, живий секундний хід зупинено. Позиції на карті, хто вище маски, контури, треки, плитка «Сьогодні», міські хвилини, відлік до наступного вікна і список проходжень перераховуються на цей момент. «Сьогодні» — календарний день утриманого годинника в обраному поясі (Київ, UTC або Москва). Список проходжень — 36 годин після утриманого годинника, а не наступні 36 годин від стінного зараз.",
+        "На шкалі годинника зафарбовано об’єднання вікон геометричної прямої видимості на всі ±48 годин. Ці смуги дискретизовано кожні 60 секунд, щоб смуга перераховувалась без секундного ходу; список проходжень лишається з кроком 30 секунд. Вибір смуги утримує годинник на заході цього вікна, а не на максимумі кута місця.",
         "Елементи й далі є найновішим публічним GP з CelesTrak, а не архівним історичним набором. Геометричну пряму видимість прогнозовано з цих елементів на вибраний момент. Точність падає далі від епохи елементів. Апарати, що піднімаються чи маневрують, можуть виглядати хибно в минулому чи майбутньому, бо підйом орбіти не відтворюється.",
       ],
     },
@@ -215,6 +217,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Часы в пределах ±48 часов",
       paragraphs: [
         "Страница «Украина» может удержать часы в любой точке в пределах 48 часов от стенного сейчас. Пока часы удержаны, живой секундный ход остановлен. Позиции на карте, кто выше маски, контуры, треки, плитка «Сегодня», городские минуты, отсчёт до следующего окна и список прохождений пересчитываются на этот момент. «Сегодня» — календарный день удержанных часов в выбранном поясе (Киев, UTC или Москва). Список прохождений — 36 часов после удержанных часов, а не следующие 36 часов от стенного сейчас.",
+        "На шкале часов закрашено объединение окон геометрической прямой видимости на все ±48 часов. Эти полосы дискретизированы каждые 60 секунд, чтобы шкала пересчитывалась без секундного хода; список прохождений остаётся с шагом 30 секунд. Выбор полосы удерживает часы на захвате этого окна, а не на максимуме угла места.",
         "Элементы по-прежнему новейший публичный GP с CelesTrak, а не архивный исторический набор. Геометрическая прямая видимость прогнозируется из этих элементов на выбранный момент. Точность падает дальше от эпохи элементов. Аппараты, которые поднимаются или маневрируют, могут выглядеть неверно в прошлом или будущем, потому что подъём орбиты не воспроизводится.",
       ],
     },
