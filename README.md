@@ -16,11 +16,7 @@ Visible is never presented as linked, encrypted, military-ready, or 24-hour serv
 
 ## Adding a launch group
 
-1. Edit `src/config/objects.json`.
-2. Add a group under `groups` with `id`, `launchDate`, and EN/UK/RU labels.
-3. Append each new NORAD ID to `objects` with `name`, `catalogName`, `cospar`, and `group`.
-4. If an object has reentered, add its NORAD number to `decayed`.
-5. Push to `main`. The live Vercel site rebuilds from that branch. Live CelesTrak GP fetch is by `NAME=RASSVET` plus the listed international designators; unknown new names go to `unassigned` only if you add them to the object list.
+Follow [docs/new-launch-group.md](docs/new-launch-group.md). Edit `src/config/objects.json`, then run `npm run verify:catalog`. The live Vercel site rebuilds from `main`.
 
 Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog plus status rules.
 
