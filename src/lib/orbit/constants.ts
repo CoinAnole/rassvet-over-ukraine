@@ -31,11 +31,13 @@ export const PLACES = [
   { id: "zaporizhzhia", lat: 47.8388, lon: 35.1396 },
   { id: "donetsk", lat: 48.0159, lon: 37.8028 },
   { id: "sevastopol", lat: 44.6167, lon: 33.5254 },
+  { id: "lviv", lat: 49.8397, lon: 24.0297 },
+  { id: "vinnytsia", lat: 49.2331, lon: 28.4682 },
 ] as const;
 
 export type PlaceId = (typeof PLACES)[number]["id"];
 
-export const CITY_STRIP: PlaceId[] = ["kyiv", "kharkiv", "odesa"];
+export const CITY_STRIP: PlaceId[] = ["kyiv", "kharkiv", "odesa", "lviv"];
 
 export const MAP_BOUNDS: [[number, number], [number, number]] = [
   [41, 22],

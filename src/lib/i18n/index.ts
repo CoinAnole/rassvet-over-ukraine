@@ -2,9 +2,18 @@ import en from "../../config/i18n/en.json" with { type: "json" };
 import uk from "../../config/i18n/uk.json" with { type: "json" };
 import ru from "../../config/i18n/ru.json" with { type: "json" };
 import type { Lang } from "../catalog/types.ts";
+import type { PlaceId } from "../orbit/constants.ts";
 
 export const DICTS = { en, uk, ru } as const;
 export type Dict = typeof en;
+
+/** Every preset place, plus the custom point, must have a label in each language. */
+type PlaceLabels = Record<PlaceId | "custom", string>;
+const _placeLabels = {
+  en: en.places,
+  uk: uk.places,
+  ru: ru.places,
+} satisfies Record<Lang, PlaceLabels>;
 
 const STORAGE_KEY = "rassvet-lang";
 
