@@ -356,6 +356,9 @@ describe("clock copy", () => {
       assert.match(d.clock.band, /\{minutes\}/);
       assert.ok(d.clock.bands.length > 0);
       assert.ok(d.clock.bandsEmpty.length > 0);
+      assert.match(d.clock.clampedKicker, /48/);
+      assert.match(d.clock.clamped, /48/);
+      assert.ok(d.clock.clamped.length > 80);
       assert.ok(d.passList.titleHeld.length > 0);
       assert.ok(d.sentenceHeld.includes("{day}"));
       const method = methodSections(lang)
