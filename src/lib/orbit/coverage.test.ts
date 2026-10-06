@@ -16,6 +16,17 @@ import {
   passInForwardWindow,
   PASS_HORIZON_MS,
 } from "./clock.ts";
+import {
+  SCRUB_ANCHOR_MS,
+  SCRUB_EDGE_PAD_MS,
+  SCRUB_STEP_SECONDS,
+  findScrubWindows,
+  scrubAnchorMs,
+  scrubBandAtFraction,
+  scrubBandAtTime,
+  scrubBandFrame,
+  scrubBands,
+} from "./scrub-windows.ts";
 import { formatCivilInput, parseCivilInput, zonedDayBounds } from "./time.ts";
 import {
   footprintRing,
@@ -340,14 +351,166 @@ describe("clock copy", () => {
       assert.ok(d.clock.returnLive.length > 0);
       assert.match(d.clock.banner, /\{when\}/);
       assert.match(d.clock.banner, /\{offset\}/);
+      assert.match(d.clock.band, /\{start\}/);
+      assert.match(d.clock.band, /\{end\}/);
+      assert.match(d.clock.band, /\{minutes\}/);
+      assert.ok(d.clock.bands.length > 0);
+      assert.ok(d.clock.bandsEmpty.length > 0);
       assert.ok(d.passList.titleHeld.length > 0);
       assert.ok(d.sentenceHeld.includes("{day}"));
       const method = methodSections(lang)
         .flatMap((s) => [s.heading, ...s.paragraphs])
         .join("\n");
       assert.match(method, /48/);
+      assert.match(method, /60/);
       assert.match(method, /GP/);
     }
+  });
+});
+
+describe("scrub window bands", () => {
+  const wall = Date.parse("2026-09-20T10:07:30Z");
+
+  function catalogAt(now: Date) {
+    return buildCatalog({
+      omms: indexOmms(seed.objects),
+      fetchedAt: "2026-09-20T12:32:36Z",
+      source: "seed",
+      warning: null,
+      now,
+    });
+  }
+
+  it("buckets the wall anchor to five minutes and keeps the 60 s sample", () => {
+    assert.equal(SCRUB_STEP_SECONDS, 60);
+    assert.equal(SCRUB_ANCHOR_MS, 5 * 60_000);
+    assert.equal(scrubAnchorMs(wall), Date.parse("2026-09-20T10:05:00Z"));
+    assert.equal(scrubAnchorMs(wall + 4 * 60_000), Date.parse("2026-09-20T10:10:00Z"));
+    assert.equal(
+      scrubAnchorMs(Date.parse("2026-09-20T10:05:00Z")),
+      Date.parse("2026-09-20T10:05:00Z"),
+    );
+  });
+
+  it("keeps the real AOS when a window is clipped to the scrub, and drops the rest", () => {
+    const from = wall - CLOCK_WINDOW_MS;
+    const to = wall + CLOCK_WINDOW_MS;
+    const windows = [
+      { start: from - 30 * 60_000, end: from + 10 * 60_000, objects: [1] },
+      { start: wall + 60_000, end: wall + 8 * 60_000, objects: [2] },
+      { start: to + 60_000, end: to + 120_000, objects: [3] },
+    ];
+    const bands = scrubBands(windows, wall);
+    assert.equal(bands.length, 2);
+    assert.equal(bands[0].aos, from - 30 * 60_000);
+    assert.equal(bands[0].visibleStart, from);
+    assert.equal(bands[0].visibleEnd, from + 10 * 60_000);
+    assert.equal(bands[1].aos, wall + 60_000);
+    assert.equal(bands[1].visibleStart, bands[1].aos);
+
+    const edge = holdFromTarget(bands[0].aos, wall);
+    assert.ok(edge);
+    assert.equal(edge.at, from);
+    assert.equal(edge.clamped, true);
+
+    const inside = holdFromTarget(bands[1].aos, wall);
+    assert.ok(inside);
+    assert.equal(inside.at, bands[1].aos);
+    assert.notEqual(inside.at, (bands[1].aos + bands[1].los) / 2);
+
+    const hit = scrubBandAtTime(bands, bands[1].aos + 1000);
+    assert.equal(hit?.aos, bands[1].aos);
+    const slop = scrubBandAtTime(bands, bands[1].aos - 5_000, 10_000);
+    assert.equal(slop?.aos, bands[1].aos);
+    assert.equal(scrubBandAtTime(bands, bands[1].aos - 5_000, 1_000), null);
+    const edgeWins = scrubBandAtTime(bands, from + 1_000);
+    assert.equal(edgeWins?.aos, bands[0].aos);
+
+    const usable = 1200;
+    const closeA = {
+      aos: wall,
+      los: wall + 2 * 60_000,
+      visibleStart: wall,
+      visibleEnd: wall + 2 * 60_000,
+      objects: [1],
+    };
+    const closeB = {
+      aos: wall + 4 * 60_000,
+      los: wall + 6 * 60_000,
+      visibleStart: wall + 4 * 60_000,
+      visibleEnd: wall + 6 * 60_000,
+      objects: [2],
+    };
+    const leftPx =
+      ((closeA.visibleStart - (wall - CLOCK_WINDOW_MS)) / (CLOCK_WINDOW_MS * 2)) * usable;
+    const aimed = scrubBandAtFraction(
+      [closeA, closeB],
+      (leftPx + 2) / usable,
+      usable,
+      wall,
+      CLOCK_WINDOW_MS,
+      4,
+      10,
+    );
+    assert.equal(aimed?.aos, closeA.aos);
+
+    const frame = scrubBandFrame(bands[1], wall);
+    const span = CLOCK_WINDOW_MS * 2;
+    assert.equal(frame.leftPct, ((bands[1].visibleStart - from) / span) * 100);
+    assert.ok(frame.widthPct > 0 && frame.widthPct < 1);
+  });
+
+  it("unions geometric LOS over ±48 h for the selected place and population", () => {
+    const now = new Date("2026-09-20T12:00:00Z");
+    const catalog = catalogAt(now);
+    const base = {
+      catalog,
+      lat: 50.4501,
+      lon: 30.5234,
+      minElevationDeg: 25,
+      wallNowMs: now.getTime(),
+    };
+    const raised = findScrubWindows({ ...base, filter: "raised" });
+    const all = findScrubWindows({ ...base, filter: "all" });
+    const lviv = PLACES.find((p) => p.id === "lviv");
+    assert.ok(lviv);
+    const atLviv = findScrubWindows({
+      ...base,
+      filter: "raised",
+      lat: lviv.lat,
+      lon: lviv.lon,
+    });
+
+    assert.ok(raised.length > 0, "expected raised windows over Kyiv");
+    assert.ok(unionMinutes(all) >= unionMinutes(raised));
+    assert.notDeepEqual(
+      raised.map((w) => w.start),
+      atLviv.map((w) => w.start),
+    );
+
+    const anchor = scrubAnchorMs(now.getTime());
+    const searchFrom = anchor - CLOCK_WINDOW_MS - SCRUB_EDGE_PAD_MS;
+    const searchTo = anchor + CLOCK_WINDOW_MS + SCRUB_EDGE_PAD_MS;
+    for (let i = 0; i < raised.length; i++) {
+      const w = raised[i];
+      assert.ok(w.start >= searchFrom - 1);
+      assert.ok(w.end <= searchTo + 1);
+      assert.ok(w.end > w.start);
+      assert.ok(w.end - w.start >= catalog.minPassSeconds * 1000);
+      if (i > 0) assert.ok(w.start > raised[i - 1].end);
+    }
+
+    const bands = scrubBands(raised, now.getTime());
+    assert.ok(bands.length > 0);
+    const fullyInside = bands.find(
+      (b) => b.aos > now.getTime() - CLOCK_WINDOW_MS && b.los < now.getTime() + CLOCK_WINDOW_MS,
+    );
+    assert.ok(fullyInside);
+    assert.equal(fullyInside.visibleStart, fullyInside.aos);
+    const hold = holdFromTarget(fullyInside.aos, now.getTime());
+    assert.ok(hold);
+    assert.equal(hold.at, fullyInside.aos);
+    assert.equal(hold.clamped, false);
   });
 });
 
