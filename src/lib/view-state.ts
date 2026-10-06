@@ -1,5 +1,6 @@
-import type { Lang, PopulationFilter, TimezoneId } from "./catalog/types";
-import { PLACES, type PlaceId } from "./orbit/constants";
+import type { Lang, PopulationFilter, TimezoneId } from "./catalog/types.ts";
+import { holdFromTarget, type HeldClock } from "./orbit/clock.ts";
+import { PLACES, type PlaceId } from "./orbit/constants.ts";
 
 export type ViewSearch = {
   lat?: number;
@@ -9,7 +10,20 @@ export type ViewSearch = {
   set?: PopulationFilter | "operational";
   tz?: TimezoneId;
   place?: PlaceId | "custom";
+  /**
+   * Held clock as an absolute ISO-8601 UTC instant (`Date.toISOString()`).
+   * Omitted when the clock is live. An instant outside ±48 h of the opener's
+   * wall now is clamped to the nearest edge; the original `at` stays in the
+   * URL until the scrubber leaves that edge, so a refresh still shows the
+   * clamped banner.
+   */
+  at?: string;
 };
+
+const SEARCH_KEYS = ["place", "lat", "lon", "el", "set", "tz", "lang", "at"] as const;
+
+/** The held instant written into `at`, plus the wall now used to clamp it. */
+export type UrlClock = { at: number; wall: number };
 
 export type ViewState = {
   place: PlaceId | "custom";
@@ -100,14 +114,91 @@ export function viewFromSearch(search: ViewSearch, lang: Lang): ViewState {
   return { place, lat, lon, el, set, tz, lang: search.lang ?? lang };
 }
 
-export function searchFromView(view: ViewState): ViewSearch {
-  return {
-    lat: Number(view.lat.toFixed(4)),
-    lon: Number(view.lon.toFixed(4)),
-    el: view.el,
-    lang: view.lang,
-    set: view.set,
-    tz: view.tz,
-    place: view.place,
-  };
+/**
+ * Normalize a query value to ISO-8601 UTC. Junk and empty values mean live.
+ * Accepts any `Date.parse` instant, including offsets, then stores `Z`.
+ */
+export function parseClockInstant(v: unknown): string | undefined {
+  if (typeof v !== "string" || v.trim() === "") return undefined;
+  const ms = Date.parse(v.trim());
+  if (!Number.isFinite(ms)) return undefined;
+  return new Date(ms).toISOString();
+}
+
+/**
+ * Hold `at` against `wallNowMs`.
+ * `null` means stay on the live tick (missing instant, or exactly wall now).
+ * Instants outside ±48 h come back clamped with `clamped: true`.
+ */
+export function heldFromClockInstant(at: string | undefined, wallNowMs: number): HeldClock | null {
+  if (!at) return null;
+  const target = Date.parse(at);
+  if (!Number.isFinite(target)) return null;
+  return holdFromTarget(target, wallNowMs);
+}
+
+/** Short query for this view. Defaults are omitted; live omits `at`. */
+export function searchFromView(view: ViewState, heldAtMs?: number | null): ViewSearch {
+  const search: ViewSearch = {};
+  if (view.place === "custom") {
+    search.lat = Number(view.lat.toFixed(4));
+    search.lon = Number(view.lon.toFixed(4));
+    // Within 0.02° of a preset, lat/lon alone would snap back to that city.
+    if (matchPlace(view.lat, view.lon) !== "custom") search.place = "custom";
+  } else if (view.place !== "kyiv") {
+    search.place = view.place;
+  }
+  if (view.el !== 25) search.el = view.el;
+  if (view.set !== "raised") search.set = view.set;
+  if (view.tz !== "kyiv") search.tz = view.tz;
+  if (view.lang !== "en") search.lang = view.lang;
+  if (heldAtMs != null && Number.isFinite(heldAtMs)) search.at = new Date(heldAtMs).toISOString();
+  return search;
+}
+
+export function viewSearchEqual(a: ViewSearch, b: ViewSearch): boolean {
+  for (const key of SEARCH_KEYS) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+/**
+ * Address-bar form of `view` + clock.
+ * Language is taken from the incoming query so a detected UI language is not
+ * written until the visitor actually picks one. `clock` is the on-screen hold
+ * (`null` when live). An out-of-range `at` is kept while the on-screen clock
+ * is still the clamp of that instant, so a refresh shows the clamped banner.
+ */
+export function canonicalSearch(
+  incoming: ViewSearch,
+  view: ViewState,
+  clock: UrlClock | null,
+): ViewSearch {
+  const lang: Lang = incoming.lang === "uk" || incoming.lang === "ru" ? incoming.lang : "en";
+  const next = searchFromView({ ...view, lang }, clock?.at ?? null);
+  if (!clock || !incoming.at) return next;
+  const authoredMs = Date.parse(incoming.at);
+  if (!Number.isFinite(authoredMs)) return next;
+  const clamped = holdFromTarget(authoredMs, clock.wall);
+  if (clamped?.clamped && clamped.at === clock.at) next.at = new Date(authoredMs).toISOString();
+  return next;
+}
+
+/** Query string TanStack Router writes for this search object (`""` when live defaults). */
+export function shareSearchString(search: ViewSearch): string {
+  const params = new URLSearchParams();
+  for (const key of SEARCH_KEYS) {
+    const value = search[key];
+    if (value == null) continue;
+    params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function shareUrl(origin: string, pathname: string, search: ViewSearch): string {
+  const root = origin.replace(/\/$/, "");
+  const path = pathname.startsWith("/") ? pathname : `/${pathname || ""}`;
+  return `${root}${path}${shareSearchString(search)}`;
 }

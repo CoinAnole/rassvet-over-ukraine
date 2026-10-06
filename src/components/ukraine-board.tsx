@@ -22,8 +22,9 @@ import {
 } from "@/lib/orbit/time";
 import { cn } from "@/lib/cn";
 import { useSelection } from "@/lib/selection";
-import type { ViewState } from "@/lib/view-state";
+import type { ViewSearch, ViewState } from "@/lib/view-state";
 import { Button } from "@/components/ui/button";
+import { ShareLink } from "@/components/share-link";
 
 export type ClockControl = {
   /** Instant the current coverage result was computed for. */
@@ -63,6 +64,8 @@ export function UkraineBoard({
   result,
   clock,
   onChange,
+  linkSearch,
+  syncLink,
 }: {
   lang: Lang;
   view: ViewState;
@@ -70,6 +73,8 @@ export function UkraineBoard({
   result: CoverageResult | null;
   clock: ClockControl;
   onChange: (next: Partial<ViewState>) => void;
+  linkSearch: ViewSearch;
+  syncLink: () => void;
 }) {
   const t = getDict(lang);
   const freshness = dataFreshness(catalog);
@@ -108,14 +113,29 @@ export function UkraineBoard({
   return (
     <div className="flex flex-col gap-3">
       {clock.live ? null : (
-        <p
-          role="status"
-          className="rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-xs leading-relaxed text-status-climbing"
-        >
-          <span className="font-medium uppercase tracking-[0.12em]">{t.clock.notLive}</span>
-          {" · "}
-          {banner}
-        </p>
+        <div className="flex flex-col gap-2">
+          <p
+            role="status"
+            className="rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-xs leading-relaxed text-status-climbing"
+          >
+            <span className="font-medium uppercase tracking-[0.12em]">{t.clock.notLive}</span>
+            {" · "}
+            {banner}
+          </p>
+          {clock.clamped ? (
+            <div
+              role="status"
+              className="max-w-[75ch] rounded-[var(--radius-md)] border border-border-strong bg-elevated"
+            >
+              <div className="border-l-2 border-status-climbing px-3 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-status-climbing">
+                  {t.clock.clampedKicker}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-fg">{t.clock.clamped}</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
       )}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Tile label={t.tiles.now} hint={clock.live ? t.tiles.nowHint : t.tiles.nowHintHeld}>
@@ -196,7 +216,14 @@ export function UkraineBoard({
         {sentence}
       </p>
 
-      <ControlRow lang={lang} view={view} clock={clock} onChange={onChange} />
+      <ControlRow
+        lang={lang}
+        view={view}
+        clock={clock}
+        onChange={onChange}
+        linkSearch={linkSearch}
+        syncLink={syncLink}
+      />
     </div>
   );
 }
@@ -224,11 +251,15 @@ function ControlRow({
   view,
   clock,
   onChange,
+  linkSearch,
+  syncLink,
 }: {
   lang: Lang;
   view: ViewState;
   clock: ClockControl;
   onChange: (next: Partial<ViewState>) => void;
+  linkSearch: ViewSearch;
+  syncLink: () => void;
 }) {
   const t = getDict(lang);
   const [latDraft, setLatDraft] = useState(String(view.lat));
@@ -236,6 +267,7 @@ function ControlRow({
 
   return (
     <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3">
+      <ShareLink lang={lang} search={linkSearch} syncUrl={syncLink} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Field label={t.controls.location}>
           <select
@@ -418,11 +450,6 @@ function ClockScrub({ lang, tz, clock }: { lang: Lang; tz: TimezoneId; clock: Cl
       </p>
       {bands.length === 0 ? (
         <p className="text-xs normal-case tracking-normal text-muted">{t.clock.bandsEmpty}</p>
-      ) : null}
-      {clock.clamped ? (
-        <p className="text-xs normal-case tracking-normal text-status-climbing">
-          {t.clock.clamped}
-        </p>
       ) : null}
     </div>
   );
