@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LangFrame } from "@/components/lang-frame";
 import { UkraineBoard, CityStrip, PassTable } from "@/components/ukraine-board";
 import { UkraineMap } from "@/components/ukraine-map";
+import { holdFromHours, holdFromTarget, type HeldClock } from "@/lib/orbit/clock";
 import { computeCoverage } from "@/lib/orbit/coverage";
+import { parseCivilInput, tzName } from "@/lib/orbit/time";
 import { getDict } from "@/lib/i18n";
 import { getCatalog } from "@/lib/catalog/get-catalog";
 import type { Lang } from "@/lib/catalog/types";
@@ -56,14 +58,31 @@ function UkraineToday({ lang }: { lang: Lang }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const view = viewFromSearch(search, lang);
-  const [now, setNow] = useState(() => new Date(nowIso));
+  const [liveNow, setLiveNow] = useState(() => new Date(nowIso));
+  const [preview, setPreview] = useState<HeldClock | null>(null);
+  const [held, setHeld] = useState<HeldClock | null>(null);
+  const previewRef = useRef<HeldClock | null>(null);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
+    if (preview) return;
+    const id = window.setInterval(() => setLiveNow(new Date()), 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [preview]);
 
-  const nowBucket = Math.floor(now.getTime() / 30_000);
+  useEffect(() => {
+    if (!preview) {
+      setHeld(null);
+      return;
+    }
+    const id = window.setTimeout(() => setHeld(preview), 200);
+    return () => window.clearTimeout(id);
+  }, [preview]);
+
+  const coverageNow = held ? new Date(held.at) : liveNow;
+  const displayNow = preview ? new Date(preview.at) : liveNow;
+  const coverageKey = held
+    ? `h:${held.at}`
+    : `l:${Math.floor(coverageNow.getTime() / 30_000)}`;
 
   const result = useMemo(() => {
     return computeCoverage({
@@ -73,11 +92,37 @@ function UkraineToday({ lang }: { lang: Lang }) {
       minElevationDeg: view.el,
       filter: view.set,
       tz: view.tz,
-      now,
+      now: coverageNow,
     });
-    // Recompute on 30 s buckets, not every tick.
+    // Live mode recomputes on 30 s buckets. A held clock recomputes when `held.at` changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, view.lat, view.lon, view.el, view.set, view.tz, nowBucket]);
+  }, [catalog, view.lat, view.lon, view.el, view.set, view.tz, coverageKey]);
+
+  const remember = (next: HeldClock | null, commit: boolean) => {
+    previewRef.current = next;
+    setPreview(next);
+    if (commit) setHeld(next);
+  };
+
+  const onLive = () => {
+    remember(null, true);
+    setLiveNow(new Date());
+  };
+
+  const onHours = (hours: number) => {
+    const next = holdFromHours(hours, Date.now());
+    remember(next, next == null);
+  };
+
+  const onCommit = () => {
+    setHeld(previewRef.current);
+  };
+
+  const onAbsolute = (civil: string) => {
+    const parsed = parseCivilInput(civil, tzName(view.tz));
+    if (!parsed) return;
+    remember(holdFromTarget(parsed.getTime(), Date.now()), true);
+  };
 
   const onChange = (patch: Partial<ViewState>) => {
     const next = { ...view, lang, ...patch };
@@ -98,6 +143,17 @@ function UkraineToday({ lang }: { lang: Lang }) {
         view={{ ...view, lang }}
         catalog={catalog}
         result={result}
+        clock={{
+          coverageAt: coverageNow,
+          displayAt: displayNow,
+          live: preview == null,
+          offsetMs: preview ? preview.at - preview.wall : 0,
+          clamped: preview?.clamped ?? false,
+          onHours,
+          onCommit,
+          onAbsolute,
+          onLive,
+        }}
         onChange={onChange}
       />
       <UkraineMap
@@ -108,8 +164,15 @@ function UkraineToday({ lang }: { lang: Lang }) {
         el={view.el}
         placeLabel={placeLabel}
       />
-      <CityStrip lang={lang} result={result} />
-      <PassTable lang={lang} catalog={catalog} result={result} tz={view.tz} />
+      <CityStrip lang={lang} result={result} held={preview != null} />
+      <PassTable
+        lang={lang}
+        catalog={catalog}
+        result={result}
+        tz={view.tz}
+        nowMs={coverageNow.getTime()}
+        held={preview != null}
+      />
     </div>
   );
 }

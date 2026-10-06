@@ -73,6 +73,13 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "A failed live fetch, or any element set past 72 hours, is called out in the header. Today minutes stay on screen, with a short mark when that snapshot or those element sets are what the count uses.",
       ],
     },
+    {
+      heading: "Clock within ±48 hours",
+      paragraphs: [
+        "The Ukraine page can hold its clock anywhere within 48 hours of wall-clock now. While the clock is held, the live tick pauses. Map positions, who is above the mask, footprints, tracks, the Today tile, city minutes, the next-window countdown, and the pass list are recomputed at that instant. “Today” is the held clock’s calendar day in the timezone you picked (Kyiv, UTC, or Moscow). The pass list is the 36 hours after the held clock, not the next 36 hours from wall-clock now.",
+        "The elements are still the latest public GP from CelesTrak, not an archived historical set. Geometric line-of-sight is propagated from those elements to the selected instant. Accuracy degrades away from the element epoch. Climbing or maneuvering objects can look wrong in the past or the future, because an orbit raise is not replayed.",
+      ],
+    },
   ],
   uk: [
     {
@@ -135,6 +142,13 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "Невдале живе завантаження або набір елементів старший за 72 години позначено в шапці. Хвилини «Сьогодні» лишаються на екрані, з короткою позначкою, якщо лік узято з того знімка чи з тих наборів.",
       ],
     },
+    {
+      heading: "Годинник у межах ±48 годин",
+      paragraphs: [
+        "Сторінка «Україна» може утримати годинник будь-де в межах 48 годин від стінного зараз. Поки годинник утримано, живий секундний хід зупинено. Позиції на карті, хто вище маски, контури, треки, плитка «Сьогодні», міські хвилини, відлік до наступного вікна і список проходжень перераховуються на цей момент. «Сьогодні» — календарний день утриманого годинника в обраному поясі (Київ, UTC або Москва). Список проходжень — 36 годин після утриманого годинника, а не наступні 36 годин від стінного зараз.",
+        "Елементи й далі є найновішим публічним GP з CelesTrak, а не архівним історичним набором. Геометричну пряму видимість прогнозовано з цих елементів на вибраний момент. Точність падає далі від епохи елементів. Апарати, що піднімаються чи маневрують, можуть виглядати хибно в минулому чи майбутньому, бо підйом орбіти не відтворюється.",
+      ],
+    },
   ],
   ru: [
     {
@@ -195,6 +209,13 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       paragraphs: [
         "Если новейшая эпоха GP для объекта старше 72 часов, объект помечается как устаревший и всё равно прогнозируется, с предупреждением. Идентификаторы из курируемого списка без TLE помечаются как отсутствующие и не входят в «Сейчас» / «Сегодня» / контуры. Сошедшие идентификаторы из ручного списка (и любой объект с перигеем ниже 150 км) из покрытия исключены.",
         "Неудавшаяся живая загрузка или набор элементов старше 72 часов отмечены в шапке. Минуты «Сегодня» остаются на экране, с короткой пометкой, если счёт взят из того снимка или из тех наборов.",
+      ],
+    },
+    {
+      heading: "Часы в пределах ±48 часов",
+      paragraphs: [
+        "Страница «Украина» может удержать часы в любой точке в пределах 48 часов от стенного сейчас. Пока часы удержаны, живой секундный ход остановлен. Позиции на карте, кто выше маски, контуры, треки, плитка «Сегодня», городские минуты, отсчёт до следующего окна и список прохождений пересчитываются на этот момент. «Сегодня» — календарный день удержанных часов в выбранном поясе (Киев, UTC или Москва). Список прохождений — 36 часов после удержанных часов, а не следующие 36 часов от стенного сейчас.",
+        "Элементы по-прежнему новейший публичный GP с CelesTrak, а не архивный исторический набор. Геометрическая прямая видимость прогнозируется из этих элементов на выбранный момент. Точность падает дальше от эпохи элементов. Аппараты, которые поднимаются или маневрируют, могут выглядеть неверно в прошлом или будущем, потому что подъём орбиты не воспроизводится.",
       ],
     },
   ],

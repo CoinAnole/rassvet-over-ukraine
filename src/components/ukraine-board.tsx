@@ -1,14 +1,36 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogPayload, Lang, PopulationFilter, TimezoneId } from "@/lib/catalog/types";
 import { inPopulation, type CoverageResult } from "@/lib/orbit/coverage";
 import { dataFreshness } from "@/lib/catalog/freshness";
+import { CLOCK_WINDOW_MS, formatClockOffset } from "@/lib/orbit/clock";
 import { PLACES, type PlaceId } from "@/lib/orbit/constants";
 import { getDict, coverageSentence, groupLabel } from "@/lib/i18n";
-import { formatClock, formatCountdown, formatDayClock, tzName } from "@/lib/orbit/time";
+import {
+  formatCivilDay,
+  formatCivilInput,
+  formatClock,
+  formatCountdown,
+  formatDayClock,
+  tzName,
+} from "@/lib/orbit/time";
 import { cn } from "@/lib/cn";
 import { useSelection } from "@/lib/selection";
 import type { ViewState } from "@/lib/view-state";
 import { Button } from "@/components/ui/button";
+
+export type ClockControl = {
+  /** Instant the current coverage result was computed for. */
+  coverageAt: Date;
+  /** Instant shown on the scrubber. May lead coverage during a short debounce. */
+  displayAt: Date;
+  live: boolean;
+  offsetMs: number;
+  clamped: boolean;
+  onHours: (hours: number) => void;
+  onCommit: () => void;
+  onAbsolute: (civil: string) => void;
+  onLive: () => void;
+};
 
 const ELS = [10, 25, 40] as const;
 const SETS: PopulationFilter[] = [
@@ -26,12 +48,14 @@ export function UkraineBoard({
   view,
   catalog,
   result,
+  clock,
   onChange,
 }: {
   lang: Lang;
   view: ViewState;
   catalog: CatalogPayload;
   result: CoverageResult | null;
+  clock: ClockControl;
   onChange: (next: Partial<ViewState>) => void;
 }) {
   const t = getDict(lang);
@@ -45,14 +69,20 @@ export function UkraineBoard({
         : null;
   const zone = tzName(view.tz);
   const placeLabel = view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
+  const heldDay = clock.live ? undefined : formatCivilDay(clock.coverageAt, zone);
   const sentence = result
     ? coverageSentence(lang, {
         el: view.el,
         place: placeLabel,
         windows: result.todayWindowCount,
         minutes: result.todayMinutes,
+        day: heldDay,
       })
     : "…";
+  const offsetLabel = formatClockOffset(clock.offsetMs, t.units.hour, t.units.min);
+  const banner = t.clock.banner
+    .replaceAll("{when}", `${formatDayClock(clock.displayAt, zone)} ${t.tz[view.tz]}`)
+    .replaceAll("{offset}", offsetLabel);
 
   const nowNames = result?.nowVisible ?? [];
   const shown = nowNames.slice(0, 4);
@@ -64,8 +94,18 @@ export function UkraineBoard({
 
   return (
     <div className="flex flex-col gap-3">
+      {clock.live ? null : (
+        <p
+          role="status"
+          className="rounded-[var(--radius-md)] border border-border bg-elevated px-3 py-2 text-xs leading-relaxed text-status-climbing"
+        >
+          <span className="font-medium uppercase tracking-[0.12em]">{t.clock.notLive}</span>
+          {" · "}
+          {banner}
+        </p>
+      )}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Tile label={t.tiles.now} hint={t.tiles.nowHint}>
+        <Tile label={t.tiles.now} hint={clock.live ? t.tiles.nowHint : t.tiles.nowHintHeld}>
           <p className="font-mono text-3xl font-medium tracking-[-0.04em] tabular">
             {result ? nowNames.length : "—"}
           </p>
@@ -76,13 +116,14 @@ export function UkraineBoard({
             {extra ? ` ${t.tiles.more.replace("{n}", String(extra))}` : null}
           </p>
         </Tile>
-        <Tile label={t.tiles.today} hint={t.tiles.todayHint}>
+        <Tile label={t.tiles.today} hint={clock.live ? t.tiles.todayHint : t.tiles.todayHintHeld}>
           <p className="font-mono text-3xl font-medium tracking-[-0.04em] tabular">
             {result ? result.todayMinutes : "—"}
             <span className="ml-2 text-lg text-muted">{t.units.min}</span>
           </p>
           <p className="mt-1 text-xs text-muted">
             {result ? `${result.todayWindowCount} ${t.tiles.windows}` : "—"}
+            {heldDay ? ` · ${heldDay}` : null}
           </p>
           {todayNote ? (
             <p className="mt-1 text-[11px] font-medium leading-snug text-status-decay">
@@ -142,7 +183,7 @@ export function UkraineBoard({
         {sentence}
       </p>
 
-      <ControlRow lang={lang} view={view} onChange={onChange} />
+      <ControlRow lang={lang} view={view} clock={clock} onChange={onChange} />
     </div>
   );
 }
@@ -168,10 +209,12 @@ function Tile({
 function ControlRow({
   lang,
   view,
+  clock,
   onChange,
 }: {
   lang: Lang;
   view: ViewState;
+  clock: ClockControl;
   onChange: (next: Partial<ViewState>) => void;
 }) {
   const t = getDict(lang);
@@ -279,7 +322,148 @@ function ControlRow({
           </Button>
         </div>
       ) : null}
+      <ClockScrub lang={lang} tz={view.tz} clock={clock} />
     </div>
+  );
+}
+
+function ClockScrub({
+  lang,
+  tz,
+  clock,
+}: {
+  lang: Lang;
+  tz: TimezoneId;
+  clock: ClockControl;
+}) {
+  const t = getDict(lang);
+  const zone = tzName(tz);
+  const offsetLabel = formatClockOffset(clock.offsetMs, t.units.hour, t.units.min);
+  const hours = clock.live ? 0 : clock.offsetMs / 3_600_000;
+  const wall = Date.now();
+  const minCivil = formatCivilInput(new Date(wall - CLOCK_WINDOW_MS), zone);
+  const maxCivil = formatCivilInput(new Date(wall + CLOCK_WINDOW_MS), zone);
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted">
+            {t.clock.label}
+          </span>
+          <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span
+              className={
+                clock.live
+                  ? "text-[10px] font-medium uppercase tracking-[0.14em] text-status-raised"
+                  : "text-[10px] font-medium uppercase tracking-[0.14em] text-status-climbing"
+              }
+            >
+              {clock.live ? t.clock.live : t.clock.notLive}
+            </span>
+            <span className="font-mono text-sm text-fg tabular">
+              {formatDayClock(clock.displayAt, zone)} {formatClock(clock.displayAt, zone)}
+            </span>
+            <span className="text-xs text-muted">{t.tz[tz]}</span>
+            {clock.live ? null : (
+              <span className="font-mono text-xs text-status-climbing tabular">{offsetLabel}</span>
+            )}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant={clock.live ? "outline" : "primary"}
+          size="md"
+          onClick={clock.onLive}
+          aria-pressed={clock.live}
+        >
+          {t.clock.returnLive}
+        </Button>
+      </div>
+      <div className="flex flex-col gap-1">
+        <input
+          type="range"
+          className="clock-range"
+          min={-48}
+          max={48}
+          step="any"
+          value={Number.isFinite(hours) ? Math.max(-48, Math.min(48, hours)) : 0}
+          aria-label={t.clock.scrub}
+          aria-valuemin={-48}
+          aria-valuemax={48}
+          aria-valuenow={Math.round(hours * 100) / 100}
+          aria-valuetext={offsetLabel}
+          onChange={(e) => clock.onHours(Number(e.target.value))}
+          onPointerUp={clock.onCommit}
+          onKeyUp={clock.onCommit}
+        />
+        <div className="flex justify-between font-mono text-[10px] text-subtle tabular">
+          <span>−48 {t.units.hour}</span>
+          <span>0</span>
+          <span>+48 {t.units.hour}</span>
+        </div>
+      </div>
+      <CivilTimeField
+        label={t.clock.absolute}
+        at={clock.displayAt}
+        timeZone={zone}
+        min={minCivil}
+        max={maxCivil}
+        onAbsolute={clock.onAbsolute}
+      />
+      <p className="text-xs normal-case tracking-normal text-subtle">{t.clock.hint}</p>
+      {clock.clamped ? (
+        <p className="text-xs normal-case tracking-normal text-status-climbing">{t.clock.clamped}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function CivilTimeField({
+  label,
+  at,
+  timeZone,
+  min,
+  max,
+  onAbsolute,
+}: {
+  label: string;
+  at: Date;
+  timeZone: string;
+  min: string;
+  max: string;
+  onAbsolute: (civil: string) => void;
+}) {
+  const formatted = formatCivilInput(at, timeZone);
+  const [draft, setDraft] = useState(formatted);
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setDraft(formatted);
+  }, [formatted]);
+
+  return (
+    <Field label={label}>
+      <input
+        type="datetime-local"
+        className="control-select max-w-xs"
+        value={draft}
+        min={min}
+        max={max}
+        onFocus={() => {
+          focused.current = true;
+        }}
+        onBlur={() => {
+          focused.current = false;
+          setDraft(formatted);
+        }}
+        onChange={(e) => {
+          const next = e.target.value;
+          setDraft(next);
+          if (next) onAbsolute(next);
+        }}
+      />
+    </Field>
   );
 }
 
@@ -292,14 +476,22 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function CityStrip({ lang, result }: { lang: Lang; result: CoverageResult | null }) {
+export function CityStrip({
+  lang,
+  result,
+  held = false,
+}: {
+  lang: Lang;
+  result: CoverageResult | null;
+  held?: boolean;
+}) {
   const t = getDict(lang);
   return (
     <section className="flex flex-col gap-2">
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
         {t.cityStrip.label}
       </p>
-      <p className="text-xs text-subtle">{t.cityStrip.hint}</p>
+      <p className="text-xs text-subtle">{held ? t.cityStrip.hintHeld : t.cityStrip.hint}</p>
       <div className="flex flex-wrap gap-2">
         {(result?.cityMinutes ?? []).map((c) => (
           <div
@@ -320,30 +512,33 @@ export function PassTable({
   catalog,
   result,
   tz,
+  nowMs,
+  held = false,
 }: {
   lang: Lang;
   catalog: CatalogPayload;
   result: CoverageResult | null;
   tz: TimezoneId;
+  nowMs: number;
+  held?: boolean;
 }) {
   const t = getDict(lang);
   const zone = tzName(tz);
   const selected = useSelection((s) => s.norad);
   const select = useSelection((s) => s.select);
-  const now = Date.now();
   const rows = result?.passes36h ?? [];
 
   const nextId = useMemo(() => {
-    const open = rows.find((r) => r.aos <= now && r.los > now);
+    const open = rows.find((r) => r.aos <= nowMs && r.los > nowMs);
     if (open) return open.norad + ":" + open.aos;
-    const upcoming = rows.find((r) => r.aos > now);
+    const upcoming = rows.find((r) => r.aos > nowMs);
     return upcoming ? upcoming.norad + ":" + upcoming.aos : null;
-  }, [rows, now]);
+  }, [rows, nowMs]);
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">{t.passList.title}</h2>
-      <p className="max-w-[75ch] text-xs text-muted">{t.passList.hint}</p>
+      <h2 className="text-sm font-medium">{held ? t.passList.titleHeld : t.passList.title}</h2>
+      <p className="max-w-[75ch] text-xs text-muted">{held ? t.passList.hintHeld : t.passList.hint}</p>
       <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
         <table className="w-full min-w-[860px] border-collapse text-left text-sm">
           <thead className="bg-elevated text-[11px] uppercase tracking-[0.12em] text-muted">
@@ -362,7 +557,7 @@ export function PassTable({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-3 py-6 text-muted">
-                  {t.passList.empty}
+                  {held ? t.passList.emptyHeld : t.passList.empty}
                 </td>
               </tr>
             ) : (
