@@ -1,10 +1,22 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import seed from "../../data/catalog-seed.json" with { type: "json" };
 import { unionIntervals, unionMinutes, clipIntervals } from "./union.ts";
 import { CITY_STRIP, PLACES } from "./constants.ts";
-import { DICTS, coverageSentence } from "../i18n/index.ts";
+import { DICTS, coverageSentence, getDict } from "../i18n/index.ts";
+import { methodSections } from "../i18n/method.ts";
 import { buildCatalog, indexOmms } from "../catalog/build.ts";
-import { inPopulation } from "./coverage.ts";
+import { computeCoverage, inPopulation } from "./coverage.ts";
+import {
+  CLOCK_WINDOW_MS,
+  clampToClockWindow,
+  formatClockOffset,
+  holdFromHours,
+  holdFromTarget,
+  passInForwardWindow,
+  PASS_HORIZON_MS,
+} from "./clock.ts";
+import { formatCivilInput, parseCivilInput, zonedDayBounds } from "./time.ts";
 import {
   footprintRing,
   maxLonJump,
@@ -13,7 +25,6 @@ import {
   splitAntimeridianRing,
 } from "./footprint.ts";
 import { orbitFromOmm } from "./kepler.ts";
-import { zonedDayBounds } from "./time.ts";
 import { json2satrec, propagate } from "./satellite-js.ts";
 import type { CatalogOmm } from "../catalog/types.ts";
 
@@ -177,6 +188,166 @@ describe("synthetic high-inclination object", () => {
     const pos = pv.position;
     const r = Math.hypot(pos.x, pos.y, pos.z);
     assert.ok(r > 6800 && r < 7000, `radius ${r}`);
+  });
+});
+
+describe("short-range clock", () => {
+  const wall = Date.parse("2026-09-20T10:00:00Z");
+
+  it("clamps targets outside ±48 hours and keeps in-range instants", () => {
+    const inside = clampToClockWindow(wall - 47 * 3_600_000, wall);
+    assert.equal(inside.clamped, false);
+    assert.equal(inside.at, wall - 47 * 3_600_000);
+
+    const past = clampToClockWindow(wall - 72 * 3_600_000, wall);
+    assert.equal(past.clamped, true);
+    assert.equal(past.at, wall - CLOCK_WINDOW_MS);
+
+    const future = clampToClockWindow(wall + 49 * 3_600_000, wall);
+    assert.equal(future.clamped, true);
+    assert.equal(future.at, wall + CLOCK_WINDOW_MS);
+  });
+
+  it("treats a zero-hour scrub as live and holds a non-zero offset", () => {
+    assert.equal(holdFromHours(0, wall), null);
+    const held = holdFromHours(-21, wall);
+    assert.ok(held);
+    assert.equal(held.at, wall - 21 * 3_600_000);
+    assert.equal(held.clamped, false);
+    assert.equal(formatClockOffset(held.at - held.wall), "−21 h");
+  });
+
+  it("reads yesterday 13:00 Kyiv as 10:00 UTC and clamps a week earlier", () => {
+    const yesterday13 = parseCivilInput("2026-09-19T13:00", "Europe/Kyiv");
+    assert.ok(yesterday13);
+    assert.equal(yesterday13.toISOString(), "2026-09-19T10:00:00.000Z");
+    assert.equal(formatCivilInput(yesterday13, "Europe/Kyiv"), "2026-09-19T13:00");
+
+    const hold = holdFromTarget(yesterday13.getTime(), wall);
+    assert.ok(hold);
+    assert.equal(hold.clamped, false);
+
+    const weekAgo = parseCivilInput("2026-09-13T13:00", "Europe/Kyiv");
+    assert.ok(weekAgo);
+    const clamped = holdFromTarget(weekAgo.getTime(), wall);
+    assert.ok(clamped);
+    assert.equal(clamped.clamped, true);
+    assert.equal(clamped.at, wall - CLOCK_WINDOW_MS);
+  });
+
+  it("keeps a forward pass and drops one that already ended or starts after 36 h", () => {
+    assert.equal(passInForwardWindow(wall - 60_000, wall + 60_000, wall), true);
+    assert.equal(passInForwardWindow(wall + 3_600_000, wall + 3_700_000, wall), true);
+    assert.equal(passInForwardWindow(wall - 120_000, wall - 1, wall), false);
+    assert.equal(
+      passInForwardWindow(wall + PASS_HORIZON_MS, wall + PASS_HORIZON_MS + 60_000, wall),
+      false,
+    );
+  });
+});
+
+describe("coverage follows the injected clock", () => {
+  const kyiv = { lat: 50.4501, lon: 30.5234 };
+
+  function catalogAt(now: Date) {
+    return buildCatalog({
+      omms: indexOmms(seed.objects),
+      fetchedAt: "2026-09-20T12:32:36Z",
+      source: "seed",
+      warning: null,
+      now,
+    });
+  }
+
+  it("bounds today and the pass list to the selected instant, not a fixed wall day", () => {
+    const live = new Date("2026-09-20T10:00:00Z");
+    const yesterday = new Date("2026-09-19T10:00:00Z");
+    const catalog = catalogAt(live);
+    const opts = {
+      catalog,
+      lat: kyiv.lat,
+      lon: kyiv.lon,
+      minElevationDeg: 10,
+      filter: "all" as const,
+      tz: "kyiv" as const,
+    };
+    const atLive = computeCoverage({ ...opts, now: live });
+    const atYesterday = computeCoverage({ ...opts, now: yesterday });
+
+    for (const [now, result] of [
+      [live, atLive],
+      [yesterday, atYesterday],
+    ] as const) {
+      const day = zonedDayBounds(now, "Europe/Kyiv");
+      for (const w of result.windowsToday) {
+        assert.ok(w.start >= day.start.getTime() - 1);
+        assert.ok(w.end <= day.end.getTime() + 1);
+      }
+      for (const row of result.passes36h) {
+        assert.equal(passInForwardWindow(row.aos, row.los, now.getTime()), true);
+      }
+      if (result.next.state === "later") {
+        assert.equal(result.next.inMs, result.next.aos - now.getTime());
+        assert.ok(result.next.inMs > 0);
+      }
+      if (result.next.state === "open") {
+        assert.equal(result.next.remainingMs, result.next.los - now.getTime());
+      }
+    }
+
+    const liveDay = zonedDayBounds(live, "Europe/Kyiv").start.getTime();
+    const yDay = zonedDayBounds(yesterday, "Europe/Kyiv").start.getTime();
+    assert.equal(liveDay - yDay, 24 * 3_600_000);
+    assert.ok(atLive.passes36h.length > 0, "expected passes over Kyiv in the seed snapshot");
+    assert.ok(atYesterday.passes36h.length > 0);
+    const liveFirst = atLive.passes36h[0].aos;
+    const yFirst = atYesterday.passes36h[0].aos;
+    assert.notEqual(liveFirst, yFirst);
+  });
+
+  it("uses the Moscow calendar day when that day differs from Kyiv", () => {
+    const now = new Date("2026-01-15T21:30:00Z");
+    const catalog = catalogAt(now);
+    const base = {
+      catalog,
+      lat: kyiv.lat,
+      lon: kyiv.lon,
+      minElevationDeg: 25,
+      filter: "raised" as const,
+      now,
+    };
+    const kyivDay = zonedDayBounds(now, "Europe/Kyiv");
+    const moscowDay = zonedDayBounds(now, "Europe/Moscow");
+    assert.notEqual(kyivDay.start.getTime(), moscowDay.start.getTime());
+    const inKyiv = computeCoverage({ ...base, tz: "kyiv" });
+    const inMoscow = computeCoverage({ ...base, tz: "moscow" });
+    for (const w of inKyiv.windowsToday) {
+      assert.ok(w.end <= kyivDay.end.getTime() + 1);
+      assert.ok(w.start >= kyivDay.start.getTime() - 1);
+    }
+    for (const w of inMoscow.windowsToday) {
+      assert.ok(w.end <= moscowDay.end.getTime() + 1);
+      assert.ok(w.start >= moscowDay.start.getTime() - 1);
+    }
+  });
+});
+
+describe("clock copy", () => {
+  it("has the held-clock strings in EN, UK, and RU", () => {
+    for (const lang of ["en", "uk", "ru"] as const) {
+      const d = getDict(lang);
+      assert.ok(d.clock.notLive.length > 0);
+      assert.ok(d.clock.returnLive.length > 0);
+      assert.match(d.clock.banner, /\{when\}/);
+      assert.match(d.clock.banner, /\{offset\}/);
+      assert.ok(d.passList.titleHeld.length > 0);
+      assert.ok(d.sentenceHeld.includes("{day}"));
+      const method = methodSections(lang)
+        .flatMap((s) => [s.heading, ...s.paragraphs])
+        .join("\n");
+      assert.match(method, /48/);
+      assert.match(method, /GP/);
+    }
   });
 });
 

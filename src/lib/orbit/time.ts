@@ -98,6 +98,34 @@ export function formatDayClock(date: Date, timeZone: string): string {
   });
 }
 
+export function formatCivilDay(date: Date, timeZone: string): string {
+  return formatInZone(date, timeZone, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** `datetime-local` value for the civil time of `date` in `timeZone` (`YYYY-MM-DDTHH:mm`). */
+export function formatCivilInput(date: Date, timeZone: string): string {
+  const w = wallParts(date, timeZone);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${w.year}-${p(w.month)}-${p(w.day)}T${p(w.hour)}:${p(w.minute)}`;
+}
+
+/** Parse a `datetime-local` value as civil time in `timeZone`. */
+export function parseCivilInput(value: string, timeZone: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+  return zonedLocalToUtc(year, month, day, hour, minute, 0, timeZone);
+}
+
 export function hoursOld(epochIso: string, now: Date): number {
   const iso = epochIso.endsWith("Z") ? epochIso : `${epochIso}Z`;
   return (now.getTime() - Date.parse(iso)) / 3_600_000;

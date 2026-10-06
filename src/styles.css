@@ -76,6 +76,15 @@
   font-feature-settings: "tnum" 1;
 }
 
+.clock-range {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  background: transparent;
+  cursor: pointer;
+}
+
 .control-select {
   min-height: 44px;
   width: 100%;
@@ -86,6 +95,7 @@
   padding: 0 10px;
   font-family: var(--font-sans);
   font-size: 0.875rem;
+  color-scheme: dark;
 }
 
 .leaflet-container {

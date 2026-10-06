@@ -60,15 +60,17 @@ export function windowWord(lang: Lang, n: number): string {
 
 export function coverageSentence(
   lang: Lang,
-  args: { el: number; place: string; windows: number; minutes: number },
+  args: { el: number; place: string; windows: number; minutes: number; day?: string },
 ): string {
   const d = getDict(lang);
-  return d.sentence
+  const template = args.day ? d.sentenceHeld : d.sentence;
+  return template
     .replaceAll("{el}", String(args.el))
     .replaceAll("{place}", args.place)
     .replaceAll("{n}", String(args.windows))
     .replaceAll("{windows}", windowWord(lang, args.windows))
-    .replaceAll("{minutes}", String(args.minutes));
+    .replaceAll("{minutes}", String(args.minutes))
+    .replaceAll("{day}", args.day ?? "");
 }
 
 export function groupLabel(lang: Lang, groupId: string, fallback: string): string {

@@ -28,14 +28,18 @@
     "toAos": "to next acquisition",
     "none": "No window in the computed span",
     "emptyNow": "None above the mask",
-    "more": "+{n} more"
+    "more": "+{n} more",
+    "nowHintHeld": "above the mask at this clock",
+    "todayHintHeld": "union on this calendar day"
   },
   "units": {
     "min": "min",
+    "hour": "h",
     "deg": "°",
     "km": "km"
   },
   "sentence": "At {el}° minimum elevation over {place}, the current catalog produces {n} {windows} today totalling {minutes} minutes. This is geometric line-of-sight from public orbit data, not proof that a terminal can attach, that capacity exists, or that inter-satellite links are on.",
+  "sentenceHeld": "At {el}° minimum elevation over {place}, the current catalog produces {n} {windows} on {day} totalling {minutes} minutes. This is geometric line-of-sight from the latest public GP at the selected clock, not an archived element set, and not proof that a terminal can attach, that capacity exists, or that inter-satellite links are on.",
   "windowWordOne": "window",
   "windowWordMany": "windows",
   "controls": {
@@ -47,6 +51,17 @@
     "lat": "Latitude",
     "lon": "Longitude",
     "apply": "Apply"
+  },
+  "clock": {
+    "label": "Clock",
+    "live": "Live",
+    "notLive": "Not live",
+    "returnLive": "Live / now",
+    "absolute": "Date and time",
+    "scrub": "Offset from real now",
+    "hint": "Set the clock within ±48 hours of real now. The live tick pauses until you return to Live.",
+    "banner": "Held at {when} ({offset}). Still geometric line-of-sight from the latest public GP, not an archived element set. Accuracy falls off away from the element epoch; climbing or maneuvering objects can look wrong.",
+    "clamped": "That time is outside ±48 hours of real now, so it was clamped."
   },
   "places": {
     "kyiv": "Kyiv",
@@ -76,7 +91,9 @@
   },
   "passList": {
     "title": "Next 36 hours",
+    "titleHeld": "36 hours from this clock",
     "hint": "Per-object geometric passes. Overlapping objects are listed separately; the Today tile unions them into windows. AOS/LOS stepped at 30 s with linear interpolation, labelled ±30 s.",
+    "hintHeld": "Per-object geometric passes in the 36 hours after the selected clock — not the next 36 hours from wall-clock now. Overlapping objects are listed separately. AOS/LOS stepped at 30 s with linear interpolation, labelled ±30 s.",
     "aos": "AOS",
     "los": "LOS",
     "duration": "Duration",
@@ -85,7 +102,8 @@
     "batch": "Batch",
     "altitude": "Altitude",
     "status": "Status",
-    "empty": "No geometric passes in the next 36 hours for this point, mask, and population."
+    "empty": "No geometric passes in the next 36 hours for this point, mask, and population.",
+    "emptyHeld": "No geometric passes in the 36 hours after this clock for this point, mask, and population."
   },
   "status": {
     "climbing": "climbing <480 km",
@@ -103,7 +121,8 @@
   },
   "cityStrip": {
     "label": "Same mask and population, other cities",
-    "hint": "Does not follow the location picker. Minutes are today’s union at the selected elevation."
+    "hint": "Does not follow the location picker. Minutes are today’s union at the selected elevation.",
+    "hintHeld": "Does not follow the location picker. Minutes are the union on the selected clock’s calendar day at the selected elevation."
   },
   "constellation": {
     "title": "Constellation",

@@ -3,6 +3,7 @@ import { CITY_STRIP, PLACES, STEP_SECONDS, TRACK_HALF_MINUTES, type PlaceId } fr
 import { footprintRing } from "./footprint.ts";
 import { findPasses, type ObjectPass } from "./passes.ts";
 import { satrecFromOmm, subpoint, lookAt, type Observer } from "./sgp4.ts";
+import { PASS_HORIZON_MS, passInForwardWindow } from "./clock.ts";
 import { tzName, zonedDayBounds } from "./time.ts";
 import { clipIntervals, longestInterval, unionIntervals, unionMinutes, type Interval } from "./union.ts";
 
@@ -94,8 +95,9 @@ export function computeCoverage(opts: {
   const observer: Observer = { lat, lon };
   const zone = tzName(tz);
   const day = zonedDayBounds(now, zone);
-  const horizonEnd = now.getTime() + 36 * 3600_000;
-  const spanStart = Math.min(day.start.getTime(), now.getTime());
+  const nowMs = now.getTime();
+  const horizonEnd = nowMs + PASS_HORIZON_MS;
+  const spanStart = Math.min(day.start.getTime(), nowMs);
   const spanEnd = Math.max(day.end.getTime(), horizonEnd);
 
   const selected = catalog.objects.filter((o) => inPopulation(o, filter));
@@ -127,22 +129,15 @@ export function computeCoverage(opts: {
     );
     allPasses.push(...found);
     for (const p of found) {
-      if (p.los <= now.getTime() || p.aos >= horizonEnd) continue;
-      if (p.aos >= horizonEnd) continue;
-      const aos = Math.max(p.aos, now.getTime() - 1);
-      if (p.los <= now.getTime() && p.aos < now.getTime()) {
-        // currently open; keep
-      }
-      if (p.los > now.getTime() && p.aos < horizonEnd) {
-        rows.push({
-          ...p,
-          name: obj.name,
-          group: obj.group,
-          altitudeKm: obj.approxAltitudeKm,
-          status: obj.status,
-          stale: obj.stale,
-        });
-      }
+      if (!passInForwardWindow(p.aos, p.los, nowMs)) continue;
+      rows.push({
+        ...p,
+        name: obj.name,
+        group: obj.group,
+        altitudeKm: obj.approxAltitudeKm,
+        status: obj.status,
+        stale: obj.stale,
+      });
     }
 
     const look = lookAt(satrec, now, observer);
