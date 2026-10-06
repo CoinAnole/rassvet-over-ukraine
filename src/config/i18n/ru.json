@@ -57,6 +57,8 @@
     "zaporizhzhia": "Запорожье",
     "donetsk": "Донецк",
     "sevastopol": "Севастополь",
+    "lviv": "Львов",
+    "vinnytsia": "Винница",
     "custom": "Произвольная точка"
   },
   "population": {

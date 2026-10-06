@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { unionIntervals, unionMinutes, clipIntervals } from "./union.ts";
-import { coverageSentence } from "../i18n/index.ts";
+import { CITY_STRIP, PLACES } from "./constants.ts";
+import { DICTS, coverageSentence } from "../i18n/index.ts";
 import { buildCatalog, indexOmms } from "../catalog/build.ts";
 import { inPopulation } from "./coverage.ts";
 import {
@@ -15,6 +16,41 @@ import { orbitFromOmm } from "./kepler.ts";
 import { zonedDayBounds } from "./time.ts";
 import { json2satrec, propagate } from "./satellite-js.ts";
 import type { CatalogOmm } from "../catalog/types.ts";
+
+describe("preset places", () => {
+  it("lists Lviv on the city strip and Vinnytsia in the picker only", () => {
+    const ids = PLACES.map((p) => p.id);
+    assert.ok(ids.includes("lviv"));
+    assert.ok(ids.includes("vinnytsia"));
+    assert.deepEqual(
+      CITY_STRIP.filter((id) => id === "lviv" || id === "vinnytsia"),
+      ["lviv"],
+    );
+
+    const lviv = PLACES.find((p) => p.id === "lviv");
+    const vinnytsia = PLACES.find((p) => p.id === "vinnytsia");
+    assert.ok(lviv);
+    assert.ok(vinnytsia);
+    assert.equal(lviv.lat, 49.8397);
+    assert.equal(lviv.lon, 24.0297);
+    assert.equal(vinnytsia.lat, 49.2331);
+    assert.equal(vinnytsia.lon, 28.4682);
+
+    assert.equal(DICTS.en.places.lviv, "Lviv");
+    assert.equal(DICTS.en.places.vinnytsia, "Vinnytsia");
+    assert.equal(DICTS.uk.places.lviv, "Львів");
+    assert.equal(DICTS.uk.places.vinnytsia, "Вінниця");
+    assert.equal(DICTS.ru.places.lviv, "Львов");
+    assert.equal(DICTS.ru.places.vinnytsia, "Винница");
+
+    for (const id of ids) {
+      for (const dict of [DICTS.en, DICTS.uk, DICTS.ru]) {
+        assert.equal(typeof dict.places[id], "string");
+        assert.ok(dict.places[id].length > 0);
+      }
+    }
+  });
+});
 
 describe("union minutes", () => {
   it("counts overlapping passes once", () => {
