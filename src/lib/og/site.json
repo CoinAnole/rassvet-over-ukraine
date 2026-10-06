@@ -1,4 +1,6 @@
 {
   "title": "Rassvet over Ukraine",
-  "color": "08090C"
+  "description": "Unofficial geometric coverage estimate of catalogued Rassvet objects over Ukraine from public orbit data.",
+  "color": "08090C",
+  "card": "custom"
 }

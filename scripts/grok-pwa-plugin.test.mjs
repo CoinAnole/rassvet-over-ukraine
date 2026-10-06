@@ -252,9 +252,15 @@ test("published grok.me slug is still a title fallback", () => {
 
 test("rejects Vercel system hosts as og:image origins", () => {
   assert.equal(publicAppHost("01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app"), "");
-  assert.equal(publicAppHost("demo.vercel.app:443"), "");
+  assert.equal(publicAppHost("my-app-662k8x1l1-xai-org.vercel.app"), "");
   assert.equal(publicAppHost("vercel.app"), "");
+  assert.equal(publicAppHost("assets.vercel.com"), "");
   assert.equal(publicAppHost("wild-race.grok.me"), "wild-race.grok.me");
+});
+
+test("stable vercel.app project aliases are public og:image origins", () => {
+  assert.equal(publicAppHost("rassvet-over-ukraine.vercel.app"), "rassvet-over-ukraine.vercel.app");
+  assert.equal(publicAppHost("demo.vercel.app:443"), "demo.vercel.app");
 });
 
 test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () => {
@@ -286,6 +292,40 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
   }
 });
 
+test("vercel project alias emits absolute custom og:image and description", () => {
+  const prev = process.env.VITE_PUBLIC_HOSTNAME;
+  delete process.env.VITE_PUBLIC_HOSTNAME;
+  const description =
+    "Unofficial geometric coverage estimate of catalogued Rassvet objects over Ukraine from public orbit data.";
+  try {
+    const out = injectGrokPwaHead("<html><head><title>Rassvet over Ukraine</title></head></html>", {
+      host: "rassvet-over-ukraine.vercel.app",
+      cwd: mkdtempSync(join(tmpdir(), "grok-og-vercel-")),
+      site: {
+        title: "Rassvet over Ukraine",
+        card: "custom",
+        image: "/og.jpg",
+        description,
+      },
+    });
+    assert.match(
+      out,
+      /property="og:image" content="https:\/\/rassvet-over-ukraine\.vercel\.app\/og\.jpg"/,
+    );
+    assert.match(out, /property="og:image:width" content="1200"/);
+    assert.match(out, /property="og:image:height" content="630"/);
+    assert.match(out, /property="og:description" content="Unofficial geometric coverage estimate/);
+    assert.match(
+      out,
+      /name="twitter:image" content="https:\/\/rassvet-over-ukraine\.vercel\.app\/og\.jpg"/,
+    );
+    assert.doesNotMatch(out, /og\.grok\.me/);
+  } finally {
+    if (prev === undefined) delete process.env.VITE_PUBLIC_HOSTNAME;
+    else process.env.VITE_PUBLIC_HOSTNAME = prev;
+  }
+});
+
 test("vercel Host without a public hostname emits no og:image", () => {
   const prev = process.env.VITE_PUBLIC_HOSTNAME;
   delete process.env.VITE_PUBLIC_HOSTNAME;
@@ -303,9 +343,12 @@ test("vercel Host without a public hostname emits no og:image", () => {
 });
 
 test("emits og:image for a public host and prefers a custom card", () => {
+  // Isolate from this repo's public/og.jpg — disk beats a baked placeholder.
+  const empty = mkdtempSync(join(tmpdir(), "grok-og-placeholder-"));
   const placeholder = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race" },
   });
   assert.match(
@@ -317,6 +360,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
   const custom = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", card: "custom", type: "x:game" },
   });
   assert.match(custom, /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/);
@@ -324,8 +368,10 @@ test("emits og:image for a public host and prefers a custom card", () => {
 });
 
 test("placeholder og:image appends site.color when it is 6-digit hex", () => {
+  const empty = mkdtempSync(join(tmpdir(), "grok-og-color-"));
   const themed = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", color: "#FF4D2E" },
   });
   assert.match(
@@ -335,12 +381,14 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
 
   const invalid = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", color: "red" },
   });
   assert.doesNotMatch(invalid, /color=/);
 
   const custom = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
+    cwd: empty,
     site: { title: "Wild Race", card: "custom", color: "FF4D2E" },
   });
   assert.doesNotMatch(custom, /color=/);
