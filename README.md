@@ -2,6 +2,12 @@
 
 Unofficial geometric coverage clock for catalogued Rassvet / «Рассвет» objects over a point in Ukraine. Not affiliated with Bureau 1440 or any government.
 
+## Live site
+
+[https://rassvet-over-ukraine.vercel.app](https://rassvet-over-ukraine.vercel.app) is the current live deploy. Vercel project `lizard-logic/rassvet-over-ukraine` builds production from GitHub [`main`](https://github.com/CoinAnole/rassvet-over-ukraine).
+
+[https://rassvet-over-ukraine.grok.me/](https://rassvet-over-ukraine.grok.me/) is an unsynced archive only: a one-shot Grok Build publish that cannot sync with this GitHub repo. It is not the self-managed live deploy.
+
 ## What it computes
 
 At a ground point P and minimum elevation E, how many minutes of geometric line-of-sight the current public catalog produces today, when the next window is, and which objects are still climbing versus near operational altitude (raised ≥ 480 km).
@@ -14,7 +20,7 @@ Visible is never presented as linked, encrypted, military-ready, or 24-hour serv
 2. Add a group under `groups` with `id`, `launchDate`, and EN/UK/RU labels.
 3. Append each new NORAD ID to `objects` with `name`, `catalogName`, `cospar`, and `group`.
 4. If an object has reentered, add its NORAD number to `decayed`.
-5. Redeploy. Live CelesTrak GP fetch is by `NAME=RASSVET` plus the listed international designators; unknown new names go to `unassigned` only if you add them to the object list.
+5. Push to `main`. The live Vercel site rebuilds from that branch. Live CelesTrak GP fetch is by `NAME=RASSVET` plus the listed international designators; unknown new names go to `unassigned` only if you add them to the object list.
 
 Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog plus status rules.
 
