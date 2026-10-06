@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CatalogPayload, Lang, PopulationFilter, TimezoneId } from "@/lib/catalog/types";
 import { inPopulation, type CoverageResult } from "@/lib/orbit/coverage";
 import { dataFreshness } from "@/lib/catalog/freshness";
@@ -25,6 +25,8 @@ export type ClockControl = {
   displayAt: Date;
   live: boolean;
   offsetMs: number;
+  /** Wall-clock ms the ±48 h window is measured from. Stable across SSR. */
+  wallMs: number;
   clamped: boolean;
   onHours: (hours: number) => void;
   onCommit: () => void;
@@ -340,9 +342,8 @@ function ClockScrub({
   const zone = tzName(tz);
   const offsetLabel = formatClockOffset(clock.offsetMs, t.units.hour, t.units.min);
   const hours = clock.live ? 0 : clock.offsetMs / 3_600_000;
-  const wall = Date.now();
-  const minCivil = formatCivilInput(new Date(wall - CLOCK_WINDOW_MS), zone);
-  const maxCivil = formatCivilInput(new Date(wall + CLOCK_WINDOW_MS), zone);
+  const minCivil = formatCivilInput(new Date(clock.wallMs - CLOCK_WINDOW_MS), zone);
+  const maxCivil = formatCivilInput(new Date(clock.wallMs + CLOCK_WINDOW_MS), zone);
 
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -362,7 +363,7 @@ function ClockScrub({
               {clock.live ? t.clock.live : t.clock.notLive}
             </span>
             <span className="font-mono text-sm text-fg tabular">
-              {formatDayClock(clock.displayAt, zone)} {formatClock(clock.displayAt, zone)}
+              {formatCivilDay(clock.displayAt, zone)} {formatClock(clock.displayAt, zone)}
             </span>
             <span className="text-xs text-muted">{t.tz[tz]}</span>
             {clock.live ? null : (
@@ -409,6 +410,7 @@ function ClockScrub({
         timeZone={zone}
         min={minCivil}
         max={maxCivil}
+        clamped={clock.clamped}
         onAbsolute={clock.onAbsolute}
       />
       <p className="text-xs normal-case tracking-normal text-subtle">{t.clock.hint}</p>
@@ -425,6 +427,7 @@ function CivilTimeField({
   timeZone,
   min,
   max,
+  clamped,
   onAbsolute,
 }: {
   label: string;
@@ -432,29 +435,30 @@ function CivilTimeField({
   timeZone: string;
   min: string;
   max: string;
+  clamped: boolean;
   onAbsolute: (civil: string) => void;
 }) {
   const formatted = formatCivilInput(at, timeZone);
   const [draft, setDraft] = useState(formatted);
-  const focused = useRef(false);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!focused.current) setDraft(formatted);
-  }, [formatted]);
+    if (!focused || clamped) setDraft(formatted);
+  }, [formatted, focused, clamped]);
+
+  const shown = !focused || clamped ? formatted : draft;
 
   return (
     <Field label={label}>
       <input
         type="datetime-local"
         className="control-select max-w-xs"
-        value={draft}
+        value={shown}
         min={min}
         max={max}
-        onFocus={() => {
-          focused.current = true;
-        }}
+        onFocus={() => setFocused(true)}
         onBlur={() => {
-          focused.current = false;
+          setFocused(false);
           setDraft(formatted);
         }}
         onChange={(e) => {

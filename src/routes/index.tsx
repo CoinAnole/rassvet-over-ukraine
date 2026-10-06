@@ -148,6 +148,7 @@ function UkraineToday({ lang }: { lang: Lang }) {
           displayAt: displayNow,
           live: preview == null,
           offsetMs: preview ? preview.at - preview.wall : 0,
+          wallMs: preview ? preview.wall : liveNow.getTime(),
           clamped: preview?.clamped ?? false,
           onHours,
           onCommit,
