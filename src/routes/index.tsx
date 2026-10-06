@@ -11,7 +11,16 @@ import { getDict } from "@/lib/i18n";
 import { getCatalog } from "@/lib/catalog/get-catalog";
 import type { Lang } from "@/lib/catalog/types";
 import type { PlaceId } from "@/lib/orbit/constants";
-import { searchFromView, viewFromSearch, type ViewSearch, type ViewState } from "@/lib/view-state";
+import {
+  canonicalSearch,
+  heldFromClockHours,
+  parseClockHours,
+  shareSearchString,
+  viewFromSearch,
+  viewSearchEqual,
+  type ViewSearch,
+  type ViewState,
+} from "@/lib/view-state";
 
 function parseSearch(raw: Record<string, unknown>): ViewSearch {
   const num = (v: unknown) => {
@@ -27,6 +36,7 @@ function parseSearch(raw: Record<string, unknown>): ViewSearch {
     set: typeof raw.set === "string" ? (raw.set as ViewSearch["set"]) : undefined,
     tz: raw.tz === "kyiv" || raw.tz === "utc" || raw.tz === "moscow" ? raw.tz : undefined,
     place: typeof raw.place === "string" ? (raw.place as ViewSearch["place"]) : undefined,
+    h: parseClockHours(raw.h),
   };
 }
 
@@ -54,10 +64,42 @@ function UkraineToday({ lang }: { lang: Lang }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const view = viewFromSearch(search, lang);
+  const wallAtLoad = Date.parse(nowIso);
+  const initialHeld = heldFromClockHours(search.h, wallAtLoad);
   const [liveNow, setLiveNow] = useState(() => new Date(nowIso));
-  const [preview, setPreview] = useState<HeldClock | null>(null);
-  const [held, setHeld] = useState<HeldClock | null>(null);
-  const previewRef = useRef<HeldClock | null>(null);
+  const [preview, setPreview] = useState<HeldClock | null>(initialHeld);
+  const [held, setHeld] = useState<HeldClock | null>(initialHeld);
+  const previewRef = useRef<HeldClock | null>(initialHeld);
+  const publishedHours = useRef<number | undefined>(search.h);
+  const didCanonicalize = useRef(false);
+
+  const publish = (next: ViewSearch) => {
+    publishedHours.current = next.h;
+    const wanted = shareSearchString(next);
+    const bar = typeof window !== "undefined" ? window.location.search : wanted;
+    if (!viewSearchEqual(search, next) || bar !== wanted) {
+      void navigate({ search: next, replace: true, resetScroll: false });
+    }
+  };
+
+  useEffect(() => {
+    if (search.h === publishedHours.current) return;
+    publishedHours.current = search.h;
+    const next = heldFromClockHours(search.h, Date.now());
+    previewRef.current = next;
+    setPreview(next);
+    setHeld(next);
+    if (!next) setLiveNow(new Date());
+  }, [search.h]);
+
+  useEffect(() => {
+    if (didCanonicalize.current) return;
+    didCanonicalize.current = true;
+    const offset = initialHeld ? initialHeld.at - initialHeld.wall : 0;
+    publish(canonicalSearch(search, view, offset));
+    // Shorten the opened URL once. Later edits publish themselves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (preview) return;
@@ -113,37 +155,44 @@ function UkraineToday({ lang }: { lang: Lang }) {
     if (commit) setHeld(next);
   };
 
+  const offsetMs = preview ? preview.at - preview.wall : 0;
+  const linkSearch = canonicalSearch(search, view, offsetMs);
+
   const onLive = () => {
     remember(null, true);
     setLiveNow(new Date());
+    publish(canonicalSearch(search, view, 0));
   };
 
   const onHours = (hours: number) => {
     const next = holdFromHours(hours, Date.now());
     remember(next, next == null);
+    if (next == null) publish(canonicalSearch(search, view, 0));
   };
 
   const onCommit = () => {
-    setHeld(previewRef.current);
+    const next = previewRef.current;
+    setHeld(next);
+    publish(canonicalSearch(search, view, next ? next.at - next.wall : 0));
   };
 
   const onAbsolute = (civil: string) => {
     const parsed = parseCivilInput(civil, tzName(view.tz));
     if (!parsed) return;
-    remember(holdFromTarget(parsed.getTime(), Date.now()), true);
+    const next = holdFromTarget(parsed.getTime(), Date.now());
+    remember(next, true);
+    publish(canonicalSearch(search, view, next ? next.at - next.wall : 0));
   };
 
   const onWindow = (aosMs: number) => {
     const wall = previewRef.current ? previewRef.current.wall : wallMs;
-    remember(holdFromTarget(aosMs, wall), true);
+    const next = holdFromTarget(aosMs, wall);
+    remember(next, true);
+    publish(canonicalSearch(search, view, next ? next.at - next.wall : 0));
   };
 
   const onChange = (patch: Partial<ViewState>) => {
-    const next = { ...view, lang, ...patch };
-    void navigate({
-      search: searchFromView(next),
-      replace: true,
-    });
+    publish(canonicalSearch(search, { ...view, ...patch }, offsetMs));
   };
 
   const t = getDict(lang);
@@ -171,6 +220,8 @@ function UkraineToday({ lang }: { lang: Lang }) {
           onWindow,
         }}
         onChange={onChange}
+        linkSearch={linkSearch}
+        syncLink={() => publish(linkSearch)}
       />
       <UkraineMap
         lang={lang}

@@ -42,8 +42,12 @@ export function LangFrame({
       if (current === "/") {
         void navigate({
           to: "/",
-          search: (prev: Record<string, unknown>) => ({ ...prev, lang: next }),
+          search: (prev: Record<string, unknown>) => ({
+            ...prev,
+            lang: next === "en" ? undefined : next,
+          }),
           replace: true,
+          resetScroll: false,
         });
       }
     },

@@ -52,6 +52,12 @@
     "lon": "Longitude",
     "apply": "Apply"
   },
+  "share": {
+    "copy": "Copy link",
+    "copied": "Copied",
+    "share": "Share",
+    "hint": "Link to this ground point, minimum elevation, and held clock."
+  },
   "clock": {
     "label": "Clock",
     "live": "Live",
