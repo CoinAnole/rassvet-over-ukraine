@@ -7,7 +7,7 @@
   "earthRadiusKm": 6371,
   "muKm3s2": 398600.4418,
   "decayPerigeeKm": 150,
-  "userAgent": "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker; not affiliated with Bureau 1440)",
+  "userAgent": "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)",
   "celestrak": {
     "queries": [
       "https://celestrak.org/NORAD/elements/gp.php?NAME=RASSVET&FORMAT=json",
