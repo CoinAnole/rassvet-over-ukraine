@@ -65,15 +65,6 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "If the newest GP epoch for an object is older than 72 hours, the object is marked stale and still propagated, with a warning. Missing IDs that remain in the curated list but have no TLE are marked missing and are omitted from Now / Today / footprints. Decayed IDs on the manual override list (and any object whose perigee is persistently below 150 km) are excluded from coverage.",
       ],
     },
-    {
-      heading: "Public program figures (claims, not this site’s measurements)",
-      paragraphs: [
-        "Operator / state figures often cited: on the order of 250–292 satellites by 2027 for an initial operational constellation, later growth toward ~700–900.",
-        "Analyst figures often cited: continuous service (not mere line-of-sight) discussed in the 200–250 satellite range.",
-        "Reporting through mid/late 2026: production batches of 16, orbit raise to ~500 km rather than the 800 km filing, roughly two longer geometric windows per day over Ukraine once the first batch flattened, four line-of-sight passes of which only some are high elevation.",
-        "Those sentences belong here, not on the homepage, unless the live calculator currently agrees.",
-      ],
-    },
   ],
   uk: [
     {
@@ -133,15 +124,6 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "Якщо найновіша епоха GP для об’єкта старіша за 72 години, об’єкт позначається як застарілий і все одно прогнозується, з попередженням. Ідентифікатори з курованого списку без TLE позначаються як відсутні й не входять у «Зараз» / «Сьогодні» / контури. Зійшлі ідентифікатори з ручного списку (і будь-який об’єкт із перигеєм нижче 150 км) з покриття виключені.",
       ],
     },
-    {
-      heading: "Публічні цифри програми (твердження, не вимірювання цього сайту)",
-      paragraphs: [
-        "Цифри оператора / держави, які часто наводять: порядку 250–292 супутників до 2027 року для початкового робочого угруповання, далі зростання до ~700–900.",
-        "Аналітичні оцінки, які часто наводять: безперервну службу (не лише пряму видимість) обговорюють у діапазоні 200–250 супутників.",
-        "Репортажі до середини/кінця 2026: серійні партії по 16, підйом орбіти до ~500 км замість 800 км із заявки, приблизно два довші геометричні вікна на добу над Україною після вирівнювання першої партії, чотири проходження прямої видимості, з яких лише частина з високим кутом місця.",
-        "Ці речення належать сюди, а не на головну, якщо живий калькулятор наразі з ними не збігається.",
-      ],
-    },
   ],
   ru: [
     {
@@ -199,15 +181,6 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       heading: "Устаревшие наборы элементов",
       paragraphs: [
         "Если новейшая эпоха GP для объекта старше 72 часов, объект помечается как устаревший и всё равно прогнозируется, с предупреждением. Идентификаторы из курируемого списка без TLE помечаются как отсутствующие и не входят в «Сейчас» / «Сегодня» / контуры. Сошедшие идентификаторы из ручного списка (и любой объект с перигеем ниже 150 км) из покрытия исключены.",
-      ],
-    },
-    {
-      heading: "Публичные цифры программы (утверждения, не измерения этого сайта)",
-      paragraphs: [
-        "Цифры оператора / государства, которые часто приводят: порядка 250–292 спутников к 2027 году для начальной рабочей группировки, далее рост к ~700–900.",
-        "Аналитические оценки, которые часто приводят: непрерывную службу (не только прямую видимость) обсуждают в диапазоне 200–250 спутников.",
-        "Репортажи к середине/концу 2026: серийные партии по 16, подъём орбиты к ~500 км вместо 800 км из заявки, примерно два более длинных геометрических окна в сутки над Украиной после выравнивания первой партии, четыре прохождения прямой видимости, из которых лишь часть с высоким углом места.",
-        "Эти предложения принадлежат сюда, а не на главную, если живой калькулятор сейчас с ними не совпадает.",
       ],
     },
   ],
