@@ -35,14 +35,9 @@ export function AppShell({
         <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-2 md:px-6">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h1 className="font-sans text-lg font-medium tracking-[-0.03em] text-fg md:text-xl">
-                  {t.productTitle}
-                </h1>
-                <p className="rounded-[var(--radius-xs)] border border-border-strong bg-elevated px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                  {t.badge}
-                </p>
-              </div>
+              <h1 className="font-sans text-lg font-medium tracking-[-0.03em] text-fg md:text-xl">
+                {t.productTitle}
+              </h1>
               <p className="mt-0.5 text-[11px] text-muted">{t.productSubtitle}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">

@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Unofficial geometric coverage tracker. Catalog fetches identify as
-# RassvetOverUkraine/0.1 (not affiliated with Bureau 1440).
+# Catalog fetches identify as RassvetOverUkraine/0.1 (unofficial geometric coverage tracker).

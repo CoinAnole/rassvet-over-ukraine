@@ -38,7 +38,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 
 - Source: CelesTrak public GP JSON.
 - Fallback: `src/data/catalog-seed.json` (snapshot dated in-file) if the live fetch fails.
-- User-Agent: `RassvetOverUkraine/0.1 (unofficial geometric coverage tracker; not affiliated with Bureau 1440)`.
+- User-Agent: `RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)`.
 
 ## Pass list vs Today tile
 
@@ -46,4 +46,4 @@ Per-object passes in the table. Today minutes and city chips union overlapping i
 
 ## Local notes for operators
 
-Language files: `src/config/i18n/{en,uk,ru}.json` plus Method copy in `src/lib/i18n/method.ts`. Review the homepage sentence and unofficial badge with a human before quoting the numbers in print.
+Language files: `src/config/i18n/{en,uk,ru}.json` plus Method copy in `src/lib/i18n/method.ts`. Review the homepage sentence with a human before quoting the numbers in print.

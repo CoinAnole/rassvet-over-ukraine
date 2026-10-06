@@ -9,12 +9,6 @@ export function methodSections(lang: Lang): MethodSection[] {
 const CONTENT: Record<Lang, MethodSection[]> = {
   en: [
     {
-      heading: "Unofficial status",
-      paragraphs: [
-        "This is an unofficial public calculator. It is not a Bureau 1440 product, not a government product, and not affiliated with any ministry, armed force, or operator. Catalog names such as RASSVET-3 are transcribed from public NORAD / CelesTrak listings.",
-      ],
-    },
-    {
       heading: "Data source and refresh",
       paragraphs: [
         "Orbital data are public general-perturbations (GP) element sets from CelesTrak (JSON GP). The server fetches them about every ten minutes and caches the result. If the live fetch fails, a dated checked-in snapshot is used and labelled as such. This site does not invent ephemeris and does not fit custom orbits.",
@@ -80,20 +74,8 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "Those sentences belong here, not on the homepage, unless the live calculator currently agrees.",
       ],
     },
-    {
-      heading: "What this site will never show",
-      paragraphs: [
-        "Unit positions, front lines, frequencies, waveforms, terminal installation guides, jamming recipes, or any targeting language. The curated NORAD list lives in a config file so a new launch group can be added without rewriting the app.",
-      ],
-    },
   ],
   uk: [
-    {
-      heading: "Неофіційний статус",
-      paragraphs: [
-        "Це неофіційний публічний калькулятор. Це не продукт Бюро 1440, не державний продукт і не пов’язано з жодним міністерством, силою чи оператором. Каталожні назви на кшталт RASSVET-3 переписані з публічних переліків NORAD / CelesTrak.",
-      ],
-    },
     {
       heading: "Джерело даних і оновлення",
       paragraphs: [
@@ -160,20 +142,8 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "Ці речення належать сюди, а не на головну, якщо живий калькулятор наразі з ними не збігається.",
       ],
     },
-    {
-      heading: "Чого цей сайт ніколи не покаже",
-      paragraphs: [
-        "Позиції підрозділів, лінію фронту, частоти, форми сигналу, інструкції з установлення терміналів, рецепти перешкод чи будь-яку мову цілевказання. Курований список NORAD лежить у конфігураційному файлі, щоб нову групу запуску можна було додати без переписування застосунку.",
-      ],
-    },
   ],
   ru: [
-    {
-      heading: "Неофициальный статус",
-      paragraphs: [
-        "Это неофициальный публичный калькулятор. Это не продукт Бюро 1440, не государственный продукт и не связано ни с одним министерством, силой или оператором. Каталожные имена вроде RASSVET-3 переписаны из публичных перечней NORAD / CelesTrak.",
-      ],
-    },
     {
       heading: "Источник данных и обновление",
       paragraphs: [
@@ -238,12 +208,6 @@ const CONTENT: Record<Lang, MethodSection[]> = {
         "Аналитические оценки, которые часто приводят: непрерывную службу (не только прямую видимость) обсуждают в диапазоне 200–250 спутников.",
         "Репортажи к середине/концу 2026: серийные партии по 16, подъём орбиты к ~500 км вместо 800 км из заявки, примерно два более длинных геометрических окна в сутки над Украиной после выравнивания первой партии, четыре прохождения прямой видимости, из которых лишь часть с высоким углом места.",
         "Эти предложения принадлежат сюда, а не на главную, если живой калькулятор сейчас с ними не совпадает.",
-      ],
-    },
-    {
-      heading: "Чего этот сайт никогда не покажет",
-      paragraphs: [
-        "Позиции подразделений, линию фронта, частоты, формы сигнала, инструкции по установке терминалов, рецепты помех или любой язык целеуказания. Курируемый список NORAD лежит в конфигурационном файле, чтобы новую группу запуска можно было добавить без переписывания приложения.",
       ],
     },
   ],
