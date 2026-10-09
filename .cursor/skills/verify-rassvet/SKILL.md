@@ -51,7 +51,7 @@ Every browser command waits until React has hydrated before it clicks, selects, 
 
 `--text` matches the copy in the document (`Now`, `Not live`), not the CSS-uppercased paint (`NOW`). Repeat `--any` when a label has two live wordings.
 
-A fresh load logs a hydration console error about `caret-color: transparent` on the clock range and the date-time input. `pageErrors` stays empty and the controls still work. That message is already present before any feature is driven. Do not treat it as a failed step, and do not change application code to silence it from this skill.
+A hydration mismatch in the console fails the command. Screenshots leave the text caret as the page drew it. Playwright's default screenshot hides the caret by writing `caret-color: transparent` onto every input, and that write can land while React is still hydrating the clock range and the date-time field. This harness does not do that.
 
 Stable handles, English UI:
 
@@ -78,7 +78,7 @@ Stable handles, English UI:
 | Method title | heading `Method` |
 | Constellation filters | checkbox name `Hide decayed`; label `Launch group` |
 
-Every command prints one JSON object. `ok: false` or a non-zero exit means that step failed. `pageErrors` fails the command. `consoleErrors` are reported and do not, by themselves, fail it (a blocked font request is not a broken clock).
+Every command prints one JSON object. `ok: false` or a non-zero exit means that step failed. `pageErrors` and `hydrationWarnings` fail the command. Other `consoleErrors` are reported and do not, by themselves, fail it (a blocked font request is not a broken clock).
 
 ```bash
 H=.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs
@@ -145,7 +145,7 @@ The helper is executable. From the repo root:
 | `browser focus --role <role> --name <name>` | Focus a control before `press`. |
 | `browser press --key <key>` | Send a key to the focused element (`ArrowRight`, `Enter`). |
 | `browser range --name <name> --value <number>` | Set `Offset from real now` and commit with Enter. |
-| `browser screenshot --path <file> [--full-page] [--feature <id>]` | PNG under `evidence/`. |
+| `browser screenshot --path <file> [--full-page] [--feature <id>]` | PNG under `evidence/`. Does not hide the text caret. |
 | `browser snapshot --aria --path <file> [--feature <id>]` | ARIA snapshot, first line is the URL. |
 | `browser url` | Print the current URL. |
 | `browser text` | Print `body` inner text. |
