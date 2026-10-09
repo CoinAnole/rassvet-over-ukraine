@@ -41,11 +41,15 @@ const DEFAULT_PORT = 4173;
 const APP_MARK = "Rassvet over Ukraine";
 
 /** React logs this when the hydrated DOM disagrees with the client render. */
-function isHydrationWarning(text) {
+export function isHydrationWarning(text) {
   return (
     /hydrat/i.test(text) &&
     /did not match|didn't match|server rendered HTML|Hydration failed/i.test(text)
   );
+}
+
+export function commandFailed(payload) {
+  return Boolean(payload.pageErrors?.length || payload.hydrationWarnings?.length);
 }
 
 function usage() {
@@ -743,20 +747,23 @@ async function browser(positional, flags) {
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }
-  if (payload.pageErrors?.length || payload.hydrationWarnings?.length) payload.ok = false;
+  if (commandFailed(payload)) payload.ok = false;
   emit(payload, payload.ok ? 0 : 1);
 }
 
-const { positional, flags } = parseArgs(process.argv.slice(2));
-const command = positional[0];
+const entry = process.argv[1] ? resolve(process.argv[1]) : "";
+if (entry === fileURLToPath(import.meta.url)) {
+  const { positional, flags } = parseArgs(process.argv.slice(2));
+  const command = positional[0];
 
-if (!command || flags.help) {
-  process.stderr.write(`${usage()}\n`);
-  process.exit(command ? 0 : 2);
+  if (!command || flags.help) {
+    process.stderr.write(`${usage()}\n`);
+    process.exit(command ? 0 : 2);
+  }
+
+  if (command === "launch") await launch(flags);
+  else if (command === "doctor") await doctor();
+  else if (command === "cleanup") await cleanup();
+  else if (command === "browser") await browser(positional.slice(1), flags);
+  else fail(usage());
 }
-
-if (command === "launch") await launch(flags);
-else if (command === "doctor") await doctor();
-else if (command === "cleanup") await cleanup();
-else if (command === "browser") await browser(positional.slice(1), flags);
-else fail(usage());
