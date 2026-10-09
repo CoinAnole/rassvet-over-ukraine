@@ -1,0 +1,5 @@
+{
+  "name": "Rassvet over Ukraine",
+  "install": "bash .cursor/setup-cloud-agent.sh",
+  "start": "set -u\nLOG=\"${HOME}/.cursor/pstack-setup.log\"\nmkdir -p \"$(dirname \"${LOG}\")\"\nlog() {\n  local line\n  line=\"$(printf '%s %s' \"$(date -Is)\" \"$*\")\"\n  printf '%s\\n' \"${line}\" >> \"${LOG}\"\n  printf '%s\\n' \"${line}\"\n}\ndeadline=\"${PSTACK_CHECKOUT_WAIT_SECONDS:-60}\"\ncase \"${deadline}\" in\n  ''|*[!0-9]*) deadline=60 ;;\nesac\nlog \"pstack setup: start hook waiting up to ${deadline}s for checkout\"\ni=0\nwhile [[ ! -s .cursor/setup-cloud-agent.sh || ! -s .cursor/pstack/pstack-models.mdc ]]; do\n  i=$((i + 1))\n  if [[ \"${i}\" -ge \"${deadline}\" ]]; then\n    log \"pstack setup: timed out after ${deadline}s waiting for .cursor/setup-cloud-agent.sh and .cursor/pstack/pstack-models.mdc\"\n    exit 1\n  fi\n  sleep 1\ndone\nlog \"pstack setup: workspace files present after ${i}s; running setup\"\nexec bash .cursor/setup-cloud-agent.sh\n"
+}
