@@ -40,6 +40,18 @@ const MARKER = "VERIFY_RASSVET";
 const DEFAULT_PORT = 4173;
 const APP_MARK = "Rassvet over Ukraine";
 
+/** React logs this when the hydrated DOM disagrees with the client render. */
+export function isHydrationWarning(text) {
+  return (
+    /hydrat/i.test(text) &&
+    /did not match|didn't match|server rendered HTML|Hydration failed/i.test(text)
+  );
+}
+
+export function commandFailed(payload) {
+  return Boolean(payload.pageErrors?.length || payload.hydrationWarnings?.length);
+}
+
 function usage() {
   return `usage:
   verify-rassvet.mjs launch [--port 4173]
@@ -459,6 +471,7 @@ async function withPage(fn) {
   }
   writeFileSync(LOCK_FILE, `${process.pid}\n`);
   const consoleErrors = [];
+  const hydrationWarnings = [];
   const pageErrors = [];
   const context = await chromium.launchPersistentContext(PROFILE_DIR, {
     headless: true,
@@ -469,13 +482,15 @@ async function withPage(fn) {
   try {
     const page = context.pages()[0] ?? (await context.newPage());
     page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
+      const text = msg.text();
+      if (msg.type() === "error") consoleErrors.push(text);
+      if (isHydrationWarning(text)) hydrationWarnings.push(text);
     });
     page.on("pageerror", (err) => pageErrors.push(String(err)));
     const result = await fn(page);
     const url = page.url();
     if (url.startsWith(origin())) writeFileSync(URL_FILE, `${url}\n`);
-    return { ...result, url, consoleErrors, pageErrors };
+    return { ...result, url, consoleErrors, hydrationWarnings, pageErrors };
   } finally {
     await context.close();
     rmSync(LOCK_FILE, { force: true });
@@ -487,8 +502,16 @@ async function waitInteractive(page) {
   await page.getByRole("heading", { level: 1 }).first().waitFor({ timeout: 30_000 });
   await page.waitForFunction(
     () => {
+      const reactReady = (node) => Object.keys(node).some((key) => key.startsWith("__react"));
       const nodes = [document.body, ...document.querySelectorAll("button, select, a")];
-      return nodes.some((node) => Object.keys(node).some((key) => key.startsWith("__react")));
+      if (!nodes.some(reactReady)) return false;
+      // Finish the clock inputs before a screenshot or a click. Hydration of
+      // those nodes is what a caret-color write used to race.
+      for (const selector of ["input.clock-range", 'input[type="datetime-local"]']) {
+        const node = document.querySelector(selector);
+        if (node && !reactReady(node)) return false;
+      }
+      return true;
     },
     null,
     { timeout: 30_000 },
@@ -637,7 +660,14 @@ async function browser(positional, flags) {
         if (!flags.path) throw new Error("screenshot requires --path");
         const path = resolveTarget(String(flags.path));
         mkdirSync(dirname(path), { recursive: true });
-        await page.screenshot({ path, fullPage: Boolean(flags["full-page"]) });
+        // Default Playwright screenshots set caret-color:transparent on every
+        // input. That inline style races hydration of the clock range and the
+        // datetime-local field, and React reports it as a mismatch.
+        await page.screenshot({
+          path,
+          fullPage: Boolean(flags["full-page"]),
+          caret: "initial",
+        });
         const url = page.url();
         writeNote(path, flags, url);
         return { ok: true, action, path, fullPage: Boolean(flags["full-page"]) };
@@ -717,20 +747,23 @@ async function browser(positional, flags) {
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }
-  if (payload.pageErrors?.length) payload.ok = false;
+  if (commandFailed(payload)) payload.ok = false;
   emit(payload, payload.ok ? 0 : 1);
 }
 
-const { positional, flags } = parseArgs(process.argv.slice(2));
-const command = positional[0];
+const entry = process.argv[1] ? resolve(process.argv[1]) : "";
+if (entry === fileURLToPath(import.meta.url)) {
+  const { positional, flags } = parseArgs(process.argv.slice(2));
+  const command = positional[0];
 
-if (!command || flags.help) {
-  process.stderr.write(`${usage()}\n`);
-  process.exit(command ? 0 : 2);
+  if (!command || flags.help) {
+    process.stderr.write(`${usage()}\n`);
+    process.exit(command ? 0 : 2);
+  }
+
+  if (command === "launch") await launch(flags);
+  else if (command === "doctor") await doctor();
+  else if (command === "cleanup") await cleanup();
+  else if (command === "browser") await browser(positional.slice(1), flags);
+  else fail(usage());
 }
-
-if (command === "launch") await launch(flags);
-else if (command === "doctor") await doctor();
-else if (command === "cleanup") await cleanup();
-else if (command === "browser") await browser(positional.slice(1), flags);
-else fail(usage());
