@@ -1,0 +1,5 @@
+{
+  "name": "Rassvet over Ukraine",
+  "install": "bash .cursor/setup-cloud-agent.sh",
+  "start": "bash .cursor/setup-cloud-agent.sh"
+}
