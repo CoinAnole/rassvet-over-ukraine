@@ -43,3 +43,9 @@ Per-object passes in the table. Today minutes and city chips union overlapping i
 ## Local notes for operators
 
 Language files: `src/config/i18n/{en,uk,ru}.json` plus Method copy in `src/lib/i18n/method.ts`. Review the homepage sentence with a human before quoting the numbers in print.
+
+## Cloud agents
+
+`.cursor/environment.json` points `install` and `start` at pstack setup. `install` runs `bash .cursor/setup-cloud-agent.sh` after checkout, and only during a snapshot build of the default branch. `start` is an inline command Cursor launches on every boot, including before that checkout has created the script. It waits until `.cursor/setup-cloud-agent.sh` and `.cursor/pstack/pstack-models.mdc` are both non-empty (bound `PSTACK_CHECKOUT_WAIT_SECONDS`, default 60), then runs the script. Each attempt appends timestamped lines to `~/.cursor/pstack-setup.log`.
+
+The tracked model map is `.cursor/pstack/pstack-models.mdc`. It stays out of `.cursor/rules/` so a local Cursor window does not apply the committed copy and the home copy together. The script copies it to `~/.cursor/rules/pstack-models.mdc`, which is the always-applied file pstack reads. Budget is large: code roles use `grok-4.7-xhigh-fast`; judgment, prose, and the hardest tasks use `claude-opus-5-5-xhigh`; arena, architect, and interrogate panels list both. If no pstack install is present, the script sparse-clones `https://github.com/cursor/plugins` and copies `pstack/` to `~/.cursor/plugins/local/pstack`.
