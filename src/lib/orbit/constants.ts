@@ -1,5 +1,6 @@
 /**
- * Spherical Earth radius for elevation and footprints.
+ * Spherical Earth radius for map footprint rings and the pass pre-filter.
+ * Elevation uses satellite.js look angles on a WGS-84 observer.
  * Altitude uses the WGS-72 equatorial radius inside `brouwer-altitude.mjs`
  * (6378.135 km), not this value.
  */
