@@ -24,7 +24,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Propagation and Earth model",
       paragraphs: [
-        "Positions are propagated with SGP4/SDP4 as implemented by satellite.js from the published element set. Elevation and footprints use a spherical Earth with Re = 6371 km. That is good enough for an MVP coverage clock; it is not a precision orbit determination.",
+        "Positions are propagated with SGP4/SDP4 as implemented by satellite.js from the published element set. Elevation, and so every coverage window and minute, comes from satellite.js look angles with an ellipsoidal (WGS-84) observer position. Only the footprint rings drawn on the map, and a pre-filter that skips samples far from the ground point, use the spherical small-circle formula with Re = 6371 km. That is good enough for an MVP coverage clock; it is not a precision orbit determination.",
         "Sampling step is 30 seconds. Displayed AOS/LOS are linearly interpolated between steps and should be read as ±30 s. Passes shorter than 60 seconds after interpolation are discarded.",
       ],
     },
@@ -103,7 +103,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Прогноз і модель Землі",
       paragraphs: [
-        "Положення прогнозуються SGP4/SDP4 у реалізації satellite.js з опублікованого набору елементів. Кут місця і зони видимості використовують сферичну Землю з Re = 6371 км. Цього досить для годинника покриття MVP; це не точне визначення орбіти.",
+        "Положення прогнозуються SGP4/SDP4 у реалізації satellite.js з опублікованого набору елементів. Кут місця, а з ним кожне вікно покриття й кожна хвилина, береться з кутів візування satellite.js для положення спостерігача на еліпсоїді WGS-84. Лише контури на карті і попередній фільтр, який відкидає вибірки далеко від точки на землі, використовують формулу сферичного малого кола з Re = 6371 км. Цього досить для годинника покриття MVP; це не точне визначення орбіти.",
         "Крок дискретизації — 30 секунд. Показані AOS/LOS лінійно інтерполюються між кроками і їх слід читати як ±30 с. Проходження коротші за 60 секунд після інтерполяції відкидаються.",
       ],
     },
@@ -182,7 +182,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Прогноз и модель Земли",
       paragraphs: [
-        "Положения прогнозируются SGP4/SDP4 в реализации satellite.js по опубликованному набору элементов. Угол места и зоны видимости используют сферическую Землю с Re = 6371 км. Этого достаточно для часов покрытия MVP; это не точное определение орбиты.",
+        "Положения прогнозируются SGP4/SDP4 в реализации satellite.js по опубликованному набору элементов. Угол места, а с ним каждое окно покрытия и каждая минута, берётся из углов визирования satellite.js для положения наблюдателя на эллипсоиде WGS-84. Только контуры на карте и предварительный фильтр, который отбрасывает выборки далеко от точки на земле, используют формулу сферической малой окружности с Re = 6371 км. Этого достаточно для часов покрытия MVP; это не точное определение орбиты.",
         "Шаг дискретизации — 30 секунд. Показанные AOS/LOS линейно интерполируются между шагами и их следует читать как ±30 с. Прохождения короче 60 секунд после интерполяции отбрасываются.",
       ],
     },

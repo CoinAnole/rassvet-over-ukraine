@@ -32,7 +32,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 | `staleHours` | 72 — mark and still propagate |
 | `stepSeconds` | 30 — elevation sampling |
 | `minPassSeconds` | 60 — ignore shorter passes |
-| `earthRadiusKm` | 6371 — spherical Earth for elevation and footprints. Altitude is the Brouwer mean semi-major axis from satellite.js SGP4 init minus the WGS-72 equatorial radius 6378.135 km (μ = 398600.8 km³/s²). |
+| `earthRadiusKm` | 6371 — spherical small-circle for the map footprint rings and the pass pre-filter. Elevation uses satellite.js look angles with a WGS-84 observer. Altitude is the Brouwer mean semi-major axis from satellite.js SGP4 init minus the WGS-72 equatorial radius 6378.135 km (μ = 398600.8 km³/s²). |
 | `muKm3s2` | 398600.4418 — not used for altitude. |
 
 ## Data

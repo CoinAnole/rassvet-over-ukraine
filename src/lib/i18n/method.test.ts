@@ -113,7 +113,13 @@ describe("method copy", () => {
     assert.equal(enText.includes("480"), false);
     assert.equal(/minus 6371/.test(enText), false);
     assert.equal(/Kepler/i.test(enText), false);
-    assert.match(enText, /spherical Earth with Re = 6371 km/);
+    assert.match(enText, /ellipsoidal \(WGS-84\) observer position/);
+    assert.match(enText, /every coverage window and minute/);
+    assert.match(enText, /look angles/);
+    assert.match(enText, /footprint rings drawn on the map/);
+    assert.match(enText, /pre-filter/);
+    assert.match(enText, /spherical small-circle formula with Re = 6371 km/);
+    assert.equal(/Elevation and footprints use a spherical Earth/.test(enText), false);
 
     const uk = methodSections("uk")
       .flatMap((s) => [s.heading, ...s.paragraphs])
@@ -122,6 +128,9 @@ describe("method copy", () => {
     assert.match(uk, /6378\.135/);
     assert.match(uk, /адаптували метод/);
     assert.match(uk, /не копіювали їхній текст/);
+    assert.match(uk, /еліпсоїді WGS-84/);
+    assert.match(uk, /сферичного малого кола з Re = 6371 км/);
+    assert.equal(/зони видимості використовують сферичну Землю/.test(uk), false);
     assert.equal(uk.includes("480"), false);
 
     const ru = methodSections("ru")
@@ -131,6 +140,9 @@ describe("method copy", () => {
     assert.match(ru, /6378\.135/);
     assert.match(ru, /адаптировали метод/);
     assert.match(ru, /не копировали их текст/);
+    assert.match(ru, /эллипсоиде WGS-84/);
+    assert.match(ru, /сферической малой окружности с Re = 6371 км/);
+    assert.equal(/зоны видимости используют сферическую Землю/.test(ru), false);
     assert.equal(ru.includes("480"), false);
   });
 });
