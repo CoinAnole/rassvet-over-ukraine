@@ -125,7 +125,7 @@
     "raised": "raised ≥480 km",
     "decayed": "decayed",
     "missing": "missing",
-    "stale": "stale TLE"
+    "stale": "stale element set"
   },
   "map": {
     "reset": "Reset view",
@@ -164,7 +164,7 @@
       "period": "Period min",
       "perigee": "Perigee km",
       "apogee": "Apogee km",
-      "epoch": "TLE epoch",
+      "epoch": "Element-set epoch",
       "sets": "Element sets"
     }
   },

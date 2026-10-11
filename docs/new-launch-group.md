@@ -56,7 +56,7 @@ COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 - [ ] If GP no longer has a curated NORAD, confirm reentry before calling it decayed. CelesTrak SATCAT `https://celestrak.org/satcat/records.php?CATNR=<norad>&FORMAT=JSON` field `DECAY_DATE` (and `OPS_STATUS_CODE` `D`) is the check. The site does not fetch SATCAT at runtime.
 - [ ] Add that NORAD to `decayed` and **keep the object in `objects`**. Dropping it from `objects` removes it from the constellation list. Leaving it off `decayed` labels it missing.
 - [ ] Do not put a NORAD on `decayed` while GP still publishes it and perigee is at or above 150 km. That override hides a live object. `npm run verify:catalog` fails this case.
-- [ ] A perigee under 150 km is already excluded by the runtime. Note it. Add the NORAD to `decayed` once the TLE disappears, so the next gap is decayed rather than missing.
+- [ ] A perigee under 150 km is already excluded by the runtime. Note it. Add the NORAD to `decayed` once the element set disappears, so the next gap is decayed rather than missing.
 - [ ] Current worked example: `68363` / `2026-061D` / `RASSVET-3 4` is on `decayed`, absent from GP, and SATCAT records decay on 2026-06-06. Leave it there.
 
 ### Not climbing (monthly)

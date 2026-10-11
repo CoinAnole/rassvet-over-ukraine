@@ -192,7 +192,7 @@ export function auditCatalog(opts) {
         lowPerigee.push(entry);
         if (!decayedSet.has(obj.norad)) {
           notes.push(
-            `NORAD ${obj.norad} perigee ${km(orbit.perigeeKm)} km is under ${decayPerigeeKm} km. The runtime marks it decayed from the element set. Add it to decayed once GP drops the TLE, or it will later show as missing.`,
+            `NORAD ${obj.norad} perigee ${km(orbit.perigeeKm)} km is under ${decayPerigeeKm} km. The runtime marks it decayed from the element set. Add it to decayed once GP drops the element set, or it will later show as missing.`,
           );
         }
       } else if (orbit && orbit.approxAltitudeKm < raisedAltitudeKm && !decayedSet.has(obj.norad)) {

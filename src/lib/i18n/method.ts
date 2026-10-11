@@ -17,7 +17,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Data source and refresh",
       paragraphs: [
-        "Orbital data are public general-perturbations (GP) element sets from CelesTrak (JSON GP). The server fetches them about every ten minutes and caches the result. If the live fetch fails, a dated checked-in snapshot is used and labelled as such. This site does not invent ephemeris and does not fit custom orbits.",
+        "Orbital data are public general-perturbations (GP) element sets from CelesTrak (JSON GP). Element sets are what catalogs often call TLEs (two-line elements). The server fetches them about every ten minutes and caches the result. If the live fetch fails, a dated checked-in snapshot is used and labelled as such. This site does not invent ephemeris and does not fit custom orbits.",
         "The user-agent on catalog requests identifies this app as an unofficial geometric coverage tracker. No Space-Track credentials are shipped to the browser.",
       ],
     },
@@ -31,7 +31,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Coverage (this site)",
       quote:
-        "Coverage (this site): at least one catalogued Rassvet object is above elevation E over point P, using public TLEs.",
+        "Coverage (this site): at least one catalogued Rassvet object is above elevation E over point P, using public element sets.",
       paragraphs: [
         "That is the only definition used for the Now tile, the Today minutes, the city chips, the map footprints, and the next-window countdown.",
       ],
@@ -79,7 +79,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       id: "stale-element-sets",
       heading: "Stale element sets",
       paragraphs: [
-        "If the newest GP epoch for an object is older than 72 hours, the object is marked stale and still propagated, with a warning. Missing IDs that remain in the curated list but have no TLE are marked missing and are omitted from Now / Today / footprints. Decayed IDs on the manual override list (and any object whose perigee is persistently below 150 km) are excluded from coverage.",
+        "If the newest GP epoch for an object is older than 72 hours, the object is marked stale and still propagated, with a warning. Missing IDs that remain in the curated list but have no element set are marked missing and are omitted from Now / Today / footprints. Decayed IDs on the manual override list (and any object whose perigee is persistently below 150 km) are excluded from coverage.",
         "A failed live fetch, or any element set past 72 hours, is called out in the header. Today minutes stay on screen, with a short mark when that snapshot or those element sets are what the count uses.",
       ],
     },
@@ -96,7 +96,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Джерело даних і оновлення",
       paragraphs: [
-        "Орбітальні дані — публічні набори елементів загальних збурень (GP) з CelesTrak (JSON GP). Сервер запитує їх приблизно кожні десять хвилин і кешує результат. Якщо живе завантаження не вдається, використовується датований збережений знімок і це позначено. Сайт не вигадує ефемериди і не підганяє власні орбіти.",
+        "Орбітальні дані — публічні набори елементів загальних збурень (GP) з CelesTrak (JSON GP). Набори елементів — це те, що в каталогах часто називають TLE (дворядкові елементи). Сервер запитує їх приблизно кожні десять хвилин і кешує результат. Якщо живе завантаження не вдається, використовується датований збережений знімок і це позначено. Сайт не вигадує ефемериди і не підганяє власні орбіти.",
         "User-agent запитів до каталогу називає цей застосунок неофіційним трекером геометричного покриття. Облікові дані Space-Track у браузер не потрапляють.",
       ],
     },
@@ -110,7 +110,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Покриття (цей сайт)",
       quote:
-        "Покриття (цей сайт): принаймні один каталожний об’єкт Rassvet є вище кута місця E над точкою P за публічними TLE.",
+        "Покриття (цей сайт): принаймні один каталожний об’єкт Rassvet є вище кута місця E над точкою P за публічними наборами елементів.",
       paragraphs: [
         "Це єдине визначення для плитки «Зараз», хвилин «Сьогодні», міських чипів, контурів на карті та зворотного відліку до наступного вікна.",
       ],
@@ -158,7 +158,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       id: "stale-element-sets",
       heading: "Застарілі набори елементів",
       paragraphs: [
-        "Якщо найновіша епоха GP для об’єкта старіша за 72 години, об’єкт позначається як застарілий і все одно прогнозується, з попередженням. Ідентифікатори з курованого списку без TLE позначаються як відсутні й не входять у «Зараз» / «Сьогодні» / контури. Зійшлі ідентифікатори з ручного списку (і будь-який об’єкт із перигеєм нижче 150 км) з покриття виключені.",
+        "Якщо найновіша епоха GP для об’єкта старіша за 72 години, об’єкт позначається як застарілий і все одно прогнозується, з попередженням. Ідентифікатори з курованого списку без набору елементів позначаються як відсутні й не входять у «Зараз» / «Сьогодні» / контури. Зійшлі ідентифікатори з ручного списку (і будь-який об’єкт із перигеєм нижче 150 км) з покриття виключені.",
         "Невдале живе завантаження або набір елементів старший за 72 години позначено в шапці. Хвилини «Сьогодні» лишаються на екрані, з короткою позначкою, якщо лік узято з того знімка чи з тих наборів.",
       ],
     },
@@ -175,7 +175,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Источник данных и обновление",
       paragraphs: [
-        "Орбитальные данные — публичные наборы элементов общих возмущений (GP) с CelesTrak (JSON GP). Сервер запрашивает их примерно каждые десять минут и кэширует результат. Если живая загрузка не удаётся, используется датированный сохранённый снимок, и это обозначено. Сайт не выдумывает эфемериды и не подгоняет собственные орбиты.",
+        "Орбитальные данные — публичные наборы элементов общих возмущений (GP) с CelesTrak (JSON GP). Наборы элементов — это то, что в каталогах часто называют TLE (двухстрочные элементы). Сервер запрашивает их примерно каждые десять минут и кэширует результат. Если живая загрузка не удаётся, используется датированный сохранённый снимок, и это обозначено. Сайт не выдумывает эфемериды и не подгоняет собственные орбиты.",
         "User-agent запросов к каталогу называет это приложение неофициальным трекером геометрического покрытия. Учётные данные Space-Track в браузер не попадают.",
       ],
     },
@@ -189,7 +189,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Покрытие (этот сайт)",
       quote:
-        "Покрытие (этот сайт): по крайней мере один каталожный объект Rassvet находится выше угла места E над точкой P по публичным TLE.",
+        "Покрытие (этот сайт): по крайней мере один каталожный объект Rassvet находится выше угла места E над точкой P по публичным наборам элементов.",
       paragraphs: [
         "Это единственное определение для плитки «Сейчас», минут «Сегодня», городских чипов, контуров на карте и обратного отсчёта до следующего окна.",
       ],
@@ -237,7 +237,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       id: "stale-element-sets",
       heading: "Устаревшие наборы элементов",
       paragraphs: [
-        "Если новейшая эпоха GP для объекта старше 72 часов, объект помечается как устаревший и всё равно прогнозируется, с предупреждением. Идентификаторы из курируемого списка без TLE помечаются как отсутствующие и не входят в «Сейчас» / «Сегодня» / контуры. Сошедшие идентификаторы из ручного списка (и любой объект с перигеем ниже 150 км) из покрытия исключены.",
+        "Если новейшая эпоха GP для объекта старше 72 часов, объект помечается как устаревший и всё равно прогнозируется, с предупреждением. Идентификаторы из курируемого списка без набора элементов помечаются как отсутствующие и не входят в «Сейчас» / «Сегодня» / контуры. Сошедшие идентификаторы из ручного списка (и любой объект с перигеем ниже 150 км) из покрытия исключены.",
         "Неудавшаяся живая загрузка или набор элементов старше 72 часов отмечены в шапке. Минуты «Сегодня» остаются на экране, с короткой пометкой, если счёт взят из того снимка или из тех наборов.",
       ],
     },
