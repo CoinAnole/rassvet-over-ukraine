@@ -50,3 +50,4 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Method](./method.md) covers the Method page contract.
 - [Catalog freshness](./catalog-freshness.md) covers the live, seed, and stale-element banners.
 - [Constellation](./constellation.md) covers the constellation counts, decayed filter, and launch-group filter.
+- [Satellite set](./satellite-set.md) covers the raised-production default, experimental choices, legacy `set=raised` links, and the not-climbing label.

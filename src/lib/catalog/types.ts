@@ -7,6 +7,7 @@ export type Lang = "en" | "uk" | "ru";
 export type Localized = { en: string; uk: string; ru: string };
 
 export type PopulationFilter =
+  | "prod-raised"
   | "all"
   | "raised"
   | "climbing"
@@ -15,7 +16,9 @@ export type PopulationFilter =
   | "prod-2026-03"
   | "prod-2026-07";
 
-export type ObjectStatus = "climbing" | "raised" | "decayed" | "missing";
+export type ObjectStatus = "climbing" | "raised" | "stuck" | "decayed" | "missing";
+
+export type GroupKind = "production" | "experimental";
 
 export type ConfigObject = {
   norad: number;
@@ -28,6 +31,7 @@ export type ConfigObject = {
 export type GroupDef = {
   id: string;
   launchDate: string | null;
+  kind?: GroupKind;
   label: Localized;
 };
 
@@ -44,6 +48,9 @@ export type ObjectsConfig = {
   celestrak: { queries: string[] };
   groups: GroupDef[];
   decayed: number[];
+  /** NORADs that are still in GP, under the raised gate, and not climbing toward service. */
+  stuck: number[];
+  stuckNote?: string;
   objects: ConfigObject[];
 };
 

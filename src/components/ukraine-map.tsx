@@ -20,8 +20,16 @@ type Props = {
 function statusClass(s: SatMapState["status"], selected: boolean): string {
   if (selected) return "sat-dot sat-dot-selected sat-dot-raised";
   if (s === "climbing") return "sat-dot sat-dot-climbing";
+  if (s === "stuck") return "sat-dot sat-dot-stuck";
   if (s === "decayed") return "sat-dot sat-dot-decayed";
   return "sat-dot sat-dot-raised";
+}
+
+function statusColor(s: SatMapState["status"]): string {
+  if (s === "climbing") return "var(--color-status-climbing)";
+  if (s === "stuck") return "var(--color-status-stuck)";
+  if (s === "decayed") return "var(--color-status-decay)";
+  return "var(--color-status-raised)";
 }
 
 export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
@@ -88,8 +96,7 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
 
       for (const sat of result.map) {
         const selectedSat = sat.norad === selected;
-        const color =
-          sat.status === "climbing" ? "var(--color-status-climbing)" : "var(--color-status-raised)";
+        const color = statusColor(sat.status);
         const fillOp = selectedSat ? 0.22 : 0.08;
         const rings = splitAntimeridianRing(sat.footprint);
         for (const ring of rings) {
@@ -156,6 +163,10 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
         <span className="flex items-center gap-1.5">
           <i className="sat-dot sat-dot-climbing inline-block size-2.5" />
           {t.map.climbing}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="sat-dot sat-dot-stuck inline-block size-2.5" />
+          {t.map.stuck}
         </span>
       </div>
       <div className="absolute right-3 top-3 z-[400]">

@@ -10,11 +10,16 @@ These match Method copy and `src/lib/catalog/build.ts`.
 
 | Status | Rule |
 | --- | --- |
-| Raised | In `objects`, not decayed, approximate altitude `a − 6371` ≥ `raisedAltitudeKm` (480). |
-| Climbing | In `objects`, has a GP row, perigee ≥ `decayPerigeeKm` (150), altitude under 480 km. |
+| Raised | In `objects`, not decayed, approximate altitude `a − 6371` ≥ `raisedAltitudeKm` (480). The raised gate wins over the not-climbing list. |
+| Climbing | In `objects`, has a GP row, perigee ≥ `decayPerigeeKm` (150), altitude under 480 km, and not on `stuck`. |
+| Not climbing | NORAD is on the manual `stuck` list, still has a GP row, perigee is at or above 150 km, and altitude is under 480 km. Excluded from the climbing population. Still included in all-catalogued and in its launch group, with status not climbing. |
 | Decayed | NORAD is on the `decayed` list, **or** the latest GP perigee is under 150 km. Excluded from coverage. A `decayed` entry also drops the element set, even if GP still has one. |
 | Missing | In `objects`, no GP row, and not on `decayed`. Omitted from Now / Today / footprints. |
 | Stale | Newest GP epoch older than `staleHours` (72). Still propagated. |
+
+The default coverage population is raised production (`kind: "production"` and status raised). Experimental groups stay out of that default. `set=raised` and `set=operational` in a shared link still mean every raised object, including experimentals.
+
+This site does not estimate a kilometres-per-day climb rate from one GP. `MEAN_MOTION_DOT` on a single element set is a short-arc fit. On 2026-10-11 it disagreed in size with public altitude-history rates, and for RASSVET-3 26 it disagreed in sign. Do not add a rate column from that field.
 
 `NAME=RASSVET` does not see experimental objects that CelesTrak still calls `OBJECT <letter>`. Those need their launch `INTDES` query. A rideshare `INTDES` also returns objects that are not Rassvet. Do not add those.
 
@@ -53,6 +58,16 @@ COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 - [ ] Do not put a NORAD on `decayed` while GP still publishes it and perigee is at or above 150 km. That override hides a live object. `npm run verify:catalog` fails this case.
 - [ ] A perigee under 150 km is already excluded by the runtime. Note it. Add the NORAD to `decayed` once the TLE disappears, so the next gap is decayed rather than missing.
 - [ ] Current worked example: `68363` / `2026-061D` / `RASSVET-3 4` is on `decayed`, absent from GP, and SATCAT records decay on 2026-06-06. Leave it there.
+
+### Not climbing (monthly)
+
+The `stuck` array is the manual not-climbing list. Review it whenever you run this checklist, including a month with no new launch.
+
+- [ ] For each NORAD on `stuck`, confirm it is still in GP, perigee is at or above 150 km, and approximate altitude is still under 480 km. `npm run verify:catalog` fails the other cases.
+- [ ] Compare the list with a public altitude history you can cite. The 2026-10-11 check used findrassvet.ru (V. Bulybenko, CC BY 4.0, https://creativecommons.org/licenses/by/4.0/). Name the source and the date in `stuckNote`. Do not copy that site’s rates into the UI.
+- [ ] Remove a NORAD that is climbing again, or that the raised gate now covers. Add a NORAD only when the history shows it is not raising and it is still under 480 km on our altitude.
+- [ ] Do not put RASSVET-3 11 (`68370` / `2026-061L`) on `stuck` while that history shows it climbing. As of 2026-10-11 it is under 480 km and stays climbing. There is no failed-early set of 4, 11, and 14. 4 is decayed. 14 is on `stuck`. 11 is not.
+- [ ] Current list, checked 2026-10-11: `68373` (RASSVET-3 14), `100083` (RASSVET-3 17), `100089` (RASSVET-3 23).
 
 ## 3. Wire the population filter
 
@@ -101,6 +116,9 @@ Not failures:
 - curated display `name` different from `OBJECT_NAME` (experimental labels)
 - other objects on an `INTDES` query (rideshare)
 - perigee under 150 km (printed as a note; the runtime already marks it decayed)
-- altitude under 480 km (printed as climbing)
+- altitude under 480 km and not on `stuck` (printed as climbing)
+- altitude under 480 km and on `stuck` (printed as not climbing, not a failure)
+
+Failures also include a `stuck` id that is not in `objects`, that is also on `decayed`, that has no GP row, whose perigee is under 150 km, or whose altitude is at or above 480 km.
 
 Exit 2 means a query failed and presence was not scored. Do not treat that run as a clean catalog.

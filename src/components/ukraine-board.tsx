@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CatalogPayload, Lang, PopulationFilter, TimezoneId } from "@/lib/catalog/types";
+import type { CatalogPayload, Lang, ObjectStatus, PopulationFilter, TimezoneId } from "@/lib/catalog/types";
 import { inPopulation, type CoverageResult } from "@/lib/orbit/coverage";
 import { dataFreshness } from "@/lib/catalog/freshness";
 import { CLOCK_WINDOW_MS, formatClockOffset } from "@/lib/orbit/clock";
@@ -48,9 +48,10 @@ export type ClockControl = {
 
 const ELS = [10, 25, 40] as const;
 const SETS: PopulationFilter[] = [
+  "prod-raised",
   "raised",
-  "all",
   "climbing",
+  "all",
   "exp-2023",
   "exp-2024",
   "prod-2026-03",
@@ -78,6 +79,7 @@ export function UkraineBoard({
 }) {
   const t = getDict(lang);
   const freshness = dataFreshness(catalog);
+  const inSet = catalog.objects.filter((o) => inPopulation(o, view.set)).length;
   const populationStale = catalog.objects.some((o) => o.stale && inPopulation(o, view.set));
   const todayNote =
     freshness.kind === "seed"
@@ -223,6 +225,7 @@ export function UkraineBoard({
         onChange={onChange}
         linkSearch={linkSearch}
         syncLink={syncLink}
+        inSet={inSet}
       />
     </div>
   );
@@ -253,6 +256,7 @@ function ControlRow({
   onChange,
   linkSearch,
   syncLink,
+  inSet,
 }: {
   lang: Lang;
   view: ViewState;
@@ -260,6 +264,7 @@ function ControlRow({
   onChange: (next: Partial<ViewState>) => void;
   linkSearch: ViewSearch;
   syncLink: () => void;
+  inSet: number;
 }) {
   const t = getDict(lang);
   const [latDraft, setLatDraft] = useState(String(view.lat));
@@ -306,19 +311,25 @@ function ControlRow({
             ))}
           </select>
         </Field>
-        <Field label={t.controls.population}>
-          <select
-            className="control-select"
-            value={view.set}
-            onChange={(e) => onChange({ set: e.target.value as PopulationFilter })}
-          >
-            {SETS.map((id) => (
-              <option key={id} value={id}>
-                {t.population[id]}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <div className="flex flex-col gap-1.5">
+          <Field label={t.controls.population}>
+            <select
+              className="control-select"
+              value={view.set}
+              onChange={(e) => onChange({ set: e.target.value as PopulationFilter })}
+            >
+              {SETS.map((id) => (
+                <option key={id} value={id}>
+                  {t.population[id]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <p className="text-xs text-subtle">{t.populationHint}</p>
+          <p className="font-mono text-xs text-fg tabular">
+            {t.inSet.replaceAll("{n}", String(inSet))}
+          </p>
+        </div>
         <Field label={t.controls.timezone}>
           <select
             className="control-select"
@@ -837,21 +848,17 @@ export function PassTable({
   );
 }
 
-export function StatusChip({
-  lang,
-  status,
-}: {
-  lang: Lang;
-  status: "climbing" | "raised" | "decayed" | "missing";
-}) {
+export function StatusChip({ lang, status }: { lang: Lang; status: ObjectStatus }) {
   const t = getDict(lang);
   const color =
     status === "raised"
       ? "text-status-raised"
       : status === "climbing"
         ? "text-status-climbing"
-        : status === "decayed"
-          ? "text-status-decay"
-          : "text-status-stale";
+        : status === "stuck"
+          ? "text-status-stuck"
+          : status === "decayed"
+            ? "text-status-decay"
+            : "text-status-stale";
   return <span className={cn("text-xs font-medium", color)}>{t.status[status]}</span>;
 }

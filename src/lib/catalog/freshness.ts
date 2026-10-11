@@ -10,7 +10,7 @@ export function onOrbitStaleCount(catalog: CatalogPayload): number {
   let n = 0;
   for (const obj of catalog.objects) {
     if (!obj.stale) continue;
-    if (obj.status === "raised" || obj.status === "climbing") n += 1;
+    if (obj.status === "raised" || obj.status === "climbing" || obj.status === "stuck") n += 1;
   }
   return n;
 }

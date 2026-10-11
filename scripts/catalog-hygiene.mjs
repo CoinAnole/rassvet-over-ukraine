@@ -3,8 +3,9 @@
  *
  * The runtime catalog (`src/lib/catalog/build.ts`) is unchanged. This module
  * only reports: present, missing, unexpected RASSVET names, catalogName /
- * COSPAR mismatches, and whether the manual `decayed` list still matches the
- * perigee rule and the absence of a GP row.
+ * COSPAR mismatches, whether the manual `decayed` list still matches the
+ * perigee rule, and whether the manual `stuck` (not-climbing) list is still
+ * under the raised gate and still in GP.
  */
 
 const RASSVET_NAME = /rassvet|рассвет/i;
@@ -63,9 +64,11 @@ export function auditCatalog(opts) {
   const fetchComplete = queries.length > 0 && queries.every((q) => q.ok);
   const objects = Array.isArray(config.objects) ? config.objects : [];
   const decayed = Array.isArray(config.decayed) ? config.decayed : [];
+  const stuck = Array.isArray(config.stuck) ? config.stuck : [];
   const groups = Array.isArray(config.groups) ? config.groups : [];
   const groupIds = new Set(groups.map((g) => g.id));
   const decayedSet = new Set(decayed);
+  const stuckSet = new Set(stuck);
   const decayPerigeeKm = Number(config.decayPerigeeKm);
   const raisedAltitudeKm = Number(config.raisedAltitudeKm);
   const staleHours = Number(config.staleHours);
@@ -80,6 +83,9 @@ export function auditCatalog(opts) {
   if (!Array.isArray(config.objects) || !Array.isArray(config.decayed)) {
     failures.push("objects.json is missing `objects` or `decayed`.");
   }
+  if (config.stuck != null && !Array.isArray(config.stuck)) {
+    failures.push("`stuck` must be an array of NORAD ids.");
+  }
   for (const id of duplicates(objects.map((o) => o.norad))) {
     failures.push(`Duplicate NORAD ${id} in objects.`);
   }
@@ -89,12 +95,25 @@ export function auditCatalog(opts) {
   for (const id of duplicates(decayed)) {
     failures.push(`Duplicate NORAD ${id} in decayed.`);
   }
+  for (const id of duplicates(stuck)) {
+    failures.push(`Duplicate NORAD ${id} in stuck.`);
+  }
   const objectIds = new Set(objects.map((o) => o.norad));
   for (const id of decayed) {
     if (!objectIds.has(id)) {
       failures.push(
         `Decayed NORAD ${id} is not in objects. The override cannot label an ID the catalog does not list.`,
       );
+    }
+  }
+  for (const id of stuck) {
+    if (!objectIds.has(id)) {
+      failures.push(
+        `Not-climbing NORAD ${id} is not in objects. The override cannot label an ID the catalog does not list.`,
+      );
+    }
+    if (decayedSet.has(id)) {
+      failures.push(`NORAD ${id} is on both decayed and stuck. Decayed already drops it from coverage.`);
     }
   }
   for (const obj of objects) {
@@ -128,6 +147,7 @@ export function auditCatalog(opts) {
   const displayDiffs = [];
   const lowPerigee = [];
   const climbing = [];
+  const stuckRows = [];
   const stale = [];
 
   if (fetchComplete) {
@@ -138,6 +158,11 @@ export function auditCatalog(opts) {
         if (!decayedSet.has(obj.norad)) {
           failures.push(
             `NORAD ${obj.norad} (${obj.cospar} ${obj.name}) is not in GP and is not on the decayed list. It will show as missing.`,
+          );
+        }
+        if (stuckSet.has(obj.norad)) {
+          failures.push(
+            `Not-climbing NORAD ${obj.norad} (${obj.name}) has no GP row. The list is for an object that is still published. Move it to decayed once reentry is confirmed, or drop it from stuck.`,
           );
         }
         continue;
@@ -171,7 +196,23 @@ export function auditCatalog(opts) {
           );
         }
       } else if (orbit && orbit.approxAltitudeKm < raisedAltitudeKm && !decayedSet.has(obj.norad)) {
-        climbing.push(entry);
+        if (stuckSet.has(obj.norad)) stuckRows.push(entry);
+        else climbing.push(entry);
+      }
+      if (stuckSet.has(obj.norad) && orbit && orbit.perigeeKm < decayPerigeeKm) {
+        failures.push(
+          `Not-climbing NORAD ${obj.norad} (${obj.name}) has perigee ${km(orbit.perigeeKm)} km, under the ${decayPerigeeKm} km decay gate. Remove it from stuck. The runtime already marks it decayed.`,
+        );
+      }
+      if (
+        stuckSet.has(obj.norad) &&
+        orbit &&
+        orbit.perigeeKm >= decayPerigeeKm &&
+        orbit.approxAltitudeKm >= raisedAltitudeKm
+      ) {
+        failures.push(
+          `Not-climbing override ${obj.norad} (${obj.name}) is at ${km(orbit.approxAltitudeKm)} km, at or above the ${raisedAltitudeKm} km raised gate. Remove it from stuck. The runtime already counts it as raised.`,
+        );
       }
       if (ageH != null && ageH > staleHours) stale.push(entry);
 
@@ -256,6 +297,8 @@ export function auditCatalog(opts) {
     rideshare,
     lowPerigee,
     climbing,
+    stuck: stuckRows,
+    stuckIds: stuck,
     stale,
     decayed,
     decayPerigeeKm,
@@ -349,12 +392,24 @@ export function renderAudit(report) {
 
     push("");
     push(`Decayed list (${report.decayed.length}): ${report.decayed.join(", ") || "(empty)"}`);
+    push(
+      `Not climbing, manual list (${report.stuckIds.length}): ${report.stuckIds.join(", ") || "(empty)"}`,
+    );
+    push(`Not climbing, still under the raised gate: ${report.stuck.length}`);
+    const stuckSorted = [...report.stuck].sort(
+      (a, b) => (a.orbit?.approxAltitudeKm ?? 0) - (b.orbit?.approxAltitudeKm ?? 0),
+    );
+    for (const entry of stuckSorted) {
+      push(
+        `  ${entry.obj.norad}  ${entry.obj.name}  alt ${km(entry.orbit?.approxAltitudeKm)}  perigee ${km(entry.orbit?.perigeeKm)}`,
+      );
+    }
     push(`Perigee under ${report.decayPerigeeKm} km: ${report.lowPerigee.length}`);
     for (const entry of report.lowPerigee) {
       push(`  ${entry.obj.norad}  ${entry.obj.name}  perigee ${km(entry.orbit?.perigeeKm)}`);
     }
     push(
-      `Climbing (approx altitude < ${report.raisedAltitudeKm} km, perigee still above the decay gate): ${report.climbing.length}`,
+      `Climbing (approx altitude < ${report.raisedAltitudeKm} km, not on the not-climbing list, perigee still above the decay gate): ${report.climbing.length}`,
     );
     const climbing = [...report.climbing].sort(
       (a, b) => (a.orbit?.approxAltitudeKm ?? 0) - (b.orbit?.approxAltitudeKm ?? 0),

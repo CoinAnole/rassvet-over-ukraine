@@ -12,6 +12,8 @@ Unofficial geometric coverage clock for catalogued Rassvet / «Рассвет» 
 
 At a ground point P and minimum elevation E, how many minutes of geometric line-of-sight the current public catalog produces today, when the next window is, and which objects are still climbing versus near operational altitude (raised ≥ 480 km).
 
+The default set is production RASSVET-3 at or above 480 km. Experimental Rassvet-1 and Rassvet-2 are separate choices. Objects on the manual not-climbing list are not described as climbing toward service.
+
 Visible is never presented as linked, encrypted, military-ready, or 24-hour service.
 
 ## Adding a launch group
@@ -24,7 +26,9 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 
 | Key | Meaning |
 | --- | --- |
-| `raisedAltitudeKm` | 480 — Raised population gate |
+| `raisedAltitudeKm` | 480 — Raised population gate. Unchanged. |
+| `decayed` | Manual NORAD list. RASSVET-3 4 (`68363`) decayed 2026-06-06. |
+| `stuck` | Manual not-climbing NORAD list. Checked 2026-10-11: RASSVET-3 14 (`68373`), 17 (`100083`), 23 (`100089`). RASSVET-3 11 (`68370`) is not on it. |
 | `staleHours` | 72 — mark and still propagate |
 | `stepSeconds` | 30 — elevation sampling |
 | `minPassSeconds` | 60 — ignore shorter passes |

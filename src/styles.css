@@ -17,6 +17,7 @@
   --color-accent-fg: #08090c;
   --color-status-raised: #6fbfa8;
   --color-status-climbing: #c4a574;
+  --color-status-stuck: #7f93ad;
   --color-status-decay: #c47a72;
   --color-status-stale: #8b91a0;
   --color-status-selected: #f2f4f7;
@@ -215,6 +216,9 @@
 }
 .sat-dot-climbing {
   background: var(--color-status-climbing);
+}
+.sat-dot-stuck {
+  background: var(--color-status-stuck);
 }
 .sat-dot-decayed {
   background: var(--color-status-decay);

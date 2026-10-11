@@ -43,19 +43,26 @@ export function parseEl(v: unknown): 10 | 25 | 40 {
   return 25;
 }
 
+const SET_VALUES: readonly PopulationFilter[] = [
+  "prod-raised",
+  "all",
+  "raised",
+  "climbing",
+  "exp-2023",
+  "exp-2024",
+  "prod-2026-03",
+  "prod-2026-07",
+];
+
 export function parseSet(v: unknown): PopulationFilter {
+  // `raised` and the older alias `operational` stay "every object at or above 480 km",
+  // including experimentals. A link that names that selection still opens it.
+  // A missing or unknown value is the default: raised production only.
   if (v === "operational" || v === "raised") return "raised";
-  if (
-    v === "all" ||
-    v === "climbing" ||
-    v === "exp-2023" ||
-    v === "exp-2024" ||
-    v === "prod-2026-03" ||
-    v === "prod-2026-07"
-  ) {
-    return v;
+  if (typeof v === "string" && (SET_VALUES as readonly string[]).includes(v)) {
+    return v as PopulationFilter;
   }
-  return "raised";
+  return "prod-raised";
 }
 
 export function parseTz(v: unknown): TimezoneId {
@@ -87,7 +94,7 @@ export function defaultView(lang: Lang = "en"): ViewState {
     lat: kyiv.lat,
     lon: kyiv.lon,
     el: 25,
-    set: "raised",
+    set: "prod-raised",
     tz: "kyiv",
     lang,
   };
@@ -149,7 +156,7 @@ export function searchFromView(view: ViewState, heldAtMs?: number | null): ViewS
     search.place = view.place;
   }
   if (view.el !== 25) search.el = view.el;
-  if (view.set !== "raised") search.set = view.set;
+  if (view.set !== "prod-raised") search.set = view.set;
   if (view.tz !== "kyiv") search.tz = view.tz;
   if (view.lang !== "en") search.lang = view.lang;
   if (heldAtMs != null && Number.isFinite(heldAtMs)) search.at = new Date(heldAtMs).toISOString();
