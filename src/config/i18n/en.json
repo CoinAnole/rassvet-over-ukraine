@@ -87,16 +87,16 @@
     "custom": "Custom point"
   },
   "population": {
-    "prod-raised": "Raised production (≥ 480 km)",
+    "prod-raised": "Raised production (≥ 450 km)",
     "raised": "Raised, including experimental",
     "all": "All catalogued Rassvet",
-    "climbing": "Climbing (< 480 km)",
+    "climbing": "Climbing (< 450 km)",
     "exp-2023": "Experimental, Rassvet-1",
     "exp-2024": "Experimental, Rassvet-2",
     "prod-2026-03": "Production Mar 2026",
     "prod-2026-07": "Production Jul 2026"
   },
-  "populationHint": "Default is production RASSVET-3 at or above 480 km. Experimental Rassvet-1 and Rassvet-2 are separate choices.",
+  "populationHint": "Default is production RASSVET-3 at or above 450 km. Experimental Rassvet-1 and Rassvet-2 are separate choices.",
   "inSet": "{n} in this set",
   "tz": {
     "kyiv": "Kyiv",
@@ -120,9 +120,9 @@
     "emptyHeld": "No geometric passes in the 36 hours after this clock for this point, mask, and population."
   },
   "status": {
-    "climbing": "climbing <480 km",
+    "climbing": "climbing <450 km",
     "stuck": "not climbing",
-    "raised": "raised ≥480 km",
+    "raised": "raised ≥450 km",
     "decayed": "decayed",
     "missing": "missing",
     "stale": "stale element set"
@@ -131,8 +131,8 @@
     "reset": "Reset view",
     "observer": "Ground point",
     "mask": "min elevation",
-    "raised": "Raised ≥480 km",
-    "climbing": "Climbing <480 km",
+    "raised": "Raised ≥450 km",
+    "climbing": "Climbing <450 km",
     "stuck": "Not climbing"
   },
   "cityStrip": {
@@ -142,12 +142,12 @@
   },
   "constellation": {
     "title": "Constellation",
-    "caption": "Raised is at least 480 km. Climbing is still below 480 km and is not on the not-climbing list. Not climbing is a manual list, not a rate from one element set. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
+    "caption": "Raised is at least 450 km. Climbing is still below 450 km and is not on the not-climbing list. Not climbing is a manual list, not a rate from one element set. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
     "xAxis": "Days since launch",
     "yAxis": "Approx. altitude (a − Re), km",
     "onOrbit": "Catalogued on orbit",
-    "raised": "Raised (≥ 480 km)",
-    "climbing": "Climbing (< 480 km)",
+    "raised": "Raised (≥ 450 km)",
+    "climbing": "Climbing (< 450 km)",
     "stuck": "Not climbing",
     "decayed": "Decayed / lost",
     "groups": "Launch groups",
@@ -208,5 +208,5 @@
       "missing": "missing"
     }
   },
-  "altitudeGloss": "Raised means at least 480 km. Climbing means still below 480 km and not on the not-climbing list."
+  "altitudeGloss": "Raised means at least 450 km. Climbing means still below 450 km and not on the not-climbing list."
 }

@@ -55,7 +55,7 @@ const SET_VALUES: readonly PopulationFilter[] = [
 ];
 
 export function parseSet(v: unknown): PopulationFilter {
-  // `raised` and the older alias `operational` stay "every object at or above 480 km",
+  // `raised` and the older alias `operational` stay "every object at or above 450 km",
   // including experimentals. A link that names that selection still opens it.
   // A missing or unknown value is the default: raised production only.
   if (v === "operational" || v === "raised") return "raised";
