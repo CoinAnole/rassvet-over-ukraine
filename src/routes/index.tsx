@@ -58,7 +58,7 @@ function Home() {
   const { catalog } = Route.useLoaderData();
   const search = Route.useSearch();
   return (
-    <LangFrame current="/" catalog={catalog} langParam={search.lang}>
+    <LangFrame current="/" catalog={catalog} langParam={search.lang} search={search}>
       {(lang) => <UkraineToday lang={lang} />}
     </LangFrame>
   );

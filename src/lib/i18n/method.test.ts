@@ -52,6 +52,21 @@ describe("method copy", () => {
     assert.match(ruText, /круглосуточн/);
   });
 
+  it("keeps a stable anchor on the stale-element-set section", () => {
+    assert.equal(
+      methodSections("en").find((s) => s.heading === "Stale element sets")?.id,
+      "stale-element-sets",
+    );
+    assert.equal(
+      methodSections("uk").find((s) => s.heading === "Застарілі набори елементів")?.id,
+      "stale-element-sets",
+    );
+    assert.equal(
+      methodSections("ru").find((s) => s.heading === "Устаревшие наборы элементов")?.id,
+      "stale-element-sets",
+    );
+  });
+
   it("names the default production set, the not-climbing list, and the CC BY source in each language", () => {
     const en = methodSections("en").find((s) => s.heading === "Which satellites count");
     assert.ok(en);

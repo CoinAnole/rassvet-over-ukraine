@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { detectLang, persistLang, isLang } from "@/lib/i18n";
+import { detectLang, persistLang, isLang, getDict } from "@/lib/i18n";
 import { dataFreshness } from "@/lib/catalog/freshness";
+import { summarizeStale } from "@/lib/catalog/stale-summary";
 import type { Lang, CatalogPayload } from "@/lib/catalog/types";
+import { viewFromSearch, type ViewSearch } from "@/lib/view-state";
 
 function newestEpoch(catalog: CatalogPayload | undefined): string | null {
   if (!catalog) return null;
@@ -24,11 +26,14 @@ export function LangFrame({
   current,
   catalog,
   langParam,
+  search,
   children,
 }: {
   current: "/" | "/constellation" | "/method";
   catalog: CatalogPayload;
   langParam?: string;
+  /** Ukraine today search. Other pages have no coverage set, so the note uses the default. */
+  search?: ViewSearch;
   children: (lang: Lang) => React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -54,6 +59,14 @@ export function LangFrame({
     [navigate, current],
   );
 
+  const t = getDict(lang);
+  const coverage = search ? viewFromSearch(search, lang) : null;
+  const cityLabel = coverage
+    ? coverage.place === "custom"
+      ? t.places.custom
+      : t.places[coverage.place]
+    : null;
+
   return (
     <AppShell
       lang={lang}
@@ -62,6 +75,11 @@ export function LangFrame({
       newestEpoch={newestEpoch(catalog)}
       source={catalog.source}
       freshness={dataFreshness(catalog)}
+      stale={summarizeStale(catalog, {
+        now: new Date(catalog.fetchedAt),
+        set: coverage?.set ?? null,
+      })}
+      cityLabel={cityLabel}
       warning={catalog.source === "seed" ? null : catalog.warning}
       current={current}
     >

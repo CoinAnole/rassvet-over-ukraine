@@ -44,7 +44,7 @@ export function getDict(lang: Lang): Dict {
   return DICTS[lang] as Dict;
 }
 
-function slavicPlural(n: number, one: string, few: string, many: string): string {
+export function slavicPlural(n: number, one: string, few: string, many: string): string {
   const n10 = n % 10;
   const n100 = n % 100;
   if (n10 === 1 && n100 !== 11) return one;

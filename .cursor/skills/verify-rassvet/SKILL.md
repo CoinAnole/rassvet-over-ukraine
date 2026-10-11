@@ -60,7 +60,7 @@ Stable handles, English UI:
 | Product title | heading `Rassvet over Ukraine` |
 | Language | button `EN`, `UK`, or `RU` (`aria-pressed`) |
 | Primary nav | navigation `Primary`; links `Ukraine today`, `Constellation`, `Method` |
-| Catalog freshness | status whose text starts with `Not live` or `Stale GP` |
+| Catalog freshness | status whose text starts with `Not live`, `Stale GP`, or `Older GP` |
 | Location | label `Location` (options include `Lviv`, `Vinnytsia`, `Custom lat/lon`) |
 | Min elevation | label `Min elevation` (options `10°`, `25°`, `40°`) |
 | Population | label `Population` |
