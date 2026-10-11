@@ -24,6 +24,7 @@ import { createServer } from "node:net";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { buildGpFixture, GP_FIXTURES } from "./gp-fixture.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SKILL_DIR = resolve(SCRIPT_DIR, "..");
@@ -36,6 +37,10 @@ const LOG_FILE = join(RUN_DIR, "vite.log");
 const URL_FILE = join(RUN_DIR, "last-url");
 const PROFILE_DIR = join(RUN_DIR, "browser-profile");
 const LOCK_FILE = join(RUN_DIR, "browser.lock");
+const GP_FIXTURE_FILE = join(RUN_DIR, "gp-fixture.json");
+const GP_FIXTURE_PLAN = join(RUN_DIR, "gp-fixture-plan.json");
+const GP_FIXTURE_MODE = join(RUN_DIR, "gp-fixture-mode");
+const GP_FETCH_HOOK = join(SCRIPT_DIR, "gp-fetch-hook.mjs");
 const MARKER = "VERIFY_RASSVET";
 const DEFAULT_PORT = 4173;
 const APP_MARK = "Rassvet over Ukraine";
@@ -54,10 +59,11 @@ export function commandFailed(payload) {
 
 function usage() {
   return `usage:
-  verify-rassvet.mjs launch [--port 4173]
+  verify-rassvet.mjs launch [--port 4173] [--gp-fixture stale-in-set|stale-outside-set]
   verify-rassvet.mjs doctor
   verify-rassvet.mjs cleanup
   verify-rassvet.mjs browser open <path>
+  verify-rassvet.mjs browser sequence --file <steps.json>
   verify-rassvet.mjs browser click --role <role> --name <name> [--nth 0]
   verify-rassvet.mjs browser click --selector <css> [--nth 0]
   verify-rassvet.mjs browser select --label <label> --option <text> [--wait-text <text>]
@@ -72,7 +78,7 @@ function usage() {
   verify-rassvet.mjs browser text
   verify-rassvet.mjs browser section --contains <text>
   verify-rassvet.mjs browser count --selector <css>
-  verify-rassvet.mjs browser expect [--text <text>] [--any <text> ...] [--absent <text>] [--url-includes <text>] [--section <text>] [--role <role> --name <name>]`;
+  verify-rassvet.mjs browser expect [--text <text>] [--any <text> ...] [--absent <text>] [--url-includes <text>] [--section <text>] [--selector <css>] [--attr <name=value>] [--role <role> --name <name>]`;
 }
 
 function addFlag(flags, key, value) {
@@ -150,6 +156,25 @@ function readPid() {
   } catch {
     return null;
   }
+}
+
+function readFixtureMode() {
+  try {
+    const mode = readFileSync(GP_FIXTURE_MODE, "utf8").trim();
+    return mode || null;
+  } catch {
+    return null;
+  }
+}
+
+function envValue(pid, key) {
+  const raw = readProc(pid, "environ");
+  if (!raw) return null;
+  const prefix = `${key}=`;
+  for (const entry of raw.toString("utf8").split("\0")) {
+    if (entry.startsWith(prefix)) return entry.slice(prefix.length);
+  }
+  return null;
 }
 
 function readPort() {
@@ -233,7 +258,7 @@ function staleOnOrbit(objects) {
   let n = 0;
   for (const obj of objects) {
     if (!obj?.stale) continue;
-    if (obj.status === "raised" || obj.status === "climbing") n += 1;
+    if (obj.status === "raised" || obj.status === "climbing" || obj.status === "stuck") n += 1;
   }
   return n;
 }
@@ -261,16 +286,33 @@ async function readCatalog(base) {
   };
 }
 
+function requestedFixture(flags) {
+  if (flags["gp-fixture"] == null) return null;
+  const mode = String(flags["gp-fixture"]);
+  if (!GP_FIXTURES.includes(mode)) {
+    fail(`unknown --gp-fixture ${mode}. Use ${GP_FIXTURES.join(" or ")}.`);
+  }
+  return mode;
+}
+
 async function launch(flags) {
   const port = Number(flags.port ?? process.env.VERIFY_RASSVET_PORT ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) fail(`invalid port ${flags.port}`);
   if (port === 8080 || port === 8081) {
     fail(`port ${port} is reserved for the live preview (8080) or the built preview (8081)`);
   }
+  const gpFixture = requestedFixture(flags);
 
   const existing = readPid();
   const recordedPort = readPort();
   if (existing && recordedPort === port && isOurServer(existing, port)) {
+    const runningFixture = envValue(existing, "VERIFY_RASSVET_GP_FIXTURE") || readFixtureMode();
+    if ((runningFixture || null) !== gpFixture) {
+      fail(
+        `verification server pid ${existing} is already running with gp fixture ${runningFixture ?? "off"}. Requested ${gpFixture ?? "off"}. Run cleanup, then launch again.`,
+        { pid: existing, port, gpFixture: runningFixture ?? null },
+      );
+    }
     try {
       await waitReady(`${origin()}/`, existing, 5_000);
       emit({
@@ -280,6 +322,7 @@ async function launch(flags) {
         port,
         url: `${origin()}/`,
         log: LOG_FILE,
+        gpFixture,
       });
     } catch {
       /* fall through and refuse if the process is ours but not answering */
@@ -301,6 +344,21 @@ async function launch(flags) {
   }
 
   mkdirSync(RUN_DIR, { recursive: true });
+  const env = {
+    ...process.env,
+    [MARKER]: "1",
+    PATH: `${join(REPO_ROOT, "node_modules", ".bin")}:${process.env.PATH ?? ""}`,
+  };
+  if (gpFixture) {
+    const built = buildGpFixture(gpFixture, new Date());
+    writeFileSync(GP_FIXTURE_FILE, JSON.stringify(built.objects));
+    writeFileSync(GP_FIXTURE_PLAN, `${JSON.stringify(built.plan, null, 2)}\n`);
+    writeFileSync(GP_FIXTURE_MODE, `${gpFixture}\n`);
+    env.VERIFY_RASSVET_GP_FIXTURE = gpFixture;
+    env.VERIFY_RASSVET_GP_FIXTURE_FILE = GP_FIXTURE_FILE;
+    const hookImport = `--import ${GP_FETCH_HOOK}`;
+    env.NODE_OPTIONS = env.NODE_OPTIONS ? `${env.NODE_OPTIONS} ${hookImport}` : hookImport;
+  }
   const logFd = openSync(LOG_FILE, "w");
   const child = spawn(
     process.execPath,
@@ -318,11 +376,7 @@ async function launch(flags) {
       cwd: REPO_ROOT,
       detached: true,
       stdio: ["ignore", logFd, logFd],
-      env: {
-        ...process.env,
-        [MARKER]: "1",
-        PATH: `${join(REPO_ROOT, "node_modules", ".bin")}:${process.env.PATH ?? ""}`,
-      },
+      env,
     },
   );
   child.unref();
@@ -342,6 +396,7 @@ async function launch(flags) {
     port,
     url: `http://127.0.0.1:${port}/`,
     log: LOG_FILE,
+    gpFixture,
   });
 }
 
@@ -382,6 +437,7 @@ async function doctor() {
     homeStatus,
     cmdline: cmdline(pid),
     catalog,
+    gpFixture: envValue(pid, "VERIFY_RASSVET_GP_FIXTURE") || readFixtureMode(),
   });
 }
 
@@ -479,6 +535,16 @@ async function withPage(fn) {
     locale: "en-US",
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
+  if (existsSync(GP_FIXTURE_FILE)) {
+    const body = readFileSync(GP_FIXTURE_FILE);
+    await context.route("**/*celestrak.org/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body,
+      }),
+    );
+  }
   try {
     const page = context.pages()[0] ?? (await context.newPage());
     page.on("console", (msg) => {
@@ -571,22 +637,18 @@ function writeNote(path, flags, url) {
   );
 }
 
-async function browser(positional, flags) {
-  const action = positional[0];
-  if (!action) fail(usage());
-  let payload;
-  try {
-    payload = await withPage(async (page) => {
-      if (action === "open") {
-        const dest = positional[1];
-        if (!dest) throw new Error("browser open requires a path");
-        const url = pageUrl(dest);
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
-        await waitInteractive(page);
-        return { ok: true, action, opened: url };
-      }
+async function perform(page, action, positional, flags, navigate = true) {
+  if (!action) throw new Error("missing browser action");
+  if (action === "open") {
+    const dest = positional[1];
+    if (!dest) throw new Error("browser open requires a path");
+    const url = pageUrl(dest);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await waitInteractive(page);
+    return { ok: true, action, opened: url };
+  }
 
-      await reopen(page);
+  if (navigate) await reopen(page);
 
       if (action === "click") {
         const target = locator(page, flags);
@@ -673,7 +735,7 @@ async function browser(positional, flags) {
         return { ok: true, action, path, fullPage: Boolean(flags["full-page"]) };
       }
 
-      if (action === "url") return { ok: true, action };
+      if (action === "url") return { ok: true, action, url: page.url() };
       if (action === "text") return { ok: true, action, text: await page.locator("body").innerText() };
 
       if (action === "section") {
@@ -688,6 +750,18 @@ async function browser(positional, flags) {
 
       if (action === "expect") {
         const problems = [];
+        const anys = flagList(flags, "any");
+        let scopedText = null;
+        if (flags.selector && (flags.text || flags.absent || anys.length)) {
+          const node = page.locator(String(flags.selector)).first();
+          try {
+            await node.waitFor({ timeout: 15_000 });
+            scopedText = await node.innerText();
+          } catch {
+            problems.push(`missing ${flags.selector}`);
+            scopedText = "";
+          }
+        }
         if (flags.section) {
           const text = await sectionText(page, String(flags.section));
           if (flags.text && !text.includes(String(flags.text))) {
@@ -705,8 +779,17 @@ async function browser(positional, flags) {
             problems.push(`missing ${flags.role} named ${JSON.stringify(flags.name)}`);
           }
         }
-        const anys = flagList(flags, "any");
-        if (!flags.section) {
+        if (scopedText != null) {
+          if (flags.text && !scopedText.includes(String(flags.text))) {
+            problems.push(`selector missing ${JSON.stringify(flags.text)}`);
+          }
+          if (anys.length && !anys.some((candidate) => scopedText.includes(candidate))) {
+            problems.push(`selector missing all of ${JSON.stringify(anys)}`);
+          }
+          if (flags.absent && scopedText.includes(String(flags.absent))) {
+            problems.push(`selector unexpectedly included ${JSON.stringify(flags.absent)}`);
+          }
+        } else if (!flags.section) {
           if (flags.text && (await page.getByText(String(flags.text)).count()) === 0) {
             problems.push(`page missing ${JSON.stringify(flags.text)}`);
           }
@@ -721,6 +804,18 @@ async function browser(positional, flags) {
             problems.push(`page unexpectedly included ${JSON.stringify(flags.absent)}`);
           }
         }
+        if (flags.attr) {
+          if (!flags.selector) throw new Error("--attr requires --selector");
+          const raw = String(flags.attr);
+          const eq = raw.indexOf("=");
+          if (eq <= 0) throw new Error("--attr must be name=value");
+          const attrName = raw.slice(0, eq);
+          const expected = raw.slice(eq + 1);
+          const value = await page.locator(String(flags.selector)).first().getAttribute(attrName);
+          if (value !== expected) {
+            problems.push(`attribute ${attrName} was ${JSON.stringify(value)}, expected ${JSON.stringify(expected)}`);
+          }
+        }
         if (flags["url-includes"] && !page.url().includes(String(flags["url-includes"]))) {
           problems.push(`url ${page.url()} missing ${JSON.stringify(flags["url-includes"])}`);
         }
@@ -730,9 +825,12 @@ async function browser(positional, flags) {
           !flags["url-includes"] &&
           !anys.length &&
           !flags.section &&
+          !flags.attr &&
           !(flags.role && flags.name)
         ) {
-          throw new Error("expect needs --text, --any, --absent, --url-includes, --section, or --role/--name");
+          throw new Error(
+            "expect needs --text, --any, --absent, --url-includes, --section, --attr, or --role/--name",
+          );
         }
         if (flags.section && problems.length) {
           return { ok: false, action, problems, section: await sectionText(page, String(flags.section)) };
@@ -742,7 +840,46 @@ async function browser(positional, flags) {
           : { ok: true, action };
       }
 
-      throw new Error(`unknown browser action ${action}\n${usage()}`);
+  throw new Error(`unknown browser action ${action}\n${usage()}`);
+}
+
+function stepFlags(step) {
+  const flags = { ...step };
+  delete flags.action;
+  if (flags.waitText != null) flags["wait-text"] = flags.waitText;
+  if (flags.urlIncludes != null) flags["url-includes"] = flags.urlIncludes;
+  if (flags.fullPage != null) flags["full-page"] = flags.fullPage;
+  return flags;
+}
+
+async function browser(positional, flags) {
+  const action = positional[0];
+  if (!action) fail(usage());
+  let payload;
+  try {
+    payload = await withPage(async (page) => {
+      if (action === "sequence") {
+        if (!flags.file) throw new Error("sequence requires --file");
+        const steps = JSON.parse(readFileSync(resolve(String(flags.file)), "utf8"));
+        if (!Array.isArray(steps) || steps.length === 0) throw new Error("sequence file must be a non-empty array");
+        const results = [];
+        let fresh = true;
+        for (const step of steps) {
+          const stepAction = step.action;
+          const result = await perform(
+            page,
+            stepAction,
+            stepAction === "open" ? ["open", step.path] : [stepAction],
+            stepFlags(step),
+            fresh && stepAction !== "open",
+          );
+          results.push(result);
+          fresh = false;
+          if (result.ok === false) return { ok: false, action: "sequence", failed: result, results };
+        }
+        return { ok: true, action: "sequence", steps: results.length, results };
+      }
+      return perform(page, action, positional, flags, true);
     });
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));

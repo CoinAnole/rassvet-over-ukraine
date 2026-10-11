@@ -21,6 +21,15 @@ From the repo root:
 
 That runs `node scripts/with-app-env.mjs vite dev --host 127.0.0.1 --port 4173 --strictPort` in its own process group, with `node_modules/.bin` on `PATH` and `VERIFY_RASSVET=1` in the environment. Override the port with `--port` or `VERIFY_RASSVET_PORT`. Ports 8080 and 8081 are rejected.
 
+To exercise a stale catalog without waiting on CelesTrak, launch with `--gp-fixture`:
+
+```bash
+.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs launch --gp-fixture stale-in-set
+.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs launch --gp-fixture stale-outside-set
+```
+
+`stale-in-set` makes RASSVET-3 1 and RASSVET-3 2 older than 72 hours (raised production, so the default set shows `Stale GP`). RASSVET-3 3 is 71 hours old and must stay off the list. `stale-outside-set` makes Rassvet-1 No. 1 and Rassvet-2 No. 1 older than 72 hours and leaves raised production inside the gate, so the default set shows `Older GP`. Rassvet-1 No. 2 is the 71-hour control. Every other element set is 6 hours old. Mean motion is copied from `src/data/catalog-seed.json`, so raised / climbing / not climbing do not move. Switching fixtures needs `cleanup` first; a second launch refuses a live server whose fixture does not match. The dev server caches the catalog for ten minutes, which is why a new process is required.
+
 Ready means `GET http://127.0.0.1:4173/` returns HTTP 200 and the HTML includes `Rassvet over Ukraine`. The first request waits on Vite compile and on the catalog loader (live CelesTrak queries, 8s timeout each, else the checked-in snapshot). Launch waits up to 180s, then prints JSON `{ ok, pid, port, url, log }` on stdout. The log is `.cursor/skills/verify-rassvet/.run/vite.log`.
 
 A launch that finds the pid it already recorded, still marked with `VERIFY_RASSVET=1`, and already answering on that port prints `alreadyRunning: true` and leaves it up.
@@ -37,11 +46,21 @@ Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid
 
 `catalog` in that JSON is the read to trust:
 
-- `source`: `live` (CelesTrak GP answered) or `seed` (live fetch failed; `src/data/catalog-seed.json` is in use).
+- `source`: `live` (a GP response was parsed) or `seed` (live fetch failed; `src/data/catalog-seed.json` is in use).
 - `fetchedAt`: element-set fetch time. The seed snapshot is dated `2026-09-20T12:32:36Z`.
-- `objectCount`, `staleOnOrbit`, `warning`.
+- `objectCount`, `staleOnOrbit` (raised, climbing, and not climbing), `warning`.
+- Top-level `gpFixture`: `stale-in-set`, `stale-outside-set`, or null. A fixture launch still reports `source: live`, because the app parsed GP JSON. Say so in the proof notes. It is not a CelesTrak round trip.
 
 Do not add a test-only catalog endpoint. Do not block CelesTrak to force the seed path. If `source` is `seed`, keep driving; the seed banner is the real fallback, and the proof notes must say so. `npm run verify:catalog` queries CelesTrak for NORAD identity and is not a substitute for this doctor.
+
+## GP fixture
+
+`loadCatalog` fetches `https://celestrak.org/NORAD/elements/gp.php` from the Vite process. Playwright's `page.route` never sees that request. With `--gp-fixture`, the harness does both of these, and neither changes app code:
+
+- Registers a Playwright route on `**/*celestrak.org/**` for the browser context, fulfilling it with the fixture, so a page request cannot reach CelesTrak during the drive.
+- Starts the dev server with `node --import .cursor/skills/verify-rassvet/scripts/gp-fetch-hook.mjs`. That hook is what `loadCatalog` hits. The body is `.run/gp-fixture.json`, built by `gp-fixture.mjs` from the checked-in snapshot with epochs shifted. The plan is `.run/gp-fixture-plan.json`.
+
+A fixture run is opt-in. A plain `launch` still calls CelesTrak and falls back to the snapshot if that fails.
 
 ## Drive
 
@@ -134,10 +153,11 @@ The helper is executable. From the repo root:
 
 | Command | What it does |
 | --- | --- |
-| `launch [--port N]` | Start the isolated dev server. Prints pid, port, url, log. |
+| `launch [--port N] [--gp-fixture stale-in-set\|stale-outside-set]` | Start the isolated dev server. Prints pid, port, url, log, and `gpFixture`. |
 | `doctor` | Read-only health check. Prints the catalog source. |
 | `cleanup` | Stop the server this harness started and delete `.run/` only. |
 | `browser open <path>` | Open `path` on the verification origin (`/` or `/?place=lviv`). |
+| `browser sequence --file <steps.json>` | Run several browser actions in one page. Each separate `browser` command opens a fresh page, so disclosure state does not survive between them. |
 | `browser click --role <role> --name <name>` | Click an accessible control. `--nth` is optional. |
 | `browser click --selector <css>` | Click a stable node such as `[data-scrub-band]`. |
 | `browser select --label <label> --option <text>` | Choose a native `<select>` option by its visible label. |
@@ -151,6 +171,6 @@ The helper is executable. From the repo root:
 | `browser text` | Print `body` inner text. |
 | `browser section --contains <text>` | Print the nearest section that contains that text. |
 | `browser count --selector <css>` | Count matching nodes. |
-| `browser expect --text <t> [--any <t> ...] [--absent <t>] [--url-includes <t>] [--section <t>] [--role <r> --name <n>]` | Assert, exit 1 on failure. Repeated `--any` passes when one string is present. With `--section`, `--text` and `--absent` apply to that section only. |
+| `browser expect --text <t> [--any <t> ...] [--absent <t>] [--url-includes <t>] [--section <t>] [--selector <css>] [--attr <name=value>] [--role <r> --name <n>]` | Assert, exit 1 on failure. Repeated `--any` passes when one string is present. With `--section` or `--selector`, `--text` and `--absent` apply to that region only. `--attr` reads an attribute of `--selector` (`aria-expanded=true`). |
 
 `--wait-text` on `click`, `select`, `fill`, and `range` waits until that string is visible before the command returns. Relative `--path` values resolve from the current working directory and must land under `evidence/`, `/opt/cursor/artifacts`, or `/tmp`.
