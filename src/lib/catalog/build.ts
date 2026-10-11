@@ -18,7 +18,7 @@ export function getObjectsConfig(): ObjectsConfig {
 
 /**
  * Altitude and the manual lists decide status.
- * The raised gate wins over `stuck`: an object that has reached 480 km is raised
+ * The raised gate wins over `stuck`: an object that has reached 450 km is raised
  * even if the list is stale. One GP has no climb rate, so `stuck` is only the list.
  */
 export function classifyStatus(args: {

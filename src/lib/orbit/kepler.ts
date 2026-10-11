@@ -1,4 +1,4 @@
-import { EARTH_RADIUS_KM, MU_KM3_S2 } from "./constants.ts";
+import { orbitFromGp } from "./brouwer-altitude.mjs";
 
 export type OrbitProxy = {
   semiMajorKm: number;
@@ -9,26 +9,26 @@ export type OrbitProxy = {
   inclinationDeg: number;
 };
 
-export function meanMotionToSmaKm(meanMotionRevPerDay: number, mu = MU_KM3_S2): number {
-  const n = (meanMotionRevPerDay * (2 * Math.PI)) / 86400;
-  return Math.cbrt(mu / (n * n));
-}
-
+/**
+ * Brouwer mean altitude for one element set. Perigee and apogee use the same
+ * semi-major axis and the WGS-72 equatorial radius.
+ */
 export function orbitFromOmm(omm: {
   MEAN_MOTION: number | string;
   ECCENTRICITY: number | string;
   INCLINATION: number | string;
+  EPOCH?: string;
+  NORAD_CAT_ID?: number | string;
+  RA_OF_ASC_NODE?: number | string;
+  ARG_OF_PERICENTER?: number | string;
+  MEAN_ANOMALY?: number | string;
+  BSTAR?: number | string;
+  MEAN_MOTION_DOT?: number | string;
+  MEAN_MOTION_DDOT?: number | string;
 }): OrbitProxy {
-  const n = Number(omm.MEAN_MOTION);
-  const e = Number(omm.ECCENTRICITY);
-  const i = Number(omm.INCLINATION);
-  const a = meanMotionToSmaKm(n);
-  return {
-    semiMajorKm: a,
-    approxAltitudeKm: a - EARTH_RADIUS_KM,
-    perigeeKm: a * (1 - e) - EARTH_RADIUS_KM,
-    apogeeKm: a * (1 + e) - EARTH_RADIUS_KM,
-    periodMin: 1440 / n,
-    inclinationDeg: i,
-  };
+  const orbit = orbitFromGp(omm);
+  if (!orbit) {
+    throw new Error("element set is missing mean motion, eccentricity, or inclination");
+  }
+  return orbit;
 }

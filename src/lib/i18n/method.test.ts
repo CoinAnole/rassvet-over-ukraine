@@ -97,4 +97,40 @@ describe("method copy", () => {
     assert.match(ruText, /findrassvet\.ru/);
     assert.match(ruText, /CC BY 4\.0/);
   });
+
+  it("describes the Brouwer altitude and the 450 km gate without a Kepler proxy", () => {
+    const en = methodSections("en");
+    const enText = en.flatMap((s) => [s.heading, ...s.paragraphs]).join("\n");
+    assert.match(enText, /Why 450 km is the Raised gate/);
+    assert.match(enText, /Brouwer mean semi-major axis/);
+    assert.match(enText, /6378\.135/);
+    assert.match(enText, /398600\.8/);
+    assert.match(enText, /findrassvet\.ru \(V\. Bulybenko\)/);
+    assert.match(enText, /We adapted the method/);
+    assert.match(enText, /did not copy their text/);
+    assert.match(enText, /https:\/\/creativecommons\.org\/licenses\/by\/4\.0\//);
+    assert.match(enText, /800 km/);
+    assert.equal(enText.includes("480"), false);
+    assert.equal(/minus 6371/.test(enText), false);
+    assert.equal(/Kepler/i.test(enText), false);
+    assert.match(enText, /spherical Earth with Re = 6371 km/);
+
+    const uk = methodSections("uk")
+      .flatMap((s) => [s.heading, ...s.paragraphs])
+      .join("\n");
+    assert.match(uk, /Брауера/);
+    assert.match(uk, /6378\.135/);
+    assert.match(uk, /адаптували метод/);
+    assert.match(uk, /не копіювали їхній текст/);
+    assert.equal(uk.includes("480"), false);
+
+    const ru = methodSections("ru")
+      .flatMap((s) => [s.heading, ...s.paragraphs])
+      .join("\n");
+    assert.match(ru, /Брауэра/);
+    assert.match(ru, /6378\.135/);
+    assert.match(ru, /адаптировали метод/);
+    assert.match(ru, /не копировали их текст/);
+    assert.equal(ru.includes("480"), false);
+  });
 });

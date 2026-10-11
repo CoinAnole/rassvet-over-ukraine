@@ -24,7 +24,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Propagation and Earth model",
       paragraphs: [
-        "Positions are propagated with SGP4/SDP4 as implemented by satellite.js from the published element set. Elevation, footprints, and the altitude proxy use a spherical Earth with Re = 6371 km. That is good enough for an MVP coverage clock; it is not a precision orbit determination.",
+        "Positions are propagated with SGP4/SDP4 as implemented by satellite.js from the published element set. Elevation and footprints use a spherical Earth with Re = 6371 km. That is good enough for an MVP coverage clock; it is not a precision orbit determination.",
         "Sampling step is 30 seconds. Displayed AOS/LOS are linearly interpolated between steps and should be read as ±30 s. Passes shorter than 60 seconds after interpolation are discarded.",
       ],
     },
@@ -55,18 +55,18 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
-      heading: "Why 480 km is the Raised gate",
+      heading: "Why 450 km is the Raised gate",
       paragraphs: [
-        "Public reporting on the first production batch describes flattening near about 500–550 km, not the 800 km figure that appears in filings and brochures. This site treats 480 km as a product constant for “raised”: catalogued, not decayed, with an approximate altitude from the latest element set of at least 480 km. The 800 km figure is not used as an operational gate.",
-        "Approximate altitude is a − Re from mean motion (semi-major axis minus 6371 km), labelled approx. Perigee and apogee use the same a with the published eccentricity.",
+        "Public reporting on the first production batch describes flattening near about 500–550 km, not the 800 km figure that appears in filings and brochures. This site treats 450 km as a product constant for “raised”: catalogued, not decayed, with an approximate altitude from the latest element set of at least 450 km. The 800 km figure is not used as an operational gate.",
+        "Approximate altitude is the Brouwer mean semi-major axis that satellite.js computes while it initialises SGP4, minus the WGS-72 equatorial radius 6378.135 km. The catalog mean motion is Kozai’s. Initialisation converts it to the un-Kozai’d mean motion and stores that on the record as no, in radians per minute. The semi-major axis is the field a, in Earth radii, so the altitude in kilometres is a × 6378.135 − 6378.135. The gravitational parameter is μ = 398600.8 km³/s². This follows section 2 of the methodology at findrassvet.ru (V. Bulybenko). We adapted the method. We did not copy their text. That site’s figures are available under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Perigee and apogee use the same semi-major axis and the same radius with the published eccentricity.",
       ],
     },
     {
       heading: "Which satellites count",
       paragraphs: [
-        "The default coverage set is production RASSVET-3 at or above 480 km. Experimental Rassvet-1 (2023) and Rassvet-2 (2024) stay out of that default. They are separate choices in the population list. They are included when the choice is every raised object or every catalogued object. A shared link with no set parameter opens the default. A link that still says set=raised or set=operational opens every raised object, including the experimentals.",
-        "An object below 480 km counts as climbing only when it is not on the manual not-climbing list. That list is a curated override, the same kind of list as the decayed NORADs. Objects on it still have an element set. They can appear in a launch-group count or in all catalogued objects, with the status not climbing. They are left out of the climbing population, so the clock does not describe them as climbing toward service.",
-        "This site stores one latest element set per object. It does not keep altitude history, and it does not turn that element set’s mean-motion derivative into a kilometres-per-day rate. A single derivative is a short-arc fit. Checked on 2026-10-11, it disagreed in size with rates from a history of element sets, and for one still-climbing object it disagreed in sign. The not-climbing entries checked that day are RASSVET-3 14, 17, and 23. RASSVET-3 11 is not on the list. The check used the public altitude history at findrassvet.ru (V. Bulybenko). That site’s figures are available under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). This page names the objects. It does not copy those rates. If an object on the list later reaches 480 km, the raised gate wins and the catalog check asks for the list to be updated.",
+        "The default coverage set is production RASSVET-3 at or above 450 km. Experimental Rassvet-1 (2023) and Rassvet-2 (2024) stay out of that default. They are separate choices in the population list. They are included when the choice is every raised object or every catalogued object. A shared link with no set parameter opens the default. A link that still says set=raised or set=operational opens every raised object, including the experimentals.",
+        "An object below 450 km counts as climbing only when it is not on the manual not-climbing list. That list is a curated override, the same kind of list as the decayed NORADs. Objects on it still have an element set. They can appear in a launch-group count or in all catalogued objects, with the status not climbing. They are left out of the climbing population, so the clock does not describe them as climbing toward service.",
+        "This site stores one latest element set per object. It does not keep altitude history, and it does not turn that element set’s mean-motion derivative into a kilometres-per-day rate. A single derivative is a short-arc fit. Checked on 2026-10-11, it disagreed in size with rates from a history of element sets, and for one still-climbing object it disagreed in sign. The not-climbing entries checked that day are RASSVET-3 14, 17, and 23. RASSVET-3 11 is not on the list. The check used the public altitude history at findrassvet.ru (V. Bulybenko). That site’s figures are available under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). This page names the objects. It does not copy those rates. If an object on the list later reaches 450 km, the raised gate wins and the catalog check asks for the list to be updated.",
       ],
     },
     {
@@ -103,7 +103,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Прогноз і модель Землі",
       paragraphs: [
-        "Положення прогнозуються SGP4/SDP4 у реалізації satellite.js з опублікованого набору елементів. Кут місця, зони видимості й наближена висота використовують сферичну Землю з Re = 6371 км. Цього досить для годинника покриття MVP; це не точне визначення орбіти.",
+        "Положення прогнозуються SGP4/SDP4 у реалізації satellite.js з опублікованого набору елементів. Кут місця і зони видимості використовують сферичну Землю з Re = 6371 км. Цього досить для годинника покриття MVP; це не точне визначення орбіти.",
         "Крок дискретизації — 30 секунд. Показані AOS/LOS лінійно інтерполюються між кроками і їх слід читати як ±30 с. Проходження коротші за 60 секунд після інтерполяції відкидаються.",
       ],
     },
@@ -134,18 +134,18 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
-      heading: "Чому 480 км — поріг «піднятих»",
+      heading: "Чому 450 км — поріг «піднятих»",
       paragraphs: [
-        "Публічні матеріали про першу серійну партію описують вирівнювання біля 500–550 км, а не 800 км із заявок і буклетів. Цей сайт бере 480 км як продуктову сталу для «піднятий»: у каталозі, не зійшов, наближена висота з останнього набору елементів не менша за 480 км. Цифра 800 км не використовується як робочий поріг.",
-        "Наближена висота — a − Re з середнього руху (велика піввісь мінус 6371 км). Перигей і апогей — той самий a з опублікованим ексцентриситетом.",
+        "Публічні матеріали про першу серійну партію описують вирівнювання біля 500–550 км, а не 800 км із заявок і буклетів. Цей сайт бере 450 км як продуктову сталу для «піднятий»: у каталозі, не зійшов, наближена висота з останнього набору елементів не менша за 450 км. Цифра 800 км не використовується як робочий поріг.",
+        "Наближена висота — середня велика піввісь Брауера, яку satellite.js обчислює під час ініціалізації SGP4, мінус екваторіальний радіус WGS-72, 6378.135 км. Середній рух у каталозі — за Козаї. Ініціалізація переводить його в середній рух без Козаї і записує в поле no у радіанах за хвилину. Велика піввісь — поле a в радіусах Землі, тож висота в кілометрах це a × 6378.135 − 6378.135. Гравітаційний параметр μ = 398600.8 км³/с². Це метод із розділу 2 методики на findrassvet.ru (В. Булибенко). Ми адаптували метод. Ми не копіювали їхній текст. Матеріали того сайту доступні на умовах CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Перигей і апогей беруть ту саму велику піввісь і той самий радіус з опублікованим ексцентриситетом.",
       ],
     },
     {
       heading: "Які супутники входять у рахунок",
       paragraphs: [
-        "Набір покриття за замовчуванням — серійні RASSVET-3 на висоті від 480 км. Експериментальні Рассвет-1 (2023) і Рассвет-2 (2024) у цей набір не входять. Вони є окремими пунктами списку. Вони входять, коли обрано всі підняті або всі каталожні об’єкти. Посилання без параметра набору відкриває набір за замовчуванням. Посилання, у якому й далі написано set=raised або set=operational, відкриває всі підняті об’єкти, включно з експериментальними.",
-        "Об’єкт нижче 480 км вважається таким, що піднімається, лише якщо його немає в ручному списку «не піднімається». Цей список — курована підміна, того ж роду, що й список зійшлих NORAD. Об’єкти з нього й далі мають набір елементів. Вони можуть з’явитися в ліку групи запуску або серед усіх каталожних, зі статусом «не піднімається». З набору «піднімаються» їх виключено, тож годинник не описує їх як підйом до робочої висоти.",
-        "Сайт зберігає один найновіший набір елементів на об’єкт. Він не тримає історії висоти і не перетворює похідну середнього руху цього набору на темп у кілометрах за добу. Одна похідна — це підгонка короткої дуги. На перевірці 2026-10-11 вона розійшлася за величиною з темпами з історії наборів, а для одного об’єкта, що й далі піднімається, розійшлася й за знаком. Записи «не піднімається», звірені того дня: RASSVET-3 14, 17 і 23. RASSVET-3 11 у списку немає. Звірку зроблено за публічною історією висоти на findrassvet.ru (В. Булибенко). Матеріали того сайту доступні на умовах CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Ця сторінка називає об’єкти. Вона не копіює ті темпи. Якщо об’єкт зі списку згодом досягає 480 км, поріг «піднятий» перемагає, а перевірка каталогу просить оновити список.",
+        "Набір покриття за замовчуванням — серійні RASSVET-3 на висоті від 450 км. Експериментальні Рассвет-1 (2023) і Рассвет-2 (2024) у цей набір не входять. Вони є окремими пунктами списку. Вони входять, коли обрано всі підняті або всі каталожні об’єкти. Посилання без параметра набору відкриває набір за замовчуванням. Посилання, у якому й далі написано set=raised або set=operational, відкриває всі підняті об’єкти, включно з експериментальними.",
+        "Об’єкт нижче 450 км вважається таким, що піднімається, лише якщо його немає в ручному списку «не піднімається». Цей список — курована підміна, того ж роду, що й список зійшлих NORAD. Об’єкти з нього й далі мають набір елементів. Вони можуть з’явитися в ліку групи запуску або серед усіх каталожних, зі статусом «не піднімається». З набору «піднімаються» їх виключено, тож годинник не описує їх як підйом до робочої висоти.",
+        "Сайт зберігає один найновіший набір елементів на об’єкт. Він не тримає історії висоти і не перетворює похідну середнього руху цього набору на темп у кілометрах за добу. Одна похідна — це підгонка короткої дуги. На перевірці 2026-10-11 вона розійшлася за величиною з темпами з історії наборів, а для одного об’єкта, що й далі піднімається, розійшлася й за знаком. Записи «не піднімається», звірені того дня: RASSVET-3 14, 17 і 23. RASSVET-3 11 у списку немає. Звірку зроблено за публічною історією висоти на findrassvet.ru (В. Булибенко). Матеріали того сайту доступні на умовах CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Ця сторінка називає об’єкти. Вона не копіює ті темпи. Якщо об’єкт зі списку згодом досягає 450 км, поріг «піднятий» перемагає, а перевірка каталогу просить оновити список.",
       ],
     },
     {
@@ -182,7 +182,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Прогноз и модель Земли",
       paragraphs: [
-        "Положения прогнозируются SGP4/SDP4 в реализации satellite.js по опубликованному набору элементов. Угол места, зоны видимости и приближённая высота используют сферическую Землю с Re = 6371 км. Этого достаточно для часов покрытия MVP; это не точное определение орбиты.",
+        "Положения прогнозируются SGP4/SDP4 в реализации satellite.js по опубликованному набору элементов. Угол места и зоны видимости используют сферическую Землю с Re = 6371 км. Этого достаточно для часов покрытия MVP; это не точное определение орбиты.",
         "Шаг дискретизации — 30 секунд. Показанные AOS/LOS линейно интерполируются между шагами и их следует читать как ±30 с. Прохождения короче 60 секунд после интерполяции отбрасываются.",
       ],
     },
@@ -213,18 +213,18 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
-      heading: "Почему 480 км — порог «поднятых»",
+      heading: "Почему 450 км — порог «поднятых»",
       paragraphs: [
-        "Публичные материалы о первой серийной партии описывают выравнивание около 500–550 км, а не 800 км из заявок и буклетов. Этот сайт берёт 480 км как продуктовую константу для «поднят»: в каталоге, не сошёл, приближённая высота из последнего набора элементов не меньше 480 км. Цифра 800 км не используется как рабочий порог.",
-        "Приближённая высота — a − Re из среднего движения (большая полуось минус 6371 км). Перигей и апогей — тот же a с опубликованным эксцентриситетом.",
+        "Публичные материалы о первой серийной партии описывают выравнивание около 500–550 км, а не 800 км из заявок и буклетов. Этот сайт берёт 450 км как продуктовую константу для «поднят»: в каталоге, не сошёл, приближённая высота из последнего набора элементов не меньше 450 км. Цифра 800 км не используется как рабочий порог.",
+        "Приближённая высота — средняя большая полуось Брауэра, которую satellite.js вычисляет при инициализации SGP4, минус экваториальный радиус WGS-72, 6378.135 км. Среднее движение в каталоге записано по Козаи. Инициализация переводит его в среднее движение без Козаи и хранит в поле no, в радианах в минуту. Большая полуось — поле a в радиусах Земли, поэтому высота в километрах равна a × 6378.135 − 6378.135. Гравитационный параметр μ = 398600.8 км³/с². Это метод из раздела 2 методики на findrassvet.ru (В. Булыбенко). Мы адаптировали метод. Мы не копировали их текст. Материалы того сайта доступны на условиях CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Перигей и апогей используют ту же большую полуось и тот же радиус с опубликованным эксцентриситетом.",
       ],
     },
     {
       heading: "Какие спутники входят в счёт",
       paragraphs: [
-        "Набор покрытия по умолчанию — серийные RASSVET-3 на высоте от 480 км. Экспериментальные Рассвет-1 (2023) и Рассвет-2 (2024) в этот набор не входят. Они стоят отдельными пунктами списка. Они входят, когда выбраны все поднятые или все каталожные объекты. Ссылка без параметра набора открывает набор по умолчанию. Ссылка, в которой по-прежнему написано set=raised или set=operational, открывает все поднятые объекты, включая экспериментальные.",
-        "Объект ниже 480 км считается поднимающимся, только если его нет в ручном списке «не поднимается». Этот список — курируемая подмена, того же рода, что и список сошедших NORAD. Объекты из него по-прежнему имеют набор элементов. Они могут появиться в счёте группы запуска или среди всех каталожных, со статусом «не поднимается». Из набора «поднимаются» они исключены, поэтому часы не описывают их как подъём к рабочей высоте.",
-        "Сайт хранит один новейший набор элементов на объект. Он не хранит историю высоты и не превращает производную среднего движения этого набора в темп в километрах в сутки. Одна производная — это подгонка короткой дуги. На проверке 2026-10-11 она разошлась по величине с темпами из истории наборов, а для одного объекта, который продолжает подниматься, разошлась и по знаку. Записи «не поднимается», сверенные в тот день: RASSVET-3 14, 17 и 23. RASSVET-3 11 в списке нет. Сверку сделали по публичной истории высоты на findrassvet.ru (В. Булыбенко). Материалы того сайта доступны на условиях CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Эта страница называет объекты. Она не копирует те темпы. Если объект из списка позже достигает 480 км, порог «поднят» побеждает, а проверка каталога просит обновить список.",
+        "Набор покрытия по умолчанию — серийные RASSVET-3 на высоте от 450 км. Экспериментальные Рассвет-1 (2023) и Рассвет-2 (2024) в этот набор не входят. Они стоят отдельными пунктами списка. Они входят, когда выбраны все поднятые или все каталожные объекты. Ссылка без параметра набора открывает набор по умолчанию. Ссылка, в которой по-прежнему написано set=raised или set=operational, открывает все поднятые объекты, включая экспериментальные.",
+        "Объект ниже 450 км считается поднимающимся, только если его нет в ручном списке «не поднимается». Этот список — курируемая подмена, того же рода, что и список сошедших NORAD. Объекты из него по-прежнему имеют набор элементов. Они могут появиться в счёте группы запуска или среди всех каталожных, со статусом «не поднимается». Из набора «поднимаются» они исключены, поэтому часы не описывают их как подъём к рабочей высоте.",
+        "Сайт хранит один новейший набор элементов на объект. Он не хранит историю высоты и не превращает производную среднего движения этого набора в темп в километрах в сутки. Одна производная — это подгонка короткой дуги. На проверке 2026-10-11 она разошлась по величине с темпами из истории наборов, а для одного объекта, который продолжает подниматься, разошлась и по знаку. Записи «не поднимается», сверенные в тот день: RASSVET-3 14, 17 и 23. RASSVET-3 11 в списке нет. Сверку сделали по публичной истории высоты на findrassvet.ru (В. Булыбенко). Материалы того сайта доступны на условиях CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Эта страница называет объекты. Она не копирует те темпы. Если объект из списка позже достигает 450 км, порог «поднят» побеждает, а проверка каталога просит обновить список.",
       ],
     },
     {

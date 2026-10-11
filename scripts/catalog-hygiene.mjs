@@ -1,24 +1,24 @@
 /**
  * Compare `src/config/objects.json` to CelesTrak GP rows.
  *
- * The runtime catalog (`src/lib/catalog/build.ts`) is unchanged. This module
- * only reports: present, missing, unexpected RASSVET names, catalogName /
+ * Altitude is the same Brouwer semi-major axis as the runtime catalog.
+ * This module only reports: present, missing, unexpected RASSVET names, catalogName /
  * COSPAR mismatches, whether the manual `decayed` list still matches the
  * perigee rule, and whether the manual `stuck` (not-climbing) list is still
  * under the raised gate and still in GP.
  */
 
+import { orbitFromGp as brouwerOrbit } from "../src/lib/orbit/brouwer-altitude.mjs";
+
 const RASSVET_NAME = /rassvet|рассвет/i;
 
-export function orbitFromGp(row, { muKm3s2, earthRadiusKm }) {
-  const n = Number(row.MEAN_MOTION);
-  const e = Number(row.ECCENTRICITY);
-  if (!Number.isFinite(n) || n <= 0 || !Number.isFinite(e)) return null;
-  const meanMotionRad = (n * 2 * Math.PI) / 86400;
-  const semiMajorKm = Math.cbrt(muKm3s2 / (meanMotionRad * meanMotionRad));
+/** Same Brouwer altitude the site shows. Inclination is required. */
+export function orbitFromGp(row) {
+  const orbit = brouwerOrbit(row);
+  if (!orbit) return null;
   return {
-    approxAltitudeKm: semiMajorKm - earthRadiusKm,
-    perigeeKm: semiMajorKm * (1 - e) - earthRadiusKm,
+    approxAltitudeKm: orbit.approxAltitudeKm,
+    perigeeKm: orbit.perigeeKm,
   };
 }
 
@@ -72,10 +72,6 @@ export function auditCatalog(opts) {
   const decayPerigeeKm = Number(config.decayPerigeeKm);
   const raisedAltitudeKm = Number(config.raisedAltitudeKm);
   const staleHours = Number(config.staleHours);
-  const orbitOpts = {
-    muKm3s2: Number(config.muKm3s2),
-    earthRadiusKm: Number(config.earthRadiusKm),
-  };
 
   const failures = [];
   const notes = [];
@@ -167,7 +163,7 @@ export function auditCatalog(opts) {
         }
         continue;
       }
-      const orbit = orbitFromGp(row, orbitOpts);
+      const orbit = orbitFromGp(row);
       const ageH = epochAgeHours(String(row.EPOCH ?? ""), now);
       const entry = { obj, row, orbit, ageH };
       present.push(entry);
@@ -242,7 +238,7 @@ export function auditCatalog(opts) {
       if (objectIds.has(norad)) continue;
       if (!isRassvetName(row.OBJECT_NAME)) continue;
       unexpected.push(row);
-      const orbit = orbitFromGp(row, orbitOpts);
+      const orbit = orbitFromGp(row);
       failures.push(
         `Unexpected GP object ${norad} ${row.OBJECT_ID} ${JSON.stringify(row.OBJECT_NAME)} (alt ${km(orbit?.approxAltitudeKm)} km) is not in objects.`,
       );

@@ -103,6 +103,11 @@ describe("satellite set links", () => {
     assert.equal(viewFromSearch({ set: "operational" }, "en").set, "raised");
     assert.equal(viewFromSearch({ set: "prod-raised" }, "en").set, "prod-raised");
     assert.equal(viewFromSearch({ set: "exp-2023" }, "en").set, "exp-2023");
+    assert.equal(viewFromSearch({ set: "exp-2024" }, "en").set, "exp-2024");
+    assert.equal(viewFromSearch({ set: "prod-2026-03" }, "en").set, "prod-2026-03");
+    assert.equal(viewFromSearch({ set: "prod-2026-07" }, "en").set, "prod-2026-07");
+    assert.equal(viewFromSearch({ set: "climbing" }, "en").set, "climbing");
+    assert.equal(viewFromSearch({ set: "all" }, "en").set, "all");
     assert.equal(viewFromSearch({ set: "nope" as "all" }, "en").set, "prod-raised");
     const raised = viewFromSearch({ set: "raised" }, "en");
     assert.equal(searchFromView(raised, null).set, "raised");

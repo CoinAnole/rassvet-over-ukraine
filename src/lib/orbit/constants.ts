@@ -1,11 +1,12 @@
-/** Spherical Earth radius used for altitude proxy, elevation, and footprints. */
+/**
+ * Spherical Earth radius for elevation and footprints.
+ * Altitude uses the WGS-72 equatorial radius inside `brouwer-altitude.mjs`
+ * (6378.135 km), not this value.
+ */
 export const EARTH_RADIUS_KM = 6371;
 
-/** WGS-72 / SGP4 conventional GM, km^3/s^2. */
-export const MU_KM3_S2 = 398600.4418;
-
 /** Product constant: Raised filter gate. Shown on Method. */
-export const RAISED_ALTITUDE_KM = 480;
+export const RAISED_ALTITUDE_KM = 450;
 
 /** TLE older than this is still propagated but marked stale. */
 export const STALE_HOURS = 72;

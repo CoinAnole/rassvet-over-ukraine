@@ -3,11 +3,9 @@ import { describe, it } from "node:test";
 import { auditCatalog, epochAgeHours, orbitFromGp, renderAudit } from "./catalog-hygiene.mjs";
 import { readObjectsConfig } from "./verify-catalog.mjs";
 
-const EARTH = { muKm3s2: 398600.4418, earthRadiusKm: 6371 };
-
 function config(overrides = {}) {
   return {
-    raisedAltitudeKm: 480,
+    raisedAltitudeKm: 450,
     staleHours: 72,
     earthRadiusKm: 6371,
     muKm3s2: 398600.4418,
@@ -62,10 +60,14 @@ function live(cfg, records, extra = {}) {
 }
 
 describe("orbit proxy", () => {
-  it("uses the same semi-major altitude as the site", () => {
-    const orbit = orbitFromGp({ MEAN_MOTION: 15.184, ECCENTRICITY: 0.0002 }, EARTH);
+  it("uses the Brouwer semi-major altitude", () => {
+    const orbit = orbitFromGp({
+      MEAN_MOTION: 15.18532325,
+      ECCENTRICITY: 0.00011197,
+      INCLINATION: 82.2883,
+    });
     assert.ok(orbit);
-    assert.ok(orbit.approxAltitudeKm >= 480, `alt ${orbit.approxAltitudeKm}`);
+    assert.ok(Math.abs(orbit.approxAltitudeKm - 507.256483) < 1e-4, `alt ${orbit.approxAltitudeKm}`);
     assert.ok(orbit.perigeeKm > 150);
   });
 
@@ -211,7 +213,7 @@ describe("checked-in catalog", () => {
 });
 
 describe("not-climbing list", () => {
-  it("accepts a listed NORAD that is still under 480 km", () => {
+  it("accepts a listed NORAD that is still under 450 km", () => {
     const report = live(config({ stuck: [1] }), [row({ MEAN_MOTION: 15.65 })]);
     assert.equal(report.exitCode, 0, report.failures.join("\n"));
     assert.deepEqual(

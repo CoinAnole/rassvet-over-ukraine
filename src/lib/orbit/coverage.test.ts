@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import seed from "../../data/catalog-seed.json" with { type: "json" };
 import { unionIntervals, unionMinutes, clipIntervals } from "./union.ts";
-import { CITY_STRIP, PLACES } from "./constants.ts";
+import { CITY_STRIP, PLACES, RAISED_ALTITUDE_KM } from "./constants.ts";
 import { DICTS, coverageSentence, getDict } from "../i18n/index.ts";
 import { methodSections } from "../i18n/method.ts";
 import { buildCatalog, classifyStatus, indexOmms } from "../catalog/build.ts";
@@ -250,7 +250,8 @@ describe("production default and not-climbing list", () => {
     assert.equal(inPopulation(by(59779), "exp-2024"), true);
   });
 
-  it("lets the 480 km gate override a stale not-climbing entry", () => {
+  it("lets the 450 km gate override a stale not-climbing entry", () => {
+    assert.equal(RAISED_ALTITUDE_KM, 450);
     assert.equal(
       classifyStatus({
         manualDecayed: false,
@@ -259,7 +260,7 @@ describe("production default and not-climbing list", () => {
         perigeeKm: 510,
         approxAltitudeKm: 517,
         decayPerigeeKm: 150,
-        raisedAltitudeKm: 480,
+        raisedAltitudeKm: RAISED_ALTITUDE_KM,
       }),
       "raised",
     );
@@ -271,7 +272,7 @@ describe("production default and not-climbing list", () => {
         perigeeKm: 340,
         approxAltitudeKm: 350,
         decayPerigeeKm: 150,
-        raisedAltitudeKm: 480,
+        raisedAltitudeKm: RAISED_ALTITUDE_KM,
       }),
       "decayed",
     );
@@ -286,8 +287,8 @@ describe("altitude gate", () => {
   it("treats a ~500 km object as raised and a ~350 km object as climbing", () => {
     const raised = orbitFromOmm({ MEAN_MOTION: 15.184, ECCENTRICITY: 0.0002, INCLINATION: 82.3 });
     const climbing = orbitFromOmm({ MEAN_MOTION: 15.65, ECCENTRICITY: 0.0005, INCLINATION: 82.3 });
-    assert.ok(raised.approxAltitudeKm >= 480, `raised ${raised.approxAltitudeKm}`);
-    assert.ok(climbing.approxAltitudeKm < 480, `climbing ${climbing.approxAltitudeKm}`);
+    assert.ok(raised.approxAltitudeKm >= RAISED_ALTITUDE_KM, `raised ${raised.approxAltitudeKm}`);
+    assert.ok(climbing.approxAltitudeKm < RAISED_ALTITUDE_KM, `climbing ${climbing.approxAltitudeKm}`);
   });
 });
 
