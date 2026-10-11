@@ -11,7 +11,7 @@ export function MethodView({ lang }: { lang: Lang }) {
       <p className="mt-3 text-muted">{t.method.lede}</p>
       <div className="mt-8 flex flex-col gap-10">
         {sections.map((section) => (
-          <section key={section.heading}>
+          <section key={section.heading} id={section.id} className={section.id ? "scroll-mt-6" : undefined}>
             <h3 className="text-lg font-medium tracking-[-0.02em]">{section.heading}</h3>
             {section.quote ? (
               <blockquote className="mt-4 border-l-2 border-accent bg-elevated px-4 py-3 text-sm leading-relaxed">

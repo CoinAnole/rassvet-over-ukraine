@@ -1,4 +1,3 @@
-import { getObjectsConfig } from "../catalog/build.ts";
 import type { CatalogPayload, LiveObject, PopulationFilter, TimezoneId } from "../catalog/types.ts";
 import { CITY_STRIP, PLACES, STEP_SECONDS, TRACK_HALF_MINUTES, type PlaceId } from "./constants.ts";
 import { footprintRing } from "./footprint.ts";
@@ -7,6 +6,9 @@ import { satrecFromOmm, subpoint, lookAt, type Observer } from "./sgp4.ts";
 import { PASS_HORIZON_MS, passInForwardWindow } from "./clock.ts";
 import { tzName, zonedDayBounds } from "./time.ts";
 import { clipIntervals, longestInterval, unionIntervals, unionMinutes, type Interval } from "./union.ts";
+import { inPopulation } from "./population.ts";
+
+export { inPopulation };
 
 export type VisibleNow = {
   norad: number;
@@ -60,22 +62,6 @@ export type CoverageResult = {
   cityMinutes: { placeId: PlaceId; minutes: number }[];
   map: SatMapState[];
 };
-
-const productionGroups = new Set(
-  getObjectsConfig()
-    .groups.filter((g) => g.kind === "production")
-    .map((g) => g.id),
-);
-
-export function inPopulation(obj: LiveObject, filter: PopulationFilter): boolean {
-  if (obj.status === "decayed" || obj.status === "missing") return false;
-  if (!obj.omm) return false;
-  if (filter === "all") return true;
-  if (filter === "raised") return obj.status === "raised";
-  if (filter === "prod-raised") return obj.status === "raised" && productionGroups.has(obj.group);
-  if (filter === "climbing") return obj.status === "climbing";
-  return obj.group === filter;
-}
 
 function passesToIntervals(passes: ObjectPass[]): Interval[] {
   return passes.map((p) => ({ start: p.aos, end: p.los, objects: [p.norad] }));

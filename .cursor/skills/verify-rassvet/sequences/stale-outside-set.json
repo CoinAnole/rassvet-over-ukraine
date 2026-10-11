@@ -1,0 +1,68 @@
+[
+  {"action": "open", "path": "/"},
+  {"action": "expect", "text": "Older GP"},
+  {"action": "expect", "text": "2 element sets are older than 72 hours. None are in this coverage set."},
+  {"action": "expect", "text": "CelesTrak GP"},
+  {"action": "expect", "absent": "Not live"},
+  {"action": "expect", "absent": "Stale GP"},
+  {"action": "expect", "absent": "Includes element sets older than 72 h"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=false"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-outside-set-collapsed.png",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "click",
+    "selector": "button[aria-controls=stale-gp-details]",
+    "waitText": "An element set is the public"
+  },
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=true"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "Rassvet-1 No. 1"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "Rassvet-2 No. 1"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "NORAD 57179"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "4 d 0 h"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "3 d 8 h"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "experimental, raised"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "does not change the minutes over Kyiv"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "Nothing to change."},
+  {"action": "expect", "selector": "#stale-gp-details", "absent": "Rassvet-1 No. 2"},
+  {"action": "expect", "selector": "#stale-gp-details", "absent": "RASSVET-3 1"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-outside-set-expanded.png",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-outside-set-expanded.aria.txt",
+    "feature": "catalog-freshness"
+  },
+  {"action": "focus", "selector": "button[aria-controls=stale-gp-details]"},
+  {"action": "press", "key": "Enter"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=false"},
+  {"action": "expect", "absent": "An element set is the public"},
+  {"action": "focus", "selector": "button[aria-controls=stale-gp-details]"},
+  {"action": "press", "key": "Space"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=true"},
+  {"action": "expect", "text": "An element set is the public"},
+  {"action": "click", "role": "button", "name": "RU", "waitText": "Набор элементов — это публичная запись"},
+  {"action": "expect", "urlIncludes": "lang=ru"},
+  {"action": "expect", "text": "Старый GP"},
+  {"action": "expect", "text": "2 набора элементов старше 72 часов. Ни один не входит в этот набор покрытия."},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=true"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "Rassvet-1 No. 1"},
+  {"action": "expect", "selector": "#stale-gp-details", "absent": "Rassvet-1 No. 2"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-outside-set-expanded-ru.png",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-outside-set-expanded-ru.aria.txt",
+    "feature": "catalog-freshness"
+  }
+]

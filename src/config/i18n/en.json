@@ -35,6 +35,7 @@
   "units": {
     "min": "min",
     "hour": "h",
+    "day": "d",
     "deg": "°",
     "km": "km"
   },
@@ -175,11 +176,37 @@
   "freshness": {
     "seedKicker": "Not live",
     "staleKicker": "Stale GP",
+    "quietKicker": "Older GP",
+    "details": "Details",
+    "hide": "Hide",
     "seed": "Live GP fetch failed. Showing the checked-in snapshot from {date}, not a current element set.",
     "seedStale": "Live GP fetch failed. The checked-in snapshot from {date} is older than 72 hours. Positions are still propagated.",
-    "stale": "One or more element sets are older than 72 hours. Positions are still propagated, with a stale mark.",
     "todaySeed": "Snapshot — live fetch failed",
-    "todayStale": "Includes TLEs older than 72 h"
+    "todayStale": "Includes element sets older than 72 h",
+    "what": "An element set is the public general-perturbations record for one object: the numbers this site propagates. It is not a measured position.",
+    "why": "CelesTrak has not published a newer element set for the objects below. That is common when an object is decaying, manoeuvring, or rarely tracked.",
+    "accuracy": "A position propagated from an old element set drifts as the orbit changes. This site does not turn that drift into a kilometres figure. What you see stays geometric line-of-sight, and the object keeps a stale mark.",
+    "doQuiet": "None of these objects are in {set}. The minutes over {city} do not use them. Nothing to change.",
+    "doAlarm": "At least one of these objects is in {set}, so the minutes over {city} use an old element set. Pick another set, or read the clock with that limit.",
+    "doQuietDefault": "None of these objects are in the default set ({set}). Ukraine today does not use them until you pick a set that includes them.",
+    "doAlarmDefault": "At least one of these objects is in the default set ({set}), so Ukraine today propagates an old element set. Pick another set, or read that clock with the limit.",
+    "affects": "In {set}. Its element set is part of the geometric coverage over {city}.",
+    "spares": "Not in {set}, so it does not change the minutes over {city}.",
+    "affectsDefault": "In the default set ({set}).",
+    "sparesDefault": "Not in the default set ({set}).",
+    "methodLink": "Stale element sets, in Method",
+    "epochLabel": "Element-set epoch",
+    "ageLabel": "Age",
+    "roles": {
+      "production-raised": "production, raised",
+      "experimental-raised": "experimental, raised",
+      "climbing": "climbing",
+      "experimental-climbing": "experimental, climbing",
+      "not-climbing": "not climbing",
+      "experimental-not-climbing": "experimental, not climbing",
+      "decayed": "decayed, excluded from coverage",
+      "missing": "missing"
+    }
   },
   "altitudeGloss": "Raised means at least 480 km. Climbing means still below 480 km and not on the not-climbing list."
 }

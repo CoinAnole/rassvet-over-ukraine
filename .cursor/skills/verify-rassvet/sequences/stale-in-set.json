@@ -1,0 +1,90 @@
+[
+  {"action": "open", "path": "/"},
+  {"action": "expect", "text": "Stale GP"},
+  {"action": "expect", "text": "2 element sets older than 72 hours are in this coverage set."},
+  {"action": "expect", "text": "CelesTrak GP"},
+  {"action": "expect", "text": "Includes element sets older than 72 h"},
+  {"action": "expect", "absent": "Not live"},
+  {"action": "expect", "absent": "Older GP"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=false"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-in-set-collapsed.png",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-in-set-collapsed.aria.txt",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "click",
+    "selector": "button[aria-controls=stale-gp-details]",
+    "waitText": "An element set is the public"
+  },
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=true"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "RASSVET-3 1"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "RASSVET-3 2"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "NORAD 68360"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "4 d 4 h"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "3 d 8 h"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "production, raised"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "does not turn that drift into a kilometres figure"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "Stale element sets, in Method"},
+  {"action": "expect", "selector": "#stale-gp-details", "absent": "RASSVET-3 3"},
+  {"action": "expect", "selector": "#stale-gp-details", "absent": "Rassvet-1 No. 1"},
+  {"action": "url"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-in-set-expanded.png",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-in-set-expanded.aria.txt",
+    "feature": "catalog-freshness"
+  },
+  {"action": "focus", "selector": "button[aria-controls=stale-gp-details]"},
+  {"action": "press", "key": "Enter"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=false"},
+  {"action": "expect", "absent": "An element set is the public"},
+  {"action": "focus", "selector": "button[aria-controls=stale-gp-details]"},
+  {"action": "press", "key": "Space"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=true"},
+  {"action": "expect", "text": "An element set is the public"},
+  {
+    "action": "click",
+    "role": "link",
+    "name": "Stale element sets, in Method",
+    "waitText": "If the newest GP epoch"
+  },
+  {"action": "expect", "urlIncludes": "/method"},
+  {"action": "expect", "urlIncludes": "stale-element-sets"},
+  {"action": "expect", "text": "Stale element sets"},
+  {"action": "open", "path": "/"},
+  {
+    "action": "click",
+    "selector": "button[aria-controls=stale-gp-details]",
+    "waitText": "An element set is the public"
+  },
+  {"action": "click", "role": "button", "name": "UK", "waitText": "Набір елементів — це публічний"},
+  {"action": "expect", "urlIncludes": "lang=uk"},
+  {"action": "expect", "text": "Застаріло"},
+  {"action": "expect", "text": "2 набори елементів"},
+  {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=true"},
+  {"action": "expect", "selector": "#stale-gp-details", "text": "RASSVET-3 1"},
+  {"action": "expect", "selector": "#stale-gp-details", "absent": "RASSVET-3 3"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-in-set-expanded-uk.png",
+    "feature": "catalog-freshness"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/catalog-freshness/stale-in-set-expanded-uk.aria.txt",
+    "feature": "catalog-freshness"
+  }
+]

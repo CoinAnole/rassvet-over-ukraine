@@ -1,6 +1,7 @@
 import type { Lang } from "@/lib/catalog/types";
 
 export type MethodSection = {
+  id?: string;
   heading: string;
   paragraphs: string[];
   quote?: string;
@@ -75,6 +76,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
+      id: "stale-element-sets",
       heading: "Stale element sets",
       paragraphs: [
         "If the newest GP epoch for an object is older than 72 hours, the object is marked stale and still propagated, with a warning. Missing IDs that remain in the curated list but have no TLE are marked missing and are omitted from Now / Today / footprints. Decayed IDs on the manual override list (and any object whose perigee is persistently below 150 km) are excluded from coverage.",
@@ -153,6 +155,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
+      id: "stale-element-sets",
       heading: "Застарілі набори елементів",
       paragraphs: [
         "Якщо найновіша епоха GP для об’єкта старіша за 72 години, об’єкт позначається як застарілий і все одно прогнозується, з попередженням. Ідентифікатори з курованого списку без TLE позначаються як відсутні й не входять у «Зараз» / «Сьогодні» / контури. Зійшлі ідентифікатори з ручного списку (і будь-який об’єкт із перигеєм нижче 150 км) з покриття виключені.",
@@ -231,6 +234,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
+      id: "stale-element-sets",
       heading: "Устаревшие наборы элементов",
       paragraphs: [
         "Если новейшая эпоха GP для объекта старше 72 часов, объект помечается как устаревший и всё равно прогнозируется, с предупреждением. Идентификаторы из курируемого списка без TLE помечаются как отсутствующие и не входят в «Сейчас» / «Сегодня» / контуры. Сошедшие идентификаторы из ручного списка (и любой объект с перигеем ниже 150 км) из покрытия исключены.",
