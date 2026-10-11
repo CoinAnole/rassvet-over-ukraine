@@ -3,7 +3,7 @@
   {"action": "expect", "text": "Stale GP"},
   {"action": "expect", "text": "2 element sets older than 72 hours are in this coverage set."},
   {"action": "expect", "text": "CelesTrak GP"},
-  {"action": "expect", "text": "Includes TLEs older than 72 h"},
+  {"action": "expect", "text": "Includes element sets older than 72 h"},
   {"action": "expect", "absent": "Not live"},
   {"action": "expect", "absent": "Older GP"},
   {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=false"},

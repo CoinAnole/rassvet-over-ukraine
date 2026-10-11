@@ -254,6 +254,17 @@ describe("stale banner line", () => {
     );
   });
 
+  it("uses element sets on the Today tile", () => {
+    assert.equal(getDict("en").freshness.todayStale, "Includes element sets older than 72 h");
+    assert.equal(getDict("uk").freshness.todayStale, "Містить набори елементів, старіші за 72 год");
+    assert.equal(getDict("ru").freshness.todayStale, "Включает наборы элементов старше 72 ч");
+    for (const lang of ["en", "uk", "ru"] as const) {
+      const freshness = getDict(lang).freshness;
+      assert.equal(/TLE/i.test(freshness.todayStale), false, lang);
+      assert.equal(/TLE/i.test(freshness.roles.missing), false, lang);
+    }
+  });
+
   it("explains element sets without inventing a kilometres figure", () => {
     const roles = [
       "production-raised",

@@ -182,7 +182,7 @@
     "seed": "Live GP fetch failed. Showing the checked-in snapshot from {date}, not a current element set.",
     "seedStale": "Live GP fetch failed. The checked-in snapshot from {date} is older than 72 hours. Positions are still propagated.",
     "todaySeed": "Snapshot — live fetch failed",
-    "todayStale": "Includes TLEs older than 72 h",
+    "todayStale": "Includes element sets older than 72 h",
     "what": "An element set is the public general-perturbations record for one object: the numbers this site propagates. It is not a measured position.",
     "why": "CelesTrak has not published a newer element set for the objects below. That is common when an object is decaying, manoeuvring, or rarely tracked.",
     "accuracy": "A position propagated from an old element set drifts as the orbit changes. This site does not turn that drift into a kilometres figure. What you see stays geometric line-of-sight, and the object keeps a stale mark.",

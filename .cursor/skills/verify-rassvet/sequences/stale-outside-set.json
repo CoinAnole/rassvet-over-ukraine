@@ -5,7 +5,7 @@
   {"action": "expect", "text": "CelesTrak GP"},
   {"action": "expect", "absent": "Not live"},
   {"action": "expect", "absent": "Stale GP"},
-  {"action": "expect", "absent": "Includes TLEs older than 72 h"},
+  {"action": "expect", "absent": "Includes element sets older than 72 h"},
   {"action": "expect", "selector": "button[aria-controls=stale-gp-details]", "attr": "aria-expanded=false"},
   {
     "action": "screenshot",
