@@ -183,6 +183,7 @@ describe("checked-in catalog", () => {
   it("is structurally consistent when GP echoes catalogName and COSPAR", () => {
     const cfg = readObjectsConfig();
     const now = new Date("2026-10-06T00:00:00Z");
+    const stuck = new Set(cfg.stuck);
     const records = cfg.objects
       .filter((obj) => !cfg.decayed.includes(obj.norad))
       .map((obj) =>
@@ -191,6 +192,7 @@ describe("checked-in catalog", () => {
           OBJECT_ID: obj.cospar,
           OBJECT_NAME: obj.catalogName,
           EPOCH: "2026-10-05T12:00:00.000000",
+          MEAN_MOTION: stuck.has(obj.norad) ? 15.65 : 15.184,
         }),
       );
     const report = live(cfg, records, { now });
@@ -199,5 +201,36 @@ describe("checked-in catalog", () => {
       report.missing.map((obj) => obj.norad),
       cfg.decayed,
     );
+    assert.deepEqual(
+      report.stuck.map((entry) => entry.obj.norad).sort((a, b) => a - b),
+      [...cfg.stuck].sort((a, b) => a - b),
+    );
+    assert.equal(report.climbing.some((entry) => cfg.stuck.includes(entry.obj.norad)), false);
+    assert.equal(cfg.stuck.includes(68370), false);
+  });
+});
+
+describe("not-climbing list", () => {
+  it("accepts a listed NORAD that is still under 480 km", () => {
+    const report = live(config({ stuck: [1] }), [row({ MEAN_MOTION: 15.65 })]);
+    assert.equal(report.exitCode, 0, report.failures.join("\n"));
+    assert.deepEqual(
+      report.stuck.map((entry) => entry.obj.norad),
+      [1],
+    );
+    assert.equal(report.climbing.length, 0);
+    assert.match(renderAudit(report), /Not climbing, manual list \(1\): 1/);
+  });
+
+  it("fails a listed NORAD that has reached the raised gate", () => {
+    const report = live(config({ stuck: [1] }), [row({ MEAN_MOTION: 15.184 })]);
+    assert.equal(report.exitCode, 1);
+    assert.match(report.failures.join("\n"), /raised gate/);
+  });
+
+  it("fails a listed NORAD that is not in objects", () => {
+    const report = live(config({ stuck: [68373] }), [row()]);
+    assert.equal(report.exitCode, 1);
+    assert.match(report.failures.join("\n"), /not in objects/);
   });
 });

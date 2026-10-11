@@ -16,6 +16,30 @@ export function getObjectsConfig(): ObjectsConfig {
   return config;
 }
 
+/**
+ * Altitude and the manual lists decide status.
+ * The raised gate wins over `stuck`: an object that has reached 480 km is raised
+ * even if the list is stale. One GP has no climb rate, so `stuck` is only the list.
+ */
+export function classifyStatus(args: {
+  manualDecayed: boolean;
+  manualStuck: boolean;
+  hasElements: boolean;
+  perigeeKm: number | null;
+  approxAltitudeKm: number | null;
+  decayPerigeeKm: number;
+  raisedAltitudeKm: number;
+}): LiveObject["status"] {
+  if (args.manualDecayed) return "decayed";
+  if (!args.hasElements) return "missing";
+  if (args.perigeeKm != null && args.perigeeKm < args.decayPerigeeKm) return "decayed";
+  if (args.approxAltitudeKm != null && args.approxAltitudeKm >= args.raisedAltitudeKm) {
+    return "raised";
+  }
+  if (args.manualStuck) return "stuck";
+  return "climbing";
+}
+
 function asOmm(raw: Record<string, unknown>): CatalogOmm | null {
   const norad = Number(raw.NORAD_CAT_ID);
   if (!Number.isFinite(norad) || !raw.EPOCH || raw.MEAN_MOTION == null) return null;
@@ -60,6 +84,9 @@ export function buildCatalog(opts: {
 }): CatalogPayload {
   const now = opts.now ?? new Date();
   const decayedSet = new Set(config.decayed);
+  const stuckSet = new Set(config.stuck ?? []);
+  const decayPerigeeKm = config.decayPerigeeKm || DECAY_PERIGEE_KM;
+  const raisedAltitudeKm = config.raisedAltitudeKm || RAISED_ALTITUDE_KM;
   const groupById = new Map(config.groups.map((g) => [g.id, g]));
   const objects: LiveObject[] = [];
   const missingKnownIds: number[] = [];
@@ -112,9 +139,15 @@ export function buildCatalog(opts: {
     }
     const orbit = orbitFromOmm(omm);
     const stale = hoursOld(String(omm.EPOCH), now) > (config.staleHours || STALE_HOURS);
-    let status: LiveObject["status"] = "climbing";
-    if (orbit.perigeeKm < (config.decayPerigeeKm || DECAY_PERIGEE_KM)) status = "decayed";
-    else if (orbit.approxAltitudeKm >= (config.raisedAltitudeKm || RAISED_ALTITUDE_KM)) status = "raised";
+    const status = classifyStatus({
+      manualDecayed: false,
+      manualStuck: stuckSet.has(meta.norad),
+      hasElements: true,
+      perigeeKm: orbit.perigeeKm,
+      approxAltitudeKm: orbit.approxAltitudeKm,
+      decayPerigeeKm,
+      raisedAltitudeKm,
+    });
     objects.push({
       norad: meta.norad,
       name: meta.name,

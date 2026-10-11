@@ -5,7 +5,7 @@ import { unionIntervals, unionMinutes, clipIntervals } from "./union.ts";
 import { CITY_STRIP, PLACES } from "./constants.ts";
 import { DICTS, coverageSentence, getDict } from "../i18n/index.ts";
 import { methodSections } from "../i18n/method.ts";
-import { buildCatalog, indexOmms } from "../catalog/build.ts";
+import { buildCatalog, classifyStatus, indexOmms } from "../catalog/build.ts";
 import { computeCoverage, inPopulation } from "./coverage.ts";
 import {
   CLOCK_WINDOW_MS,
@@ -160,6 +160,125 @@ describe("decayed and stale classification", () => {
     });
     const obj = catalog.objects.find((o) => o.norad === 68360);
     assert.ok(obj?.stale);
+  });
+});
+
+describe("production default and not-climbing list", () => {
+  const LOW = 15.65;
+  const HIGH = 15.184;
+
+  function omm(norad: number, meanMotion: number): CatalogOmm {
+    return {
+      OBJECT_NAME: "CLASSIFY",
+      OBJECT_ID: "2026-061A",
+      EPOCH: "2026-10-11T00:00:00.000000",
+      MEAN_MOTION: meanMotion,
+      ECCENTRICITY: 0.0002,
+      INCLINATION: 82.3,
+      RA_OF_ASC_NODE: 10,
+      ARG_OF_PERICENTER: 20,
+      MEAN_ANOMALY: 30,
+      EPHEMERIS_TYPE: 0,
+      CLASSIFICATION_TYPE: "U",
+      NORAD_CAT_ID: norad,
+      ELEMENT_SET_NO: 999,
+      REV_AT_EPOCH: 1,
+      BSTAR: 0,
+      MEAN_MOTION_DOT: 0,
+      MEAN_MOTION_DDOT: 0,
+    };
+  }
+
+  function catalogFor(rows: CatalogOmm[]) {
+    return buildCatalog({
+      omms: indexOmms(rows),
+      fetchedAt: "2026-10-11T12:00:00Z",
+      source: "live",
+      warning: null,
+      now: new Date("2026-10-11T12:00:00Z"),
+    });
+  }
+
+  it("classifies the curated not-climbing list and leaves RASSVET-3 11 climbing", () => {
+    const catalog = catalogFor([
+      omm(68370, LOW),
+      omm(68373, LOW),
+      omm(100083, LOW),
+      omm(100089, LOW),
+      omm(100092, LOW),
+      omm(68360, HIGH),
+      omm(57179, HIGH),
+      omm(59779, HIGH),
+    ]);
+    const by = (norad: number) => {
+      const obj = catalog.objects.find((o) => o.norad === norad);
+      assert.ok(obj);
+      return obj;
+    };
+
+    const eleven = by(68370);
+    assert.equal(eleven.status, "climbing");
+    assert.equal(inPopulation(eleven, "climbing"), true);
+    assert.equal(inPopulation(eleven, "prod-raised"), false);
+
+    for (const norad of [68373, 100083, 100089]) {
+      const stuck = by(norad);
+      assert.equal(stuck.status, "stuck");
+      assert.equal(inPopulation(stuck, "climbing"), false);
+      assert.equal(inPopulation(stuck, "prod-raised"), false);
+      assert.equal(inPopulation(stuck, "all"), true);
+    }
+    assert.equal(inPopulation(by(68373), "prod-2026-03"), true);
+    assert.equal(inPopulation(by(100083), "prod-2026-07"), true);
+
+    const twentySix = by(100092);
+    assert.equal(twentySix.status, "climbing");
+    assert.equal(inPopulation(twentySix, "climbing"), true);
+
+    const production = by(68360);
+    assert.equal(production.status, "raised");
+    assert.equal(inPopulation(production, "prod-raised"), true);
+    assert.equal(inPopulation(production, "raised"), true);
+
+    for (const norad of [57179, 59779]) {
+      const experimental = by(norad);
+      assert.equal(experimental.status, "raised");
+      assert.equal(inPopulation(experimental, "prod-raised"), false);
+      assert.equal(inPopulation(experimental, "raised"), true);
+    }
+    assert.equal(inPopulation(by(57179), "exp-2023"), true);
+    assert.equal(inPopulation(by(59779), "exp-2024"), true);
+  });
+
+  it("lets the 480 km gate override a stale not-climbing entry", () => {
+    assert.equal(
+      classifyStatus({
+        manualDecayed: false,
+        manualStuck: true,
+        hasElements: true,
+        perigeeKm: 510,
+        approxAltitudeKm: 517,
+        decayPerigeeKm: 150,
+        raisedAltitudeKm: 480,
+      }),
+      "raised",
+    );
+    assert.equal(
+      classifyStatus({
+        manualDecayed: true,
+        manualStuck: true,
+        hasElements: true,
+        perigeeKm: 340,
+        approxAltitudeKm: 350,
+        decayPerigeeKm: 150,
+        raisedAltitudeKm: 480,
+      }),
+      "decayed",
+    );
+    const catalog = catalogFor([omm(68373, HIGH)]);
+    const fourteen = catalog.objects.find((o) => o.norad === 68373);
+    assert.equal(fourteen?.status, "raised");
+    assert.equal(fourteen ? inPopulation(fourteen, "prod-raised") : false, true);
   });
 });
 

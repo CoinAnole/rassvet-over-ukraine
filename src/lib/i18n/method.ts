@@ -61,6 +61,14 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
+      heading: "Which satellites count",
+      paragraphs: [
+        "The default coverage set is production RASSVET-3 at or above 480 km. Experimental Rassvet-1 (2023) and Rassvet-2 (2024) stay out of that default. They are separate choices in the population list. They are included when the choice is every raised object or every catalogued object. A shared link with no set parameter opens the default. A link that still says set=raised or set=operational opens every raised object, including the experimentals.",
+        "An object below 480 km counts as climbing only when it is not on the manual not-climbing list. That list is a curated override, the same kind of list as the decayed NORADs. Objects on it still have an element set. They can appear in a launch-group count or in all catalogued objects, with the status not climbing. They are left out of the climbing population, so the clock does not describe them as climbing toward service.",
+        "This site stores one latest element set per object. It does not keep altitude history, and it does not turn that element set’s mean-motion derivative into a kilometres-per-day rate. A single derivative is a short-arc fit. Checked on 2026-10-11, it disagreed in size with rates from a history of element sets, and for one still-climbing object it disagreed in sign. The not-climbing entries checked that day are RASSVET-3 14, 17, and 23. RASSVET-3 11 is not on the list. The check used the public altitude history at findrassvet.ru (V. Bulybenko). That site’s figures are available under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). This page names the objects. It does not copy those rates. If an object on the list later reaches 480 km, the raised gate wins and the catalog check asks for the list to be updated.",
+      ],
+    },
+    {
       heading: "Window versus pass",
       paragraphs: [
         "A pass is one object above the mask. A window is the union of all such intervals: overlapping satellites do not double-count minutes. The Today tile and city chips use windows. The pass list is per-object so an analyst can see who is contributing. That split is deliberate.",
@@ -131,6 +139,14 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       ],
     },
     {
+      heading: "Які супутники входять у рахунок",
+      paragraphs: [
+        "Набір покриття за замовчуванням — серійні RASSVET-3 на висоті від 480 км. Експериментальні Рассвет-1 (2023) і Рассвет-2 (2024) у цей набір не входять. Вони є окремими пунктами списку. Вони входять, коли обрано всі підняті або всі каталожні об’єкти. Посилання без параметра набору відкриває набір за замовчуванням. Посилання, у якому й далі написано set=raised або set=operational, відкриває всі підняті об’єкти, включно з експериментальними.",
+        "Об’єкт нижче 480 км вважається таким, що піднімається, лише якщо його немає в ручному списку «не піднімається». Цей список — курована підміна, того ж роду, що й список зійшлих NORAD. Об’єкти з нього й далі мають набір елементів. Вони можуть з’явитися в ліку групи запуску або серед усіх каталожних, зі статусом «не піднімається». З набору «піднімаються» їх виключено, тож годинник не описує їх як підйом до робочої висоти.",
+        "Сайт зберігає один найновіший набір елементів на об’єкт. Він не тримає історії висоти і не перетворює похідну середнього руху цього набору на темп у кілометрах за добу. Одна похідна — це підгонка короткої дуги. На перевірці 2026-10-11 вона розійшлася за величиною з темпами з історії наборів, а для одного об’єкта, що й далі піднімається, розійшлася й за знаком. Записи «не піднімається», звірені того дня: RASSVET-3 14, 17 і 23. RASSVET-3 11 у списку немає. Звірку зроблено за публічною історією висоти на findrassvet.ru (В. Булибенко). Матеріали того сайту доступні на умовах CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Ця сторінка називає об’єкти. Вона не копіює ті темпи. Якщо об’єкт зі списку згодом досягає 480 км, поріг «піднятий» перемагає, а перевірка каталогу просить оновити список.",
+      ],
+    },
+    {
       heading: "Вікно і проходження",
       paragraphs: [
         "Проходження — один об’єкт вище маски. Вікно — об’єднання всіх таких інтервалів: перетини не подвоюють хвилини. Плитка «Сьогодні» і міські чипи використовують вікна. Таблиця проходжень — пооб’єктна, щоб було видно, хто додається. Цей поділ навмисний.",
@@ -198,6 +214,14 @@ const CONTENT: Record<Lang, MethodSection[]> = {
       paragraphs: [
         "Публичные материалы о первой серийной партии описывают выравнивание около 500–550 км, а не 800 км из заявок и буклетов. Этот сайт берёт 480 км как продуктовую константу для «поднят»: в каталоге, не сошёл, приближённая высота из последнего набора элементов не меньше 480 км. Цифра 800 км не используется как рабочий порог.",
         "Приближённая высота — a − Re из среднего движения (большая полуось минус 6371 км). Перигей и апогей — тот же a с опубликованным эксцентриситетом.",
+      ],
+    },
+    {
+      heading: "Какие спутники входят в счёт",
+      paragraphs: [
+        "Набор покрытия по умолчанию — серийные RASSVET-3 на высоте от 480 км. Экспериментальные Рассвет-1 (2023) и Рассвет-2 (2024) в этот набор не входят. Они стоят отдельными пунктами списка. Они входят, когда выбраны все поднятые или все каталожные объекты. Ссылка без параметра набора открывает набор по умолчанию. Ссылка, в которой по-прежнему написано set=raised или set=operational, открывает все поднятые объекты, включая экспериментальные.",
+        "Объект ниже 480 км считается поднимающимся, только если его нет в ручном списке «не поднимается». Этот список — курируемая подмена, того же рода, что и список сошедших NORAD. Объекты из него по-прежнему имеют набор элементов. Они могут появиться в счёте группы запуска или среди всех каталожных, со статусом «не поднимается». Из набора «поднимаются» они исключены, поэтому часы не описывают их как подъём к рабочей высоте.",
+        "Сайт хранит один новейший набор элементов на объект. Он не хранит историю высоты и не превращает производную среднего движения этого набора в темп в километрах в сутки. Одна производная — это подгонка короткой дуги. На проверке 2026-10-11 она разошлась по величине с темпами из истории наборов, а для одного объекта, который продолжает подниматься, разошлась и по знаку. Записи «не поднимается», сверенные в тот день: RASSVET-3 14, 17 и 23. RASSVET-3 11 в списке нет. Сверку сделали по публичной истории высоты на findrassvet.ru (В. Булыбенко). Материалы того сайта доступны на условиях CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Эта страница называет объекты. Она не копирует те темпы. Если объект из списка позже достигает 480 км, порог «поднят» побеждает, а проверка каталога просит обновить список.",
       ],
     },
     {

@@ -34,6 +34,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
   const onOrbit = catalog.objects.filter((o) => o.status !== "decayed" && o.status !== "missing");
   const raised = onOrbit.filter((o) => o.status === "raised");
   const climbing = onOrbit.filter((o) => o.status === "climbing");
+  const stuck = onOrbit.filter((o) => o.status === "stuck");
   const decayed = catalog.objects.filter((o) => o.status === "decayed");
 
   const rows = catalog.objects.filter((o) => {
@@ -61,10 +62,11 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat label={t.constellation.onOrbit} value={onOrbit.length} />
         <Stat label={t.constellation.raised} value={raised.length} />
         <Stat label={t.constellation.climbing} value={climbing.length} />
+        <Stat label={t.constellation.stuck} value={stuck.length} />
         <Stat label={t.constellation.decayed} value={decayed.length} />
         <Stat
           label={t.constellation.groups}
@@ -125,7 +127,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
                 name="alt"
                 stroke="var(--color-muted)"
                 tick={{ fill: "var(--color-muted)", fontSize: 11 }}
-                domain={[200, 600]}
+                domain={[180, 880]}
                 label={{
                   value: t.constellation.yAxis,
                   angle: -90,

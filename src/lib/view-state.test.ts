@@ -84,12 +84,28 @@ describe("short view query", () => {
     const view = viewFromSearch(incoming, "uk");
     assert.equal(view.lang, "en");
     assert.equal(view.set, "raised");
-    assert.deepEqual(canonicalSearch(incoming, view, null), {});
+    assert.deepEqual(canonicalSearch(incoming, view, null), { set: "raised" });
 
     const detected = viewFromSearch({}, "uk");
     assert.equal(detected.lang, "uk");
+    assert.equal(detected.set, "prod-raised");
+    assert.equal(detected.el, 25);
     assert.deepEqual(canonicalSearch({}, detected, null), {});
     assert.deepEqual(canonicalSearch({ lang: "uk" }, detected, null), { lang: "uk" });
+  });
+});
+
+describe("satellite set links", () => {
+  it("opens a missing set as raised production and keeps an explicit raised link", () => {
+    assert.equal(viewFromSearch({}, "en").set, "prod-raised");
+    assert.equal(searchFromView(defaultView(), null).set, undefined);
+    assert.equal(viewFromSearch({ set: "raised" }, "en").set, "raised");
+    assert.equal(viewFromSearch({ set: "operational" }, "en").set, "raised");
+    assert.equal(viewFromSearch({ set: "prod-raised" }, "en").set, "prod-raised");
+    assert.equal(viewFromSearch({ set: "exp-2023" }, "en").set, "exp-2023");
+    assert.equal(viewFromSearch({ set: "nope" as "all" }, "en").set, "prod-raised");
+    const raised = viewFromSearch({ set: "raised" }, "en");
+    assert.equal(searchFromView(raised, null).set, "raised");
   });
 });
 

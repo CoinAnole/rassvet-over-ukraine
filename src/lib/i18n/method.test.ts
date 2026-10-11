@@ -51,4 +51,35 @@ describe("method copy", () => {
     assert.match(ruText, /военн/);
     assert.match(ruText, /круглосуточн/);
   });
+
+  it("names the default production set, the not-climbing list, and the CC BY source in each language", () => {
+    const en = methodSections("en").find((s) => s.heading === "Which satellites count");
+    assert.ok(en);
+    const enText = en.paragraphs.join(" ");
+    assert.match(enText, /production RASSVET-3/);
+    assert.match(enText, /Rassvet-1/);
+    assert.match(enText, /set=raised/);
+    assert.match(enText, /RASSVET-3 11 is not on the list/);
+    assert.match(enText, /RASSVET-3 14, 17, and 23/);
+    assert.match(enText, /findrassvet\.ru \(V\. Bulybenko\)/);
+    assert.match(enText, /CC BY 4\.0/);
+    assert.equal(/RASSVET-3 11.{0,40}fail/i.test(enText), false);
+
+    const uk = methodSections("uk").find((s) => s.heading === "Які супутники входять у рахунок");
+    assert.ok(uk);
+    const ukText = uk.paragraphs.join(" ");
+    assert.match(ukText, /RASSVET-3/);
+    assert.match(ukText, /не піднімається/);
+    assert.match(ukText, /RASSVET-3 11 у списку немає/);
+    assert.match(ukText, /findrassvet\.ru/);
+    assert.match(ukText, /CC BY 4\.0/);
+
+    const ru = methodSections("ru").find((s) => s.heading === "Какие спутники входят в счёт");
+    assert.ok(ru);
+    const ruText = ru.paragraphs.join(" ");
+    assert.match(ruText, /не поднимается/);
+    assert.match(ruText, /RASSVET-3 11 в списке нет/);
+    assert.match(ruText, /findrassvet\.ru/);
+    assert.match(ruText, /CC BY 4\.0/);
+  });
 });

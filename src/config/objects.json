@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-20",
+  "updated": "2026-10-11",
   "raisedAltitudeKm": 480,
   "staleHours": 72,
   "stepSeconds": 30,
@@ -20,21 +20,25 @@
   "groups": [
     {
       "id": "exp-2023",
+      "kind": "experimental",
       "launchDate": "2023-06-27",
-      "label": { "en": "Experimental 2023", "uk": "Експериментальні 2023", "ru": "Экспериментальные 2023" }
+      "label": { "en": "Experimental, Rassvet-1", "uk": "Експериментальні — Рассвет-1", "ru": "Экспериментальные — Рассвет-1" }
     },
     {
       "id": "exp-2024",
+      "kind": "experimental",
       "launchDate": "2024-05-16",
-      "label": { "en": "Experimental 2024", "uk": "Експериментальні 2024", "ru": "Экспериментальные 2024" }
+      "label": { "en": "Experimental, Rassvet-2", "uk": "Експериментальні — Рассвет-2", "ru": "Экспериментальные — Рассвет-2" }
     },
     {
       "id": "prod-2026-03",
+      "kind": "production",
       "launchDate": "2026-03-23",
       "label": { "en": "Production Mar 2026", "uk": "Серійні, бер. 2026", "ru": "Серийные, март 2026" }
     },
     {
       "id": "prod-2026-07",
+      "kind": "production",
       "launchDate": "2026-07-19",
       "label": { "en": "Production Jul 2026", "uk": "Серійні, лип. 2026", "ru": "Серийные, июль 2026" }
     },
@@ -45,6 +49,8 @@
     }
   ],
   "decayed": [68363],
+  "stuck": [68373, 100083, 100089],
+  "stuckNote": "Manual not-climbing list, checked 2026-10-11 against the public altitude history at findrassvet.ru (V. Bulybenko, CC BY 4.0). Not a kilometres-per-day rate. RASSVET-3 11 (68370) is absent on purpose: that history shows it climbing.",
   "objects": [
     { "norad": 57179, "name": "Rassvet-1 No. 1", "catalogName": "OBJECT P", "cospar": "2023-091P", "group": "exp-2023" },
     { "norad": 57183, "name": "Rassvet-1 No. 2", "catalogName": "OBJECT T", "cospar": "2023-091T", "group": "exp-2023" },

@@ -4,7 +4,7 @@ Constellation counts catalogued objects and plots approximate altitude against d
 
 ## Sub-features
 
-- `constellation-counts` shows on-orbit, raised, climbing, decayed, and launch-group counts.
+- `constellation-counts` shows on-orbit, raised, climbing, not-climbing, decayed, and launch-group counts.
 - `constellation-hide-decayed` hides decayed rows when the checkbox is checked.
 - `constellation-group` filters the chart and the table to one launch group.
 - `constellation-table` lists name, NORAD, status, and element-set epoch for the visible rows.
@@ -23,11 +23,11 @@ Preconditions:
 - English profile.
 
 - **Open.** Choose Constellation. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role link --name "Constellation"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --url-includes "/constellation"`.
-- **Counts.** Confirm the summary. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Catalogued on orbit"` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Raised (≥ 480 km)"`.
+- **Counts.** Confirm the summary. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Catalogued on orbit"` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Raised (≥ 480 km)"` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Not climbing"`.
 - **Decayed filter.** The checkbox starts checked. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --role checkbox --name "Hide decayed"`. Click it. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role checkbox --name "Hide decayed"`. Decayed rows may appear in the table; the on-orbit count label stays on screen.
-- **Launch group.** Choose Experimental 2023. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser select --label "Launch group" --option "Experimental 2023"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Experimental 2023"`.
+- **Launch group.** Choose Experimental, Rassvet-1. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser select --label "Launch group" --option "Experimental, Rassvet-1"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Experimental, Rassvet-1"`.
 - **Direct entry.** Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /constellation`. The counts return, and `Hide decayed` is checked again because a new document load resets the control. The launch-group choice is not in the URL.
-- **Proof.** After the Experimental 2023 selection (before the direct reload), capture the filtered page. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser screenshot --path .cursor/skills/verify-rassvet/evidence/constellation/group.png --full-page --feature constellation` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser snapshot --aria --path .cursor/skills/verify-rassvet/evidence/constellation/group.aria.txt --feature constellation`. Both show `Constellation` in the navigation and the heading `Rassvet over Ukraine`.
+- **Proof.** After the Experimental, Rassvet-1 selection (before the direct reload), capture the filtered page. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser screenshot --path .cursor/skills/verify-rassvet/evidence/constellation/group.png --full-page --feature constellation` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser snapshot --aria --path .cursor/skills/verify-rassvet/evidence/constellation/group.aria.txt --feature constellation`. Both show `Constellation` in the navigation and the heading `Rassvet over Ukraine`.
 
 ## Gotchas
 

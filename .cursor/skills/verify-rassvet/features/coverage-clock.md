@@ -12,7 +12,7 @@ The Ukraine today page shows how many catalogued objects are above the elevation
 
 ## How to get to it (user POV)
 
-- Open the site root. The default point is Kyiv, minimum elevation 25°, population Raised.
+- Open the site root. The default point is Kyiv, minimum elevation 25°, population Raised production.
 - Choose `Ukraine today` in the Primary navigation.
 - Choose a city in the `Location` selector. Lviv and Vinnytsia are options. Vinnytsia is not on the strip.
 - Read the strip labelled `Same mask and population, other cities`.
