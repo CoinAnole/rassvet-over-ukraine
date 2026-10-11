@@ -47,4 +47,4 @@ Preconditions:
 - `--gp-fixture` is opt-in. A plain launch still calls CelesTrak. Doctor's `source: live` under a fixture means the app parsed the fixture, not that CelesTrak answered. Write `gpFixture` next to the screenshots. Cleanup before changing fixtures.
 - `Not live` is also the held-clock label. On a seed run, assert `checked-in snapshot` as well so a held clock is not mistaken for the catalog banner.
 - A live catalog can still warn about missing NORAD ids in the header (`Warning:`). That warning is not the stale banner.
-- Per-object `stale TLE` in the pass list is a row mark. The page banner is the catalog-level proof.
+- Per-object `stale element set` in the pass list is a row mark. The page banner is the catalog-level proof.
