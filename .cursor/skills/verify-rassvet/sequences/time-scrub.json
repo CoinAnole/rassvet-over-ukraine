@@ -1,0 +1,32 @@
+[
+  {"action": "open", "path": "/"},
+  {"action": "count", "selector": "[data-scrub-band]"},
+  {"action": "range", "name": "Offset from real now", "value": 6, "waitText": "36 hours from this clock"},
+  {"action": "expect", "urlIncludes": "at="},
+  {"action": "expect", "text": "+6 h"},
+  {"action": "expect", "text": "36 hours from this clock"},
+  {"action": "url"},
+  {"action": "focus", "role": "slider", "name": "Offset from real now"},
+  {"action": "press", "key": "ArrowRight"},
+  {"action": "expect", "text": "36 hours from this clock"},
+  {"action": "url"},
+  {"action": "click", "selector": "[data-scrub-band]", "nth": 0, "waitText": "36 hours from this clock"},
+  {"action": "url"},
+  {"action": "click", "role": "button", "name": "Live / now", "waitText": "Next 36 hours"},
+  {"action": "expect", "text": "Next 36 hours"},
+  {"action": "expect", "absent": "36 hours from this clock"},
+  {"action": "url"},
+  {"action": "range", "name": "Offset from real now", "value": 6, "waitText": "36 hours from this clock"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/time-scrub/held.png",
+    "fullPage": true,
+    "feature": "time-scrub"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/time-scrub/held.aria.txt",
+    "feature": "time-scrub"
+  }
+]

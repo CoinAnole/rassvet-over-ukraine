@@ -27,11 +27,11 @@ Preconditions:
 - **Decayed filter.** The checkbox starts checked. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --role checkbox --name "Hide decayed"`. Click it. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role checkbox --name "Hide decayed"`. Decayed rows may appear in the table; the on-orbit count label stays on screen.
 - **Launch group.** Choose Experimental, Rassvet-1. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser select --label "Launch group" --option "Experimental, Rassvet-1"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Experimental, Rassvet-1"`.
 - **Direct entry.** Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /constellation`. The counts return, and `Hide decayed` is checked again because a new document load resets the control. The launch-group choice is not in the URL.
-- **Proof.** After the Experimental, Rassvet-1 selection (before the direct reload), capture the filtered page. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser screenshot --path .cursor/skills/verify-rassvet/evidence/constellation/group.png --full-page --feature constellation` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser snapshot --aria --path .cursor/skills/verify-rassvet/evidence/constellation/group.aria.txt --feature constellation`. Both show `Constellation` in the navigation and the heading `Rassvet over Ukraine`.
+- **Proof.** Capture the filtered page in the same sequence as the select. A later screenshot command reloads `/constellation` and the group is gone. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser sequence --file .cursor/skills/verify-rassvet/sequences/constellation.json`. Unchecking Hide decayed shows `RASSVET-3 4` before the group filter. The snapshot then shows `Experimental, Rassvet-1` selected and `Hide decayed` unchecked. Both captures show `Constellation` in the navigation and the heading `Rassvet over Ukraine`.
 
 ## Gotchas
 
-- Hide-decayed and the launch group are not written to the URL. Reloading `/constellation` restores the checkbox to checked and the group to `All groups`.
+- Hide-decayed and the launch group are not written to the URL or to `localStorage`. Reloading `/constellation` restores the checkbox to checked and the group to `All groups`. A separate browser command is that reload.
 - Language on this page is the profile language, not a `lang` query. See the language map.
 - The chart is a plot, not a table. Prove a filter with the table text or the select, not with a pixel in the plot.
 - Counts come from the catalog doctor already loaded. Do not assert a hardcoded population.
