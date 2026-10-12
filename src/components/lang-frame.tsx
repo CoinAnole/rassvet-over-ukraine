@@ -1,7 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { detectLang, persistLang, isLang, getDict } from "@/lib/i18n";
+import { persistLang, isLang, getDict, LANG_KEY } from "@/lib/i18n";
+import { resolveLang } from "@/lib/i18n/resolve-lang";
+import type { ProfileLang } from "@/lib/i18n/profile-lang";
 import { dataFreshness } from "@/lib/catalog/freshness";
 import { summarizeStale } from "@/lib/catalog/stale-summary";
 import type { Lang, CatalogPayload } from "@/lib/catalog/types";
@@ -26,23 +28,37 @@ export function LangFrame({
   current,
   catalog,
   langParam,
+  profile,
   search,
   children,
 }: {
   current: "/" | "/constellation" | "/method";
   catalog: CatalogPayload;
   langParam?: string;
-  /** Ukraine today search. Other pages have no coverage set, so the note uses the default. */
+  profile: ProfileLang;
   search?: ViewSearch;
   children: (lang: Lang) => React.ReactNode;
 }) {
   const navigate = useNavigate();
-  const [stored, setStored] = useState<Lang>(() => detectLang(langParam));
-  const lang: Lang = isLang(langParam) ? langParam : stored;
+  const [picked, setPicked] = useState<Lang | null>(null);
+  const lang = resolveLang({
+    urlLang: current === "/" ? langParam : null,
+    cookie: picked ?? profile.cookie,
+    acceptLanguage: profile.acceptLanguage,
+  });
+
+  useEffect(() => {
+    if (profile.cookie) return;
+    const stored = window.localStorage.getItem(LANG_KEY);
+    if (!isLang(stored)) return;
+    persistLang(stored);
+    if (current === "/" && isLang(langParam)) return;
+    setPicked(stored);
+  }, [current, langParam, profile.cookie]);
 
   const onLang = useCallback(
     (next: Lang) => {
-      setStored(next);
+      setPicked(next);
       persistLang(next);
       if (current === "/") {
         void navigate({

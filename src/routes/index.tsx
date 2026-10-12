@@ -9,6 +9,7 @@ import { findScrubWindows, scrubAnchorMs } from "@/lib/orbit/scrub-windows";
 import { parseCivilInput, tzName } from "@/lib/orbit/time";
 import { getDict } from "@/lib/i18n";
 import { getCatalog } from "@/lib/catalog/get-catalog";
+import { readProfileLang } from "@/lib/i18n/profile-lang";
 import type { Lang } from "@/lib/catalog/types";
 import type { PlaceId } from "@/lib/orbit/constants";
 import {
@@ -44,8 +45,8 @@ function parseSearch(raw: Record<string, unknown>): ViewSearch {
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => parseSearch(search),
   loader: async () => {
-    const catalog = await getCatalog();
-    return { catalog, nowIso: new Date().toISOString() };
+    const [catalog, profile] = await Promise.all([getCatalog(), readProfileLang()]);
+    return { catalog, profile, nowIso: new Date().toISOString() };
   },
   component: Home,
 });
@@ -55,10 +56,16 @@ function urlClock(clock: HeldClock | null): UrlClock | null {
 }
 
 function Home() {
-  const { catalog } = Route.useLoaderData();
+  const { catalog, profile } = Route.useLoaderData();
   const search = Route.useSearch();
   return (
-    <LangFrame current="/" catalog={catalog} langParam={search.lang} search={search}>
+    <LangFrame
+      current="/"
+      catalog={catalog}
+      langParam={search.lang}
+      profile={profile}
+      search={search}
+    >
       {(lang) => <UkraineToday lang={lang} />}
     </LangFrame>
   );
