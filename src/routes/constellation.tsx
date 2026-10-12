@@ -2,16 +2,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LangFrame } from "@/components/lang-frame";
 import { ConstellationView } from "@/components/constellation-view";
 import { getCatalog } from "@/lib/catalog/get-catalog";
+import { readProfileLang } from "@/lib/i18n/profile-lang";
 
 export const Route = createFileRoute("/constellation")({
-  loader: async () => ({ catalog: await getCatalog() }),
+  loader: async () => {
+    const [catalog, profile] = await Promise.all([getCatalog(), readProfileLang()]);
+    return { catalog, profile };
+  },
   component: ConstellationPage,
 });
 
 function ConstellationPage() {
-  const { catalog } = Route.useLoaderData();
+  const { catalog, profile } = Route.useLoaderData();
   return (
-    <LangFrame current="/constellation" catalog={catalog}>
+    <LangFrame current="/constellation" catalog={catalog} profile={profile}>
       {(lang) => <ConstellationView lang={lang} catalog={catalog} />}
     </LangFrame>
   );

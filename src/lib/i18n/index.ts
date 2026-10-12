@@ -15,29 +15,17 @@ const _placeLabels = {
   ru: ru.places,
 } satisfies Record<Lang, PlaceLabels>;
 
-const STORAGE_KEY = "rassvet-lang";
+export const LANG_KEY = "rassvet-lang";
 
 export function isLang(v: unknown): v is Lang {
   return v === "en" || v === "uk" || v === "ru";
 }
 
-export function detectLang(override?: string | null, acceptLanguage?: string | null): Lang {
-  if (isLang(override)) return override;
-  if (typeof window !== "undefined") {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (isLang(stored)) return stored;
-    const nav = window.navigator.language.toLowerCase();
-    if (nav.startsWith("uk")) return "uk";
-    if (nav.startsWith("ru")) return "ru";
-  }
-  const al = (acceptLanguage ?? "").toLowerCase();
-  if (al.includes("uk")) return "uk";
-  if (al.includes("ru")) return "ru";
-  return "en";
-}
-
 export function persistLang(lang: Lang) {
-  if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, lang);
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LANG_KEY, lang);
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${LANG_KEY}=${lang}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
 }
 
 export function getDict(lang: Lang): Dict {
