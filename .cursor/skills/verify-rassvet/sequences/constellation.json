@@ -1,0 +1,26 @@
+[
+  {"action": "open", "path": "/"},
+  {"action": "click", "role": "link", "name": "Constellation", "waitText": "Catalogued on orbit"},
+  {"action": "expect", "urlIncludes": "/constellation"},
+  {"action": "expect", "text": "Catalogued on orbit"},
+  {"action": "expect", "text": "Raised (≥ 450 km)"},
+  {"action": "expect", "text": "Not climbing"},
+  {"action": "expect", "role": "checkbox", "name": "Hide decayed"},
+  {"action": "click", "role": "checkbox", "name": "Hide decayed"},
+  {"action": "expect", "text": "RASSVET-3 4"},
+  {"action": "expect", "text": "Catalogued on orbit"},
+  {"action": "select", "label": "Launch group", "option": "Experimental, Rassvet-1"},
+  {"action": "expect", "text": "Experimental, Rassvet-1"},
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/constellation/group.png",
+    "fullPage": true,
+    "feature": "constellation"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/constellation/group.aria.txt",
+    "feature": "constellation"
+  }
+]
