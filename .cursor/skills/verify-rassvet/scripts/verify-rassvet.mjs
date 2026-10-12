@@ -66,10 +66,12 @@ function usage() {
   verify-rassvet.mjs browser sequence --file <steps.json>
   verify-rassvet.mjs browser click --role <role> --name <name> [--nth 0]
   verify-rassvet.mjs browser click --selector <css> [--nth 0]
+    A [data-scrub-band] click aims at the band center. The band is pointer-events:none; the range holds acquisition.
   verify-rassvet.mjs browser select --label <label> --option <text> [--wait-text <text>]
   verify-rassvet.mjs browser fill --label <label> --value <value> [--wait-text <text>]
   verify-rassvet.mjs browser fill --role <role> --name <name> --value <value>
   verify-rassvet.mjs browser focus --role <role> --name <name>
+  verify-rassvet.mjs browser focus --selector <css>
   verify-rassvet.mjs browser press --key <key>
   verify-rassvet.mjs browser range --name <name> --value <number>
   verify-rassvet.mjs browser snapshot --aria --path <file> [--feature <id>]
@@ -651,7 +653,16 @@ async function perform(page, action, positional, flags, navigate = true) {
 
       if (action === "click") {
         const target = locator(page, flags);
-        await target.click({ timeout: 15_000 });
+        if (flags.selector && String(flags.selector).includes("data-scrub-band")) {
+          // The band button is pointer-events:none under the range. A tap on
+          // the track at the band's center is what holds acquisition.
+          await target.scrollIntoViewIfNeeded();
+          const box = await target.boundingBox();
+          if (!box) throw new Error("scrub band is not visible");
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        } else {
+          await target.click({ timeout: 15_000 });
+        }
         if (flags["wait-text"]) {
           await page.getByText(String(flags["wait-text"]), { exact: false }).first().waitFor({ timeout: 20_000 });
         }

@@ -64,7 +64,7 @@ A fixture run is opt-in. A plain `launch` still calls CelesTrak and falls back t
 
 ## Drive
 
-Browser commands reopen the last URL in a persistent profile at `.cursor/skills/verify-rassvet/.run/browser-profile` (`locale=en-US`, viewport 1280×900). A fresh profile has no `rassvet-lang` entry, so the UI starts in English. State that matters (place, elevation, population, timezone, language on the Ukraine page, held clock) lives in the query string. Constellation filters and the language choice on Method and Constellation live in the page and in `localStorage`, so they survive only inside this profile.
+Browser commands reopen the last URL in a persistent profile at `.cursor/skills/verify-rassvet/.run/browser-profile` (`locale=en-US`, viewport 1280×900). A fresh profile has no `rassvet-lang` entry, so the UI starts in English. State that matters (place, elevation, population, timezone, held clock) lives in the query string. An explicit UK or RU pick on Ukraine today is written there too. Choosing a language also writes `localStorage` key `rassvet-lang`. Method and Constellation have no `lang` query. A client-side navigation and a later full load both show that stored language. Ukraine today does too when the address has no `lang`. Hide decayed and Launch group are page state only. They are not in the URL and not in `localStorage`. Every browser command except the steps inside one `browser sequence` loads the last URL in a new document, so those two controls reset.
 
 Every browser command waits until React has hydrated before it clicks, selects, or asserts. Changing a control on the server HTML alone does not update the clock. Wait for text or for the URL after that. Do not sleep a fixed time and declare success. Vite's dev socket never goes idle.
 
@@ -159,10 +159,10 @@ The helper is executable. From the repo root:
 | `browser open <path>` | Open `path` on the verification origin (`/` or `/?place=lviv`). |
 | `browser sequence --file <steps.json>` | Run several browser actions in one page. Each separate `browser` command opens a fresh page, so disclosure state does not survive between them. |
 | `browser click --role <role> --name <name>` | Click an accessible control. `--nth` is optional. |
-| `browser click --selector <css>` | Click a stable node such as `[data-scrub-band]`. |
+| `browser click --selector <css>` | Click a stable node. `[data-scrub-band]` is `pointer-events: none` under the range, so this click aims at the band's center and the range holds acquisition. |
 | `browser select --label <label> --option <text>` | Choose a native `<select>` option by its visible label. |
 | `browser fill --label <label> --value <value>` | Fill a labelled input, including `Date and time`. |
-| `browser focus --role <role> --name <name>` | Focus a control before `press`. |
+| `browser focus --role <role> --name <name>` | Focus a control before `press`. `--selector` works too. `press` in a later command loads a new document, so the key never reaches this focus. Keep focus and press in one `browser sequence`. |
 | `browser press --key <key>` | Send a key to the focused element (`ArrowRight`, `Enter`). |
 | `browser range --name <name> --value <number>` | Set `Offset from real now` and commit with Enter. |
 | `browser screenshot --path <file> [--full-page] [--feature <id>]` | PNG under `evidence/`. Does not hide the text caret. |

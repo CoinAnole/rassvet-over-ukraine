@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "verify:catalog": "node scripts/verify-catalog.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' '.cursor/skills/verify-rassvet/scripts/gp-fixture.test.mjs' && node --experimental-strip-types --test src/lib/orbit/altitude.test.ts src/lib/orbit/coverage.test.ts src/lib/catalog/freshness.test.ts src/lib/catalog/stale-summary.test.ts src/lib/i18n/method.test.ts src/lib/view-state.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' '.cursor/skills/verify-rassvet/scripts/gp-fixture.test.mjs' && node --experimental-strip-types --test src/lib/orbit/altitude.test.ts src/lib/orbit/coverage.test.ts src/lib/catalog/freshness.test.ts src/lib/catalog/stale-summary.test.ts src/lib/i18n/method.test.ts src/lib/i18n/resolve-lang.test.ts src/lib/view-state.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
