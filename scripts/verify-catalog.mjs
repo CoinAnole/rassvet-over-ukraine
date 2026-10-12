@@ -10,11 +10,20 @@
  * Exit 1: identity, unexpected-name, or stale-decay failure.
  * Exit 2: a query failed, so presence was not scored.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditCatalog, renderAudit } from "./catalog-hygiene.mjs";
-import { isMainModule } from "./with-app-env.mjs";
+
+function isMainModule(moduleUrl) {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === fileURLToPath(moduleUrl);
+  } catch {
+    return false;
+  }
+}
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TIMEOUT_MS = 30_000;

@@ -1,11 +1,11 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@/lib/auth/provider";
-import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
+import site from "@/lib/og/site.json";
 import { useState, type ReactNode } from "react";
 
-const APP_NAME = "Rassvet over Ukraine";
+const SHARE_ORIGIN = site.url.replace(/\/+$/, "");
+const SHARE_IMAGE = `${SHARE_ORIGIN}/og.jpg`;
 
 function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -22,19 +22,24 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: APP_NAME },
-      {
-        name: "description",
-        content:
-          "Unofficial geometric coverage estimate of catalogued Rassvet objects over Ukraine from public orbit data.",
-      },
-      { name: "theme-color", content: "#08090c" },
+      { title: site.title },
+      { name: "description", content: site.description },
+      { name: "theme-color", content: `#${site.color}` },
+      { property: "og:title", content: site.title },
+      { property: "og:description", content: site.description },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SHARE_ORIGIN}/` },
+      { property: "og:image", content: SHARE_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: site.title },
+      { name: "twitter:description", content: site.description },
+      { name: "twitter:image", content: SHARE_IMAGE },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -49,12 +54,9 @@ export const Route = createRootRoute({
         <HeadContent />
       </head>
       <body>
-        <PreviewHostBridge />
-        <AuthProvider>
-          <Providers>
-            <Outlet />
-          </Providers>
-        </AuthProvider>
+        <Providers>
+          <Outlet />
+        </Providers>
         <Scripts />
       </body>
     </html>

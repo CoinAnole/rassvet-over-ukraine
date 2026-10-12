@@ -7,9 +7,9 @@
  *   .cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /
  *   .cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs cleanup
  *
- * Starts its own Vite dev server through scripts/with-app-env.mjs on
- * 127.0.0.1:4173 (override with --port). Never kills a process it did not
- * start. Cleanup removes .run/ only; evidence/ is left in place.
+ * Starts its own Vite dev server on 127.0.0.1:4173 (override with --port).
+ * Never kills a process it did not start. Cleanup removes .run/ only;
+ * evidence/ is left in place.
  */
 import { spawn } from "node:child_process";
 import {
@@ -198,8 +198,8 @@ function isOurServer(pid, port) {
   const line = cmdline(pid);
   return (
     hasMarker(pid) &&
-    line.includes("with-app-env.mjs") &&
     line.includes("vite") &&
+    line.includes("dev") &&
     line.includes(`--port ${port}`)
   );
 }
@@ -301,7 +301,7 @@ async function launch(flags) {
   const port = Number(flags.port ?? process.env.VERIFY_RASSVET_PORT ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) fail(`invalid port ${flags.port}`);
   if (port === 8080 || port === 8081) {
-    fail(`port ${port} is reserved for the live preview (8080) or the built preview (8081)`);
+    fail(`port ${port} is reserved for npm run dev (8080) or npm run preview (8081)`);
   }
   const gpFixture = requestedFixture(flags);
 
@@ -365,8 +365,7 @@ async function launch(flags) {
   const child = spawn(
     process.execPath,
     [
-      "scripts/with-app-env.mjs",
-      "vite",
+      join(REPO_ROOT, "node_modules/vite/bin/vite.js"),
       "dev",
       "--host",
       "127.0.0.1",

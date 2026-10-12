@@ -6,7 +6,7 @@ Unofficial geometric coverage clock for catalogued Rassvet / «Рассвет» 
 
 [https://rassvet-over-ukraine.vercel.app](https://rassvet-over-ukraine.vercel.app) is the current live deploy. Vercel project `lizard-logic/rassvet-over-ukraine` builds production from GitHub [`main`](https://github.com/CoinAnole/rassvet-over-ukraine).
 
-[https://rassvet-over-ukraine.grok.me/](https://rassvet-over-ukraine.grok.me/) is an unsynced archive only: a one-shot Grok Build publish that cannot sync with this GitHub repo. It is not the self-managed live deploy.
+[https://rassvet-over-ukraine.grok.me/](https://rassvet-over-ukraine.grok.me/) is an unsynced archive only: a one-shot Grok Build publish that cannot sync with this GitHub repo. It is not the self-managed live deploy. The Grok Build sandbox that produced the first commit (`.grok` skills, platform auth, and the Created with Grok banner) is not part of this repository. Agent notes are in `AGENTS.md`.
 
 ## What it computes
 
