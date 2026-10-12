@@ -7,7 +7,7 @@ This directory is the maintained source for verifying the user-facing behavior o
 - Launch the verification server with `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs launch` so it listens at `http://127.0.0.1:4173`.
 - Run `doctor` and require `ok: true`, that URL, and a catalog `source` of `live` or `seed`. Record which one.
 - Use the browser profile created by this launch (`.cursor/skills/verify-rassvet/.run/browser-profile`). It starts empty, in English (`locale=en-US`).
-- Do not drive port 8080 or 8081, and do not drive a server this harness did not start.
+- Do not drive port 8080 (`npm run dev`) or 8081 (`npm run preview`), and do not drive a server this harness did not start.
 - One verification server at a time. A second launch must refuse a taken port.
 
 ## Driving conventions

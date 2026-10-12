@@ -7,7 +7,7 @@ description: "Drive the Rassvet over Ukraine web app (coverage clock, city prese
 
 Rassvet over Ukraine is an unofficial geometric coverage clock. The primary surface is the web UI (Ukraine today, Constellation, Method). Catalog identity is a separate check, `npm run verify:catalog`, and does not prove the UI. There is no sign-in. The page does not write user data.
 
-The harness is `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs`. Run it from the repo root. It starts its own dev server. Do not drive `http://127.0.0.1:8080` (live preview) or `http://127.0.0.1:8081` (built preview). One verification server at a time: a second launch against a taken port exits with an error instead of killing the other process.
+The harness is `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs`. Run it from the repo root. It starts its own dev server. Do not drive `http://127.0.0.1:8080` (`npm run dev`) or `http://127.0.0.1:8081` (`npm run preview`). One verification server at a time: a second launch against a taken port exits with an error instead of killing the other process.
 
 Read `features/README.md` before a drive, then follow one feature file.
 
@@ -19,7 +19,7 @@ From the repo root:
 .cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs launch
 ```
 
-That runs `node scripts/with-app-env.mjs vite dev --host 127.0.0.1 --port 4173 --strictPort` in its own process group, with `node_modules/.bin` on `PATH` and `VERIFY_RASSVET=1` in the environment. Override the port with `--port` or `VERIFY_RASSVET_PORT`. Ports 8080 and 8081 are rejected.
+That runs `node node_modules/vite/bin/vite.js dev --host 127.0.0.1 --port 4173 --strictPort` in its own process group, with `node_modules/.bin` on `PATH` and `VERIFY_RASSVET=1` in the environment. Override the port with `--port` or `VERIFY_RASSVET_PORT`. Ports 8080 and 8081 are rejected.
 
 To exercise a stale catalog without waiting on CelesTrak, launch with `--gp-fixture`:
 
@@ -34,7 +34,7 @@ Ready means `GET http://127.0.0.1:4173/` returns HTTP 200 and the HTML includes 
 
 A launch that finds the pid it already recorded, still marked with `VERIFY_RASSVET=1`, and already answering on that port prints `alreadyRunning: true` and leaves it up.
 
-Teardown is `cleanup` below. Do not start this server with `npm run dev`; that binds the shared preview port.
+Teardown is `cleanup` below. Do not start this server with `npm run dev`; that binds port 8080.
 
 ## Doctor
 
@@ -42,7 +42,7 @@ Teardown is `cleanup` below. Do not start this server with `npm run dev`; that b
 .cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs doctor
 ```
 
-Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid is alive, its command line is the `with-app-env.mjs vite dev --port <port>` process this harness spawned, `GET /` is HTTP 200 and contains `Rassvet over Ukraine`, and `GET /api/catalog` is JSON with `source` of `live` or `seed`.
+Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid is alive, its command line is the `vite dev --port <port>` process this harness spawned, `GET /` is HTTP 200 and contains `Rassvet over Ukraine`, and `GET /api/catalog` is JSON with `source` of `live` or `seed`.
 
 `catalog` in that JSON is the read to trust:
 
@@ -137,7 +137,7 @@ Save the command stdout next to the screenshots (`commands.log` is fine). A step
 .cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs cleanup
 ```
 
-Cleanup reads `.cursor/skills/verify-rassvet/.run/pid` and signals that process group only when the pid is alive, its command line is this harness's `with-app-env.mjs vite dev --port <port>`, and its environment contains `VERIFY_RASSVET=1`. It then deletes `.run/` (pid, log, last URL, browser profile). It does not delete `evidence/`. If the pid is alive but does not match, cleanup exits non-zero and kills nothing. If a browser command still holds `.run/browser.lock`, cleanup exits non-zero and leaves the server up.
+Cleanup reads `.cursor/skills/verify-rassvet/.run/pid` and signals that process group only when the pid is alive, its command line is this harness's `vite dev --port <port>`, and its environment contains `VERIFY_RASSVET=1`. It then deletes `.run/` (pid, log, last URL, browser profile). It does not delete `evidence/`. If the pid is alive but does not match, cleanup exits non-zero and kills nothing. If a browser command still holds `.run/browser.lock`, cleanup exits non-zero and leaves the server up.
 
 After cleanup, the evidence files must still be at the paths written during Drive. A cleanup that removes them is a failed proof.
 
