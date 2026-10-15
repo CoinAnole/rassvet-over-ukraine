@@ -10,7 +10,8 @@ import {
 } from "recharts";
 import type { CatalogPayload, Lang } from "@/lib/catalog/types";
 import { getDict, groupLabel } from "@/lib/i18n";
-import { StatusChip } from "@/components/ukraine-board";
+import { ClimbRateNote, StatusChip } from "@/components/ukraine-board";
+import { formatClimbRate } from "@/lib/orbit/climb-rate";
 import { useSelection } from "@/lib/selection";
 import { cn } from "@/lib/cn";
 import { getObjectsConfig } from "@/lib/catalog/build";
@@ -55,6 +56,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
           group: o.group,
           days: Number(days.toFixed(1)),
           alt: Number(o.approxAltitudeKm!.toFixed(1)),
+          rate: formatClimbRate(o.climbKmPerDay ?? Number.NaN),
           fill: GROUP_COLORS[o.group] ?? "var(--color-fg)",
         };
       });
@@ -140,7 +142,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
                 cursor={{ stroke: "var(--color-border-strong)" }}
                 content={({ payload }) => {
                   const p = payload?.[0]?.payload as
-                    | { name: string; norad: number; days: number; alt: number }
+                    | { name: string; norad: number; days: number; alt: number; rate: string | null }
                     | undefined;
                   if (!p) return null;
                   return (
@@ -148,6 +150,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
                       {p.name} · {p.norad}
                       <br />
                       {p.days.toFixed(0)} d · {p.alt.toFixed(0)} km
+                      {p.rate ? ` · ${p.rate} ${t.units.kmPerDay}` : ""}
                     </div>
                   );
                 }}
@@ -214,6 +217,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
                 </td>
                 <td className="px-3 py-2 font-mono text-xs tabular">
                   {row.approxAltitudeKm != null ? row.approxAltitudeKm.toFixed(0) : "—"}
+                  <ClimbRateNote lang={lang} kmPerDay={row.climbKmPerDay} />
                 </td>
                 <td className="px-3 py-2 font-mono text-xs tabular">
                   {row.inclinationDeg != null ? row.inclinationDeg.toFixed(2) : "—"}

@@ -12,6 +12,7 @@ import {
 import type { Interval } from "@/lib/orbit/union";
 import { PLACES, type PlaceId } from "@/lib/orbit/constants";
 import { getDict, coverageSentence, groupLabel } from "@/lib/i18n";
+import { formatClimbRate } from "@/lib/orbit/climb-rate";
 import {
   formatCivilDay,
   formatCivilInput,
@@ -833,6 +834,7 @@ export function PassTable({
                     </td>
                     <td className="px-3 py-2 font-mono text-xs tabular">
                       {row.altitudeKm != null ? `${row.altitudeKm.toFixed(0)} km` : "—"}
+                      <ClimbRateNote lang={lang} kmPerDay={row.climbKmPerDay} />
                     </td>
                     <td className="px-3 py-2">
                       <StatusChip lang={lang} status={row.status} />
@@ -845,6 +847,24 @@ export function PassTable({
         </table>
       </div>
     </section>
+  );
+}
+
+export function ClimbRateNote({
+  lang,
+  kmPerDay,
+}: {
+  lang: Lang;
+  kmPerDay: number | null | undefined;
+}) {
+  if (kmPerDay == null || !Number.isFinite(kmPerDay)) return null;
+  const label = formatClimbRate(kmPerDay);
+  if (!label) return null;
+  const t = getDict(lang);
+  return (
+    <span className="ml-2 font-mono text-[10px] font-normal tabular text-muted">
+      {label} {t.units.kmPerDay}
+    </span>
   );
 }
 

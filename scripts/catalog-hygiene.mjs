@@ -9,6 +9,11 @@
  */
 
 import { orbitFromGp as brouwerOrbit } from "../src/lib/orbit/brouwer-altitude.mjs";
+import {
+  climbListDisagreement,
+  climbRate,
+  formatClimbRate,
+} from "../src/lib/orbit/climb-rate.mjs";
 
 const RASSVET_NAME = /rassvet|рассвет/i;
 
@@ -273,6 +278,17 @@ export function auditCatalog(opts) {
     );
   }
 
+  noteClimbRates({
+    history: opts.history,
+    fetchComplete,
+    present,
+    decayedSet,
+    stuckSet,
+    decayPerigeeKm,
+    raisedAltitudeKm,
+    notes,
+  });
+
   let exitCode = 0;
   if (failures.length > 0) exitCode = 1;
   else if (!fetchComplete) exitCode = 2;
@@ -303,6 +319,55 @@ export function auditCatalog(opts) {
     groups,
     seedNote,
   };
+}
+
+function noteClimbRates(args) {
+  const history = args.history;
+  if (!history) return;
+  if (!history.ok) {
+    args.notes.push(
+      `Altitude history was not loaded (${history.error || "unavailable"}). Climb rates were not compared with the manual list. The site falls back to that list.`,
+    );
+    return;
+  }
+  const rows = Array.isArray(history.rows) ? history.rows : [];
+  if (rows.length === 0) {
+    args.notes.push(
+      "Altitude history has no rows. Climb rates were not compared with the manual list. The site falls back to that list.",
+    );
+    return;
+  }
+  if (!args.fetchComplete) return;
+
+  const byNorad = new Map();
+  for (const row of rows) {
+    const norad = Number(row?.norad);
+    if (!Number.isFinite(norad)) continue;
+    const list = byNorad.get(norad);
+    if (list) list.push(row);
+    else byNorad.set(norad, [row]);
+  }
+
+  for (const entry of args.present) {
+    if (args.decayedSet.has(entry.obj.norad)) continue;
+    const orbit = entry.orbit;
+    if (!orbit) continue;
+    if (orbit.perigeeKm < args.decayPerigeeKm) continue;
+    if (orbit.approxAltitudeKm >= args.raisedAltitudeKm) continue;
+    const samples = [...(byNorad.get(entry.obj.norad) ?? [])];
+    if (entry.row?.EPOCH) {
+      samples.push({ epoch: String(entry.row.EPOCH), alt_km: orbit.approxAltitudeKm });
+    }
+    const rate = climbRate(samples);
+    if (!rate) continue;
+    const manualStuck = args.stuckSet.has(entry.obj.norad);
+    if (!climbListDisagreement(manualStuck, rate.klass)) continue;
+    const manual = manualStuck ? "not climbing" : "climbing";
+    const signed = formatClimbRate(rate.kmPerDay) ?? "unknown";
+    args.notes.push(
+      `Climb rate for NORAD ${entry.obj.norad} (${entry.obj.name}) is ${signed} km/day (${rate.klass}), and the manual list says ${manual}. The site shows the computed status. This is a warning, not a failure.`,
+    );
+  }
 }
 
 function queryLabel(url) {

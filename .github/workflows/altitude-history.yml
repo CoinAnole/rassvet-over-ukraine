@@ -1,0 +1,62 @@
+# Append one CelesTrak GP snapshot to altitude-history.json on the data branch.
+# The file is never committed to main. A CelesTrak error leaves the branch untouched.
+
+name: Altitude history
+
+on:
+  schedule:
+    # 05:17 and 17:17 UTC. Twice a day, off the hour.
+    - cron: "17 5,17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: altitude-history
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Prepare the data branch worktree
+        run: |
+          set -euo pipefail
+          git fetch origin data || true
+          if git rev-parse --verify --quiet refs/remotes/origin/data >/dev/null; then
+            git worktree add --detach /tmp/altitude-data origin/data
+          else
+            git worktree add --detach /tmp/altitude-data HEAD
+            git -C /tmp/altitude-data checkout --orphan data
+            git -C /tmp/altitude-data rm -rf . >/dev/null
+          fi
+
+      - name: Record altitudes
+        id: record
+        run: node scripts/record-altitude-history.mjs --file /tmp/altitude-data/altitude-history.json
+
+      - name: Commit and push the data branch
+        if: steps.record.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git -C /tmp/altitude-data add altitude-history.json
+          git -C /tmp/altitude-data \
+            -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Record Rassvet altitude history"
+          git -C /tmp/altitude-data push origin HEAD:data

@@ -4,6 +4,7 @@ import type { CoverageResult, SatMapState } from "@/lib/orbit/coverage";
 import { MAP_BOUNDS, MAP_CENTER, MAP_DEFAULT_ZOOM } from "@/lib/orbit/constants";
 import { useSelection } from "@/lib/selection";
 import { getDict } from "@/lib/i18n";
+import { formatClimbRate } from "@/lib/orbit/climb-rate";
 import type { Lang } from "@/lib/catalog/types";
 import region from "../data/region.json" with { type: "json" };
 import { Button } from "@/components/ui/button";
@@ -128,8 +129,10 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
           sat.elevationDeg != null && sat.elevationDeg > -0.5
             ? `${sat.elevationDeg.toFixed(1)}°`
             : "—";
+        const rate = formatClimbRate(sat.climbKmPerDay ?? Number.NaN);
+        const rateLabel = rate ? ` · ${rate} ${t.units.kmPerDay}` : "";
         marker.bindTooltip(
-          `${sat.name} · ${sat.norad}<br/>${sat.altitudeKm.toFixed(0)} km · el ${elNow}${sat.stale ? ` · ${t.status.stale}` : ""}`,
+          `${sat.name} · ${sat.norad}<br/>${sat.altitudeKm.toFixed(0)} km${rateLabel} · el ${elNow}${sat.stale ? ` · ${t.status.stale}` : ""}`,
           { className: "rassvet-tip", sticky: true, opacity: 1 },
         );
         marker.on("click", () => select(sat.norad));
@@ -150,6 +153,7 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
     t.map.mask,
     t.map.observer,
     t.status.stale,
+    t.units.kmPerDay,
   ]);
 
   return (

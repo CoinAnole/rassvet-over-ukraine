@@ -230,6 +230,50 @@ describe("not-climbing list", () => {
     assert.match(report.failures.join("\n"), /raised gate/);
   });
 
+  it("warns when a computed rate disagrees with the manual list and still exits 0", () => {
+    const gp = row({ MEAN_MOTION: 15.65, EPOCH: "2026-10-05T12:00:00.000000" });
+    const orbit = orbitFromGp(gp);
+    assert.ok(orbit && orbit.approxAltitudeKm < 450);
+    const end = Date.parse("2026-10-05T12:00:00Z");
+    const rising = [48, 24, 0].map((hours) => ({
+      norad: 1,
+      name: "RASSVET-3 1",
+      epoch: new Date(end - hours * 3_600_000).toISOString().replace(/Z$/, ""),
+      alt_km: orbit.approxAltitudeKm - 2.6 * (hours / 24),
+    }));
+    const disagreed = live(config({ stuck: [1] }), [gp], {
+      history: { ok: true, error: null, rows: rising },
+    });
+    assert.equal(disagreed.exitCode, 0, disagreed.failures.join("\n"));
+    assert.ok(
+      disagreed.notes.some((line) => /is \+2\.6 km\/day \(climbing\)/.test(line)),
+      disagreed.notes.join("\n"),
+    );
+    assert.match(renderAudit(disagreed), /warning, not a failure/);
+
+    const flat = [48, 24, 0].map((hours) => ({
+      norad: 1,
+      name: "RASSVET-3 1",
+      epoch: new Date(end - hours * 3_600_000).toISOString().replace(/Z$/, ""),
+      alt_km: orbit.approxAltitudeKm,
+    }));
+    const agreed = live(config({ stuck: [1] }), [gp], {
+      history: { ok: true, error: null, rows: flat },
+    });
+    assert.equal(agreed.notes.some((line) => line.startsWith("Climb rate for")), false);
+
+    const raised = live(config({ stuck: [] }), [row({ MEAN_MOTION: 15.184 })], {
+      history: { ok: true, error: null, rows: rising },
+    });
+    assert.equal(raised.notes.some((line) => line.startsWith("Climb rate for")), false);
+
+    const missing = live(config(), [gp], {
+      history: { ok: false, error: "HTTP 404", rows: [] },
+    });
+    assert.equal(missing.exitCode, 0);
+    assert.match(missing.notes.join("\n"), /Altitude history was not loaded/);
+  });
+
   it("fails a listed NORAD that is not in objects", () => {
     const report = live(config({ stuck: [68373] }), [row()]);
     assert.equal(report.exitCode, 1);

@@ -12,7 +12,7 @@ Unofficial geometric coverage clock for catalogued Rassvet / «Рассвет» 
 
 At a ground point P and minimum elevation E, how many minutes of geometric line-of-sight the current public catalog produces today, when the next window is, and which objects are still climbing versus near operational altitude (raised ≥ 450 km).
 
-The default set is production RASSVET-3 at or above 450 km. Experimental Rassvet-1 and Rassvet-2 are separate choices. Objects on the manual not-climbing list are not described as climbing toward service.
+The default set is production RASSVET-3 at or above 450 km. Experimental Rassvet-1 and Rassvet-2 are separate choices. Below 450 km, a recent altitude history steeper than 0.8 km/day is climbing. When that rate is unknown, the manual not-climbing list decides.
 
 Visible is never presented as linked, encrypted, military-ready, or 24-hour service.
 
@@ -28,7 +28,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 | --- | --- |
 | `raisedAltitudeKm` | 450 — Raised population gate. |
 | `decayed` | Manual NORAD list. RASSVET-3 4 (`68363`) decayed 2026-06-06. |
-| `stuck` | Manual not-climbing NORAD list. Checked 2026-10-11: RASSVET-3 14 (`68373`), 17 (`100083`), 23 (`100089`). RASSVET-3 11 (`68370`) is not on it. |
+| `stuck` | Manual not-climbing NORAD list, used when a climb rate is unknown. Checked 2026-10-11: RASSVET-3 14 (`68373`), 17 (`100083`), 23 (`100089`). RASSVET-3 11 (`68370`) is not on it. |
 | `staleHours` | 72 — mark and still propagate |
 | `stepSeconds` | 30 — elevation sampling |
 | `minPassSeconds` | 60 — ignore shorter passes |
@@ -40,6 +40,12 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 - Source: CelesTrak public GP JSON.
 - Fallback: `src/data/catalog-seed.json` (snapshot dated in-file) if the live fetch fails.
 - User-Agent: `RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)`.
+
+## Altitude history
+
+`.github/workflows/altitude-history.yml` runs at 05:17 and 17:17 UTC, and when someone starts it by hand. Each run fetches the Rassvet GP JSON from CelesTrak once, appends `{norad, name, epoch, alt_km}` to `altitude-history.json` on the `data` branch, and drops epochs older than 60 days. That file is not on `main`. If CelesTrak errors, the run leaves the file as it was.
+
+The site reads `https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/altitude-history.json` with the catalog, on the same ten-minute cache. A missing file leaves every rate unknown and the manual list in charge. The history starts after that workflow runs once.
 
 ## Pass list vs Today tile
 

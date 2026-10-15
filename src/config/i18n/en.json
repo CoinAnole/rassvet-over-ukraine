@@ -37,7 +37,8 @@
     "hour": "h",
     "day": "d",
     "deg": "°",
-    "km": "km"
+    "km": "km",
+    "kmPerDay": "km/day"
   },
   "sentence": "At {el}° minimum elevation over {place}, the current catalog produces {n} {windows} today totalling {minutes} minutes. This is geometric line-of-sight from public orbit data, not proof that a terminal can attach, that capacity exists, or that inter-satellite links are on.",
   "sentenceHeld": "At {el}° minimum elevation over {place}, the current catalog produces {n} {windows} on {day} totalling {minutes} minutes. This is geometric line-of-sight from the latest public GP at the selected clock, not an archived element set, and not proof that a terminal can attach, that capacity exists, or that inter-satellite links are on.",
@@ -142,7 +143,7 @@
   },
   "constellation": {
     "title": "Constellation",
-    "caption": "Raised is at least 450 km. Climbing is still below 450 km and is not on the not-climbing list. Not climbing is a manual list, not a rate from one element set. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
+    "caption": "Raised is at least 450 km. Below that, climbing means a recent altitude history steeper than 0.8 km/day, or, when that rate is unknown, an object that is not on the not-climbing list. The figure beside an altitude is that slope in kilometres per day. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
     "xAxis": "Days since launch",
     "yAxis": "Approx. altitude (a − Re), km",
     "onOrbit": "Catalogued on orbit",
@@ -208,5 +209,5 @@
       "missing": "missing"
     }
   },
-  "altitudeGloss": "Raised means at least 450 km. Climbing means still below 450 km and not on the not-climbing list."
+  "altitudeGloss": "Raised means at least 450 km. Climbing means still below 450 km and either rising faster than 0.8 km/day or, when no rate is known, not on the not-climbing list."
 }

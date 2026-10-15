@@ -45,6 +45,8 @@ export type ObjectsConfig = {
   muKm3s2: number;
   decayPerigeeKm: number;
   userAgent: string;
+  /** Raw URL of altitude-history.json on the data branch. Missing file means no rates. */
+  altitudeHistoryUrl: string;
   celestrak: { queries: string[] };
   groups: GroupDef[];
   decayed: number[];
@@ -91,6 +93,11 @@ export type LiveObject = {
   perigeeKm: number | null;
   apogeeKm: number | null;
   elementSetCount: number;
+  /**
+   * Least-squares km/day from the recent altitude history.
+   * Null when the history is missing or the window is too short.
+   */
+  climbKmPerDay: number | null;
 };
 
 export type CatalogPayload = {
