@@ -62,6 +62,8 @@ Do not add a test-only catalog endpoint. Do not block CelesTrak to force the see
 
 A fixture run is opt-in. A plain `launch` still calls CelesTrak and falls back to the snapshot if that fails.
 
+A `--gp-fixture` launch also writes `.run/altitude-history.json` and the same hook serves it for any `altitude-history.json` request. The body is a 48-hour line for RASSVET-3 11 (NORAD 68370) at +2.6 km/day, so Constellation can show that rate. It is not the `data` branch and not a CelesTrak history. A plain launch still requests the raw `data` branch URL and shows no rates when that file is missing.
+
 ## Drive
 
 Browser commands reopen the last URL in a persistent profile at `.cursor/skills/verify-rassvet/.run/browser-profile` (`locale=en-US`, viewport 1280×900). A fresh profile has no `rassvet-lang` entry, so the UI starts in English. State that matters (place, elevation, population, timezone, held clock) lives in the query string. An explicit UK or RU pick on Ukraine today is written there too. Choosing a language also writes `localStorage` key `rassvet-lang`. Method and Constellation have no `lang` query. A client-side navigation and a later full load both show that stored language. Ukraine today does too when the address has no `lang`. Hide decayed and Launch group are page state only. They are not in the URL and not in `localStorage`. Every browser command except the steps inside one `browser sequence` loads the last URL in a new document, so those two controls reset.

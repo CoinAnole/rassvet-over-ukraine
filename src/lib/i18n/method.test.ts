@@ -74,15 +74,24 @@ describe("method copy", () => {
     assert.match(enText, /production RASSVET-3/);
     assert.match(enText, /Rassvet-1/);
     assert.match(enText, /set=raised/);
+    assert.match(enText, /least-squares/);
+    assert.match(enText, /36 hours/);
+    assert.match(enText, /0\.8 km\/day/);
+    assert.match(enText, /mean-motion derivative/);
+    assert.match(enText, /manual not-climbing list/);
     assert.match(enText, /RASSVET-3 11 is not on the list/);
     assert.match(enText, /RASSVET-3 14, 17, and 23/);
     assert.match(enText, /findrassvet\.ru \(V\. Bulybenko\)/);
     assert.match(enText, /CC BY 4\.0/);
+    assert.equal(enText.includes("does not keep altitude history"), false);
     assert.equal(/RASSVET-3 11.{0,40}fail/i.test(enText), false);
 
     const uk = methodSections("uk").find((s) => s.heading === "Які супутники входять у рахунок");
     assert.ok(uk);
     const ukText = uk.paragraphs.join(" ");
+    assert.match(ukText, /найменших квадратів/);
+    assert.match(ukText, /36 годин/);
+    assert.match(ukText, /0\.8 км\/добу/);
     assert.match(ukText, /RASSVET-3/);
     assert.match(ukText, /не піднімається/);
     assert.match(ukText, /RASSVET-3 11 у списку немає/);
@@ -92,6 +101,9 @@ describe("method copy", () => {
     const ru = methodSections("ru").find((s) => s.heading === "Какие спутники входят в счёт");
     assert.ok(ru);
     const ruText = ru.paragraphs.join(" ");
+    assert.match(ruText, /наименьших квадратов/);
+    assert.match(ruText, /36 часов/);
+    assert.match(ruText, /0\.8 км\/сут/);
     assert.match(ruText, /не поднимается/);
     assert.match(ruText, /RASSVET-3 11 в списке нет/);
     assert.match(ruText, /findrassvet\.ru/);

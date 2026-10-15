@@ -1,4 +1,5 @@
 import objectsConfig from "../../config/objects.json" with { type: "json" };
+import type { ClimbClass } from "../orbit/climb-rate.ts";
 import type {
   CatalogOmm,
   CatalogPayload,
@@ -17,9 +18,10 @@ export function getObjectsConfig(): ObjectsConfig {
 }
 
 /**
- * Altitude and the manual lists decide status.
- * The raised gate wins over `stuck`: an object that has reached 450 km is raised
- * even if the list is stale. One GP has no climb rate, so `stuck` is only the list.
+ * Altitude, a recent climb rate, and the manual lists decide status.
+ * The raised gate wins over the rate and over `stuck`.
+ * When `climbClass` is set, holding and decaying are not climbing.
+ * When it is null, `stuck` is the manual not-climbing list.
  */
 export function classifyStatus(args: {
   manualDecayed: boolean;
@@ -29,6 +31,7 @@ export function classifyStatus(args: {
   approxAltitudeKm: number | null;
   decayPerigeeKm: number;
   raisedAltitudeKm: number;
+  climbClass?: ClimbClass | null;
 }): LiveObject["status"] {
   if (args.manualDecayed) return "decayed";
   if (!args.hasElements) return "missing";
@@ -36,6 +39,8 @@ export function classifyStatus(args: {
   if (args.approxAltitudeKm != null && args.approxAltitudeKm >= args.raisedAltitudeKm) {
     return "raised";
   }
+  if (args.climbClass === "climbing") return "climbing";
+  if (args.climbClass === "holding" || args.climbClass === "decaying") return "stuck";
   if (args.manualStuck) return "stuck";
   return "climbing";
 }
@@ -112,6 +117,7 @@ export function buildCatalog(opts: {
         perigeeKm: null,
         apogeeKm: null,
         elementSetCount: omm ? 1 : 0,
+        climbKmPerDay: null,
       });
       continue;
     }
@@ -134,6 +140,7 @@ export function buildCatalog(opts: {
         perigeeKm: null,
         apogeeKm: null,
         elementSetCount: 0,
+        climbKmPerDay: null,
       });
       continue;
     }
@@ -165,6 +172,7 @@ export function buildCatalog(opts: {
       perigeeKm: orbit.perigeeKm,
       apogeeKm: orbit.apogeeKm,
       elementSetCount: 1,
+      climbKmPerDay: null,
     });
   }
 

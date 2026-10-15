@@ -13,6 +13,7 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseHistoryDocument } from "../src/lib/catalog/altitude-history.mjs";
 import { auditCatalog, renderAudit } from "./catalog-hygiene.mjs";
 
 function isMainModule(moduleUrl) {
@@ -75,6 +76,32 @@ export async function fetchGpQuery(url, userAgent) {
   return { url, ok: false, error: lastError, count: 0, objects: [] };
 }
 
+export async function fetchAltitudeHistory(url, userAgent) {
+  if (!url) return { ok: false, error: "no altitudeHistoryUrl", rows: [] };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent": userAgent,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, rows: [] };
+    const data = await res.json();
+    const rows = parseHistoryDocument(data);
+    if (!rows) return { ok: false, error: "history JSON has no rows array", rows: [] };
+    return { ok: true, error: null, rows };
+  } catch (err) {
+    const aborted = err && typeof err === "object" && "name" in err && err.name === "AbortError";
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: aborted ? "timeout after 15000ms" : message, rows: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function verifyCatalog({ seedOnly = false, now = new Date() } = {}) {
   const config = readObjectsConfig();
   const seed = readSeedIndex();
@@ -102,6 +129,10 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     records = queries.flatMap((query) => (query.ok ? query.objects : []));
   }
 
+  const history = seedOnly
+    ? null
+    : await fetchAltitudeHistory(config.altitudeHistoryUrl, userAgent);
+
   const report = auditCatalog({
     config,
     records,
@@ -109,6 +140,7 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     source,
     now,
     seed: { fetchedAt: seed.fetchedAt, ids: seed.ids },
+    history,
   });
   return { report, text: renderAudit(report) };
 }

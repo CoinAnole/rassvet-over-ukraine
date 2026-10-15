@@ -25,6 +25,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { buildGpFixture, GP_FIXTURES } from "./gp-fixture.mjs";
+import { buildHistoryFixture } from "./history-fixture.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SKILL_DIR = resolve(SCRIPT_DIR, "..");
@@ -38,6 +39,7 @@ const URL_FILE = join(RUN_DIR, "last-url");
 const PROFILE_DIR = join(RUN_DIR, "browser-profile");
 const LOCK_FILE = join(RUN_DIR, "browser.lock");
 const GP_FIXTURE_FILE = join(RUN_DIR, "gp-fixture.json");
+const HISTORY_FIXTURE_FILE = join(RUN_DIR, "altitude-history.json");
 const GP_FIXTURE_PLAN = join(RUN_DIR, "gp-fixture-plan.json");
 const GP_FIXTURE_MODE = join(RUN_DIR, "gp-fixture-mode");
 const GP_FETCH_HOOK = join(SCRIPT_DIR, "gp-fetch-hook.mjs");
@@ -356,8 +358,11 @@ async function launch(flags) {
     writeFileSync(GP_FIXTURE_FILE, JSON.stringify(built.objects));
     writeFileSync(GP_FIXTURE_PLAN, `${JSON.stringify(built.plan, null, 2)}\n`);
     writeFileSync(GP_FIXTURE_MODE, `${gpFixture}\n`);
+    const history = buildHistoryFixture(built.objects, new Date());
+    writeFileSync(HISTORY_FIXTURE_FILE, `${JSON.stringify(history)}\n`);
     env.VERIFY_RASSVET_GP_FIXTURE = gpFixture;
     env.VERIFY_RASSVET_GP_FIXTURE_FILE = GP_FIXTURE_FILE;
+    env.VERIFY_RASSVET_HISTORY_FIXTURE_FILE = HISTORY_FIXTURE_FILE;
     const hookImport = `--import ${GP_FETCH_HOOK}`;
     env.NODE_OPTIONS = env.NODE_OPTIONS ? `${env.NODE_OPTIONS} ${hookImport}` : hookImport;
   }

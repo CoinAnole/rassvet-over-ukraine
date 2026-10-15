@@ -35,6 +35,7 @@ export type PassRow = ObjectPass & {
   altitudeKm: number | null;
   status: LiveObject["status"];
   stale: boolean;
+  climbKmPerDay: number | null;
 };
 
 export type SatMapState = {
@@ -46,6 +47,7 @@ export type SatMapState = {
   lat: number;
   lon: number;
   altitudeKm: number;
+  climbKmPerDay: number | null;
   elevationDeg: number | null;
   track: [number, number][];
   footprint: [number, number][];
@@ -131,6 +133,7 @@ export function computeCoverage(opts: {
         altitudeKm: obj.approxAltitudeKm,
         status: obj.status,
         stale: obj.stale,
+        climbKmPerDay: obj.climbKmPerDay,
       });
     }
 
@@ -161,6 +164,7 @@ export function computeCoverage(opts: {
         lat: here.lat,
         lon: here.lon,
         altitudeKm: here.altitudeKm,
+        climbKmPerDay: obj.climbKmPerDay,
         elevationDeg: look?.elevationDeg ?? null,
         track,
         footprint: footprintRing(here.lat, here.lon, here.altitudeKm, minElevationDeg),
