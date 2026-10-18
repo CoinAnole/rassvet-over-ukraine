@@ -10,11 +10,17 @@ import {
 } from "recharts";
 import type { CatalogPayload, Lang } from "@/lib/catalog/types";
 import { getDict, groupLabel } from "@/lib/i18n";
-import { ClimbRateNote, StatusChip } from "@/components/ukraine-board";
+import { StatusChip } from "@/components/ukraine-board";
 import { formatClimbRate } from "@/lib/orbit/climb-rate";
 import { useSelection } from "@/lib/selection";
 import { cn } from "@/lib/cn";
 import { getObjectsConfig } from "@/lib/catalog/build";
+import {
+  nextConstellationSort,
+  sortConstellationRows,
+  type ConstellationSort,
+  type ConstellationSortKey,
+} from "@/lib/catalog/table-sort";
 
 const GROUP_COLORS: Record<string, string> = {
   "exp-2023": "var(--color-muted)",
@@ -29,6 +35,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
   const cfg = getObjectsConfig();
   const [hideDecayed, setHideDecayed] = useState(true);
   const [group, setGroup] = useState<string>("all");
+  const [sort, setSort] = useState<ConstellationSort | null>(null);
   const select = useSelection((s) => s.select);
   const selected = useSelection((s) => s.norad);
 
@@ -38,11 +45,14 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
   const stuck = onOrbit.filter((o) => o.status === "stuck");
   const decayed = catalog.objects.filter((o) => o.status === "decayed");
 
-  const rows = catalog.objects.filter((o) => {
-    if (hideDecayed && o.status === "decayed") return false;
-    if (group !== "all" && o.group !== group) return false;
-    return true;
-  });
+  const rows = useMemo(() => {
+    const filtered = catalog.objects.filter((o) => {
+      if (hideDecayed && o.status === "decayed") return false;
+      if (group !== "all" && o.group !== group) return false;
+      return true;
+    });
+    return sortConstellationRows(filtered, sort, (id) => groupLabel(lang, id, id), lang);
+  }, [catalog, hideDecayed, group, sort, lang]);
 
   const points = useMemo(() => {
     const now = Date.now();
@@ -177,19 +187,75 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
       </div>
 
       <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
           <thead className="bg-elevated text-[11px] uppercase tracking-[0.12em] text-muted">
             <tr>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.name}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.norad}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.group}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.status}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.alt}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.inc}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.period}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.perigee}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.apogee}</th>
-              <th className="px-3 py-2 font-medium">{t.constellation.table.epoch}</th>
+              <SortHeader
+                label={t.constellation.table.name}
+                column="name"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.norad}
+                column="norad"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.group}
+                column="group"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.status}
+                column="status"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.alt}
+                column="alt"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.rate}
+                column="rate"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.inc}
+                column="inc"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.period}
+                column="period"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.perigee}
+                column="perigee"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.apogee}
+                column="apogee"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader
+                label={t.constellation.table.epoch}
+                column="epoch"
+                sort={sort}
+                onSort={setSort}
+              />
             </tr>
           </thead>
           <tbody>
@@ -217,7 +283,11 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
                 </td>
                 <td className="px-3 py-2 font-mono text-xs tabular">
                   {row.approxAltitudeKm != null ? row.approxAltitudeKm.toFixed(0) : "—"}
-                  <ClimbRateNote lang={lang} kmPerDay={row.climbKmPerDay} />
+                </td>
+                <td className="px-3 py-2 font-mono text-xs tabular text-muted">
+                  {formatClimbRate(row.climbKmPerDay ?? Number.NaN)
+                    ? `${formatClimbRate(row.climbKmPerDay ?? Number.NaN)} ${t.units.kmPerDay}`
+                    : "—"}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs tabular">
                   {row.inclinationDeg != null ? row.inclinationDeg.toFixed(2) : "—"}
@@ -240,6 +310,35 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
         </table>
       </div>
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  column,
+  sort,
+  onSort,
+}: {
+  label: string;
+  column: ConstellationSortKey;
+  sort: ConstellationSort | null;
+  onSort: (next: ConstellationSort | null) => void;
+}) {
+  const active = sort?.key === column;
+  const ariaSort = active ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <th scope="col" aria-sort={ariaSort} className="px-3 py-2 font-medium">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 bg-transparent p-0 text-left uppercase tracking-[0.12em] text-inherit hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
+        onClick={() => onSort(nextConstellationSort(sort, column))}
+      >
+        {label}
+        <span aria-hidden="true" className="inline-block w-3 text-[10px] text-fg">
+          {active ? (sort.dir === "asc" ? "▲" : "▼") : ""}
+        </span>
+      </button>
+    </th>
   );
 }
 

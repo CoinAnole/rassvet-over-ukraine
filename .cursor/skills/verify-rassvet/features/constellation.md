@@ -7,7 +7,7 @@ Constellation counts catalogued objects and plots approximate altitude against d
 - `constellation-counts` shows on-orbit, raised, climbing, not-climbing, decayed, and launch-group counts.
 - `constellation-hide-decayed` hides decayed rows when the checkbox is checked.
 - `constellation-group` filters the chart and the table to one launch group.
-- `constellation-table` lists name, NORAD, status, and element-set epoch for the visible rows.
+- `constellation-table` lists name, NORAD, status, altitude, rate, and element-set epoch for the visible rows. Each header is a button. The first click sorts ascending and the next click sorts descending. `aria-sort` is on the header cell. The table keeps catalog order until a header is used.
 
 ## How to get to it (user POV)
 
