@@ -8,6 +8,7 @@ import {
   formatClimbRate,
   leastSquaresSlope,
 } from "./climb-rate.ts";
+import liveRows from "./climb-rate.live.json" with { type: "json" };
 
 const T0 = Date.parse("2026-10-01T00:00:00Z");
 
@@ -114,13 +115,60 @@ describe("single-point outliers", () => {
     assert.equal(rate.points, 5);
   });
 
-  it("is unknown when the only long span was the outlier", () => {
+  it("keeps the newest epoch when the earlier points alone would be too short", () => {
     const start = T0;
     const rows = [0, 10, 20, 50].map((hours, i) => ({
       epoch: new Date(start + hours * 3_600_000).toISOString(),
-      altKm: i === 3 ? 200 : 100,
+      altKm: i === 3 ? 104 : 100,
     }));
-    assert.equal(climbRate(rows), null);
+    const rate = climbRate(rows);
+    assert.ok(rate);
+    assert.equal(rate.droppedOutlier, false);
+    assert.equal(rate.points, 4);
+    assert.equal(rate.spanHours, 50);
+    assert.ok(rate.kmPerDay > 0);
+  });
+});
+
+describe("October 2026 history", () => {
+  const rows = liveRows as { norad: number; epoch: string; alt_km: number }[];
+  function forNorad(norad: number) {
+    return rows.filter((row) => row.norad === norad);
+  }
+
+  it("fits every epoch in the 72-hour window, including a burn at the newest one", () => {
+    const eleven = climbRate(forNorad(68370));
+    assert.ok(eleven);
+    assert.equal(eleven.droppedOutlier, false);
+    assert.equal(eleven.points, 4);
+    assert.ok(Math.abs(eleven.kmPerDay - 4.98) < 0.01, `${eleven.kmPerDay}`);
+    assert.equal(formatClimbRate(eleven.kmPerDay), "+5.0");
+
+    const seventeen = climbRate(forNorad(100083));
+    assert.ok(seventeen);
+    assert.equal(seventeen.droppedOutlier, false);
+    assert.equal(seventeen.points, 5);
+    assert.ok(seventeen.spanHours > 59 && seventeen.spanHours < 60);
+    assert.ok(Math.abs(seventeen.kmPerDay - -3.79) < 0.01, `${seventeen.kmPerDay}`);
+    assert.equal(formatClimbRate(seventeen.kmPerDay), "-3.8");
+
+    const twenty = climbRate(forNorad(100086));
+    assert.ok(twenty);
+    assert.equal(twenty.droppedOutlier, false);
+    assert.equal(twenty.points, 6);
+    assert.ok(twenty.spanHours > 44 && twenty.spanHours < 45);
+    assert.ok(Math.abs(twenty.kmPerDay - 1.34) < 0.01, `${twenty.kmPerDay}`);
+    assert.equal(formatClimbRate(twenty.kmPerDay), "+1.3");
+    assert.equal(twenty.klass, "climbing");
+
+    const twentyEight = climbRate(forNorad(100094));
+    assert.ok(twentyEight);
+    assert.equal(twentyEight.droppedOutlier, false);
+    assert.equal(twentyEight.points, 5);
+    assert.ok(twentyEight.spanHours > 40 && twentyEight.spanHours < 42);
+    assert.ok(Math.abs(twentyEight.kmPerDay - 1.46) < 0.01, `${twentyEight.kmPerDay}`);
+    assert.equal(formatClimbRate(twentyEight.kmPerDay), "+1.5");
+    assert.equal(twentyEight.klass, "climbing");
   });
 });
 
