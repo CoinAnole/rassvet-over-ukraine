@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { LiveObject, ObjectStatus } from "./types.ts";
-import { nextConstellationSort, sortConstellationRows } from "./table-sort.ts";
+import { nextColumnSort, nextConstellationSort, sortConstellationRows, sortPassRows } from "./table-sort.ts";
+import type { PassSortRow } from "./table-sort.ts";
 
 function row(partial: Partial<LiveObject> & { norad: number; name: string }): LiveObject {
   return {
@@ -146,6 +147,7 @@ describe("constellation table sort", () => {
 
   it("starts a column ascending and flips it on the next click", () => {
     assert.deepEqual(nextConstellationSort(null, "name"), { key: "name", dir: "asc" });
+    assert.deepEqual(nextColumnSort(null, "aos"), { key: "aos", dir: "asc" });
     assert.deepEqual(nextConstellationSort({ key: "name", dir: "asc" }, "name"), {
       key: "name",
       dir: "desc",
@@ -154,5 +156,111 @@ describe("constellation table sort", () => {
       key: "alt",
       dir: "asc",
     });
+  });
+});
+
+function pass(partial: Partial<PassSortRow> & { name: string; aos: number }): PassSortRow {
+  return {
+    group: "prod-2026-03",
+    los: partial.aos + 10 * 60_000,
+    maxElevationDeg: 25,
+    altitudeKm: 500,
+    status: "raised",
+    ...partial,
+  };
+}
+
+describe("pass list sort", () => {
+  const rows: PassSortRow[] = [
+    pass({
+      name: "RASSVET-3 10",
+      aos: 2_000,
+      los: 2_000 + 8 * 60_000,
+      maxElevationDeg: 12,
+      altitudeKm: null,
+      status: "stuck",
+      group: "prod-2026-07",
+    }),
+    pass({
+      name: "RASSVET-3 2",
+      aos: 5_000,
+      los: 5_000 + 20 * 60_000,
+      maxElevationDeg: 40,
+      altitudeKm: 510,
+      status: "raised",
+      group: "prod-2026-03",
+    }),
+    pass({
+      name: "Rassvet-1 No. 2",
+      aos: 1_000,
+      los: 1_000 + 5 * 60_000,
+      maxElevationDeg: 18,
+      altitudeKm: 480,
+      status: "climbing",
+      group: "exp-2023",
+    }),
+  ];
+
+  it("keeps acquisition order until a header is chosen, then again after the list is replaced", () => {
+    assert.deepEqual(
+      sortPassRows(rows, null, identity, "en").map((item) => item.name),
+      ["RASSVET-3 10", "RASSVET-3 2", "Rassvet-1 No. 2"],
+    );
+    const sort = { key: "name" as const, dir: "asc" as const };
+    const first = sortPassRows(rows, sort, identity, "en").map((item) => item.name);
+    const refreshed = sortPassRows([...rows].reverse(), sort, identity, "uk");
+    assert.deepEqual(first, refreshed.map((item) => item.name));
+    assert.ok(first.indexOf("RASSVET-3 2") < first.indexOf("RASSVET-3 10"));
+  });
+
+  it("sorts AOS, LOS, duration, and max elevation as times and numbers", () => {
+    assert.deepEqual(
+      sortPassRows(rows, { key: "aos", dir: "asc" }, identity, "en").map((item) => item.aos),
+      [1_000, 2_000, 5_000],
+    );
+    assert.deepEqual(
+      sortPassRows(rows, { key: "aos", dir: "desc" }, identity, "ru").map((item) => item.aos),
+      [5_000, 2_000, 1_000],
+    );
+    assert.deepEqual(
+      sortPassRows(rows, { key: "los", dir: "asc" }, identity, "en").map((item) => item.name),
+      ["Rassvet-1 No. 2", "RASSVET-3 10", "RASSVET-3 2"],
+    );
+    assert.deepEqual(
+      sortPassRows(rows, { key: "duration", dir: "asc" }, identity, "en").map((item) => item.name),
+      ["Rassvet-1 No. 2", "RASSVET-3 10", "RASSVET-3 2"],
+    );
+    assert.deepEqual(
+      sortPassRows(rows, { key: "maxEl", dir: "desc" }, identity, "en").map((item) => item.name),
+      ["RASSVET-3 2", "Rassvet-1 No. 2", "RASSVET-3 10"],
+    );
+  });
+
+  it("sorts status in class order and leaves an unknown altitude last both ways", () => {
+    assert.deepEqual(
+      sortPassRows(rows, { key: "status", dir: "asc" }, identity, "en").map((item) => item.status),
+      ["climbing", "raised", "stuck"],
+    );
+    assert.deepEqual(
+      sortPassRows(rows, { key: "status", dir: "desc" }, identity, "uk").map((item) => item.status),
+      ["stuck", "raised", "climbing"],
+    );
+    assert.equal(
+      sortPassRows(rows, { key: "altitude", dir: "asc" }, identity, "en").at(-1)?.name,
+      "RASSVET-3 10",
+    );
+    assert.equal(
+      sortPassRows(rows, { key: "altitude", dir: "desc" }, identity, "ru").at(-1)?.name,
+      "RASSVET-3 10",
+    );
+  });
+
+  it("sorts the batch by its label in the active language", () => {
+    const labels = (id: string) =>
+      id === "exp-2023" ? "Experimental" : id === "prod-2026-03" ? "March" : "July";
+    assert.deepEqual(
+      sortPassRows(rows, { key: "batch", dir: "asc" }, labels, "en").map((item) => item.group),
+      ["exp-2023", "prod-2026-07", "prod-2026-03"],
+    );
   });
 });

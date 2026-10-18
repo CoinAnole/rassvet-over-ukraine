@@ -13,6 +13,8 @@ import type { Interval } from "@/lib/orbit/union";
 import { PLACES, type PlaceId } from "@/lib/orbit/constants";
 import { getDict, coverageSentence, groupLabel } from "@/lib/i18n";
 import { formatClimbRate } from "@/lib/orbit/climb-rate";
+import { sortPassRows, type PassSort } from "@/lib/catalog/table-sort";
+import { SortHeader } from "@/components/sort-header";
 import {
   formatCivilDay,
   formatCivilInput,
@@ -760,7 +762,12 @@ export function PassTable({
   const zone = tzName(tz);
   const selected = useSelection((s) => s.norad);
   const select = useSelection((s) => s.select);
-  const rows = result?.passes36h ?? [];
+  const [sort, setSort] = useState<PassSort | null>(null);
+  const incoming = result?.passes36h ?? [];
+  const rows = useMemo(
+    () => sortPassRows(incoming, sort, (id) => groupLabel(lang, id, id), lang),
+    [incoming, sort, lang],
+  );
 
   const nextId = useMemo(() => {
     const open = rows.find((r) => r.aos <= nowMs && r.los > nowMs);
@@ -779,14 +786,24 @@ export function PassTable({
         <table className="w-full min-w-[860px] border-collapse text-left text-sm">
           <thead className="bg-elevated text-[11px] uppercase tracking-[0.12em] text-muted">
             <tr>
-              <th className="px-3 py-2 font-medium">{t.passList.aos}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.los}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.duration}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.maxEl}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.objects}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.batch}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.altitude}</th>
-              <th className="px-3 py-2 font-medium">{t.passList.status}</th>
+              <SortHeader label={t.passList.aos} column="aos" sort={sort} onSort={setSort} />
+              <SortHeader label={t.passList.los} column="los" sort={sort} onSort={setSort} />
+              <SortHeader
+                label={t.passList.duration}
+                column="duration"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader label={t.passList.maxEl} column="maxEl" sort={sort} onSort={setSort} />
+              <SortHeader label={t.passList.objects} column="name" sort={sort} onSort={setSort} />
+              <SortHeader label={t.passList.batch} column="batch" sort={sort} onSort={setSort} />
+              <SortHeader
+                label={t.passList.altitude}
+                column="altitude"
+                sort={sort}
+                onSort={setSort}
+              />
+              <SortHeader label={t.passList.status} column="status" sort={sort} onSort={setSort} />
             </tr>
           </thead>
           <tbody>

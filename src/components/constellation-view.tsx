@@ -15,12 +15,8 @@ import { formatClimbRate } from "@/lib/orbit/climb-rate";
 import { useSelection } from "@/lib/selection";
 import { cn } from "@/lib/cn";
 import { getObjectsConfig } from "@/lib/catalog/build";
-import {
-  nextConstellationSort,
-  sortConstellationRows,
-  type ConstellationSort,
-  type ConstellationSortKey,
-} from "@/lib/catalog/table-sort";
+import { sortConstellationRows, type ConstellationSort } from "@/lib/catalog/table-sort";
+import { SortHeader } from "@/components/sort-header";
 
 const GROUP_COLORS: Record<string, string> = {
   "exp-2023": "var(--color-muted)",
@@ -310,35 +306,6 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
         </table>
       </div>
     </div>
-  );
-}
-
-function SortHeader({
-  label,
-  column,
-  sort,
-  onSort,
-}: {
-  label: string;
-  column: ConstellationSortKey;
-  sort: ConstellationSort | null;
-  onSort: (next: ConstellationSort | null) => void;
-}) {
-  const active = sort?.key === column;
-  const ariaSort = active ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
-  return (
-    <th scope="col" aria-sort={ariaSort} className="px-3 py-2 font-medium">
-      <button
-        type="button"
-        className="inline-flex items-center gap-1 bg-transparent p-0 text-left uppercase tracking-[0.12em] text-inherit hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-        onClick={() => onSort(nextConstellationSort(sort, column))}
-      >
-        {label}
-        <span aria-hidden="true" className="inline-block w-3 text-[10px] text-fg">
-          {active ? (sort.dir === "asc" ? "▲" : "▼") : ""}
-        </span>
-      </button>
-    </th>
   );
 }
 

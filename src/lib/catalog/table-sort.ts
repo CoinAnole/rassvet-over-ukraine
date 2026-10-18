@@ -15,9 +15,34 @@ export type ConstellationSortKey =
 
 export type SortDirection = "asc" | "desc";
 
-export type ConstellationSort = {
-  key: ConstellationSortKey;
+export type ColumnSort<K extends string = string> = {
+  key: K;
   dir: SortDirection;
+};
+
+export type ConstellationSort = ColumnSort<ConstellationSortKey>;
+
+export type PassSortKey =
+  | "aos"
+  | "los"
+  | "duration"
+  | "maxEl"
+  | "name"
+  | "batch"
+  | "altitude"
+  | "status";
+
+export type PassSort = ColumnSort<PassSortKey>;
+
+/** Fields the pass list can sort without knowing how a row is rendered. */
+export type PassSortRow = {
+  name: string;
+  group: string;
+  aos: number;
+  los: number;
+  maxElevationDeg: number;
+  altitudeKm: number | null;
+  status: ObjectStatus;
 };
 
 /**
@@ -32,14 +57,21 @@ const STATUS_RANK: Record<ObjectStatus, number> = {
   missing: 4,
 };
 
-export function nextConstellationSort(
-  current: ConstellationSort | null,
-  key: ConstellationSortKey,
-): ConstellationSort {
+export function nextColumnSort<K extends string>(
+  current: ColumnSort<K> | null,
+  key: K,
+): ColumnSort<K> {
   if (current?.key === key) {
     return { key, dir: current.dir === "asc" ? "desc" : "asc" };
   }
   return { key, dir: "asc" };
+}
+
+export function nextConstellationSort(
+  current: ConstellationSort | null,
+  key: ConstellationSortKey,
+): ConstellationSort {
+  return nextColumnSort(current, key);
 }
 
 /**
@@ -51,6 +83,40 @@ function compareNullable(a: number | null, b: number | null, dir: SortDirection)
   if (a == null) return 1;
   if (b == null) return -1;
   return dir === "asc" ? a - b : b - a;
+}
+
+function compareSortValue(
+  a: number | string | null,
+  b: number | string | null,
+  dir: SortDirection,
+  collator: Intl.Collator,
+): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" && typeof b === "number") return compareNullable(a, b, dir);
+  const cmp = collator.compare(String(a), String(b));
+  return dir === "asc" ? cmp : -cmp;
+}
+
+/**
+ * Shared column sort. A null sort keeps the input order. Missing numbers
+ * and empty text stay last whether the direction is ascending or descending.
+ * Strings use numeric collation so "2" precedes "10".
+ */
+export function sortByColumn<T, K extends string>(
+  rows: readonly T[],
+  sort: ColumnSort<K> | null,
+  valueOf: (row: T, key: K) => number | string | null,
+  lang: Lang,
+): T[] {
+  if (!sort) return [...rows];
+  const collator = new Intl.Collator(lang, { numeric: true, sensitivity: "base" });
+  const copy = [...rows];
+  copy.sort((a, b) =>
+    compareSortValue(valueOf(a, sort.key), valueOf(b, sort.key), sort.dir, collator),
+  );
+  return copy;
 }
 
 function epochMs(epoch: string | null): number | null {
@@ -66,40 +132,72 @@ export function sortConstellationRows<T extends LiveObject>(
   groupName: (groupId: string) => string,
   lang: Lang,
 ): T[] {
-  if (!sort) return [...rows];
-  const collator = new Intl.Collator(lang, { numeric: true, sensitivity: "base" });
-  const text = (a: string, b: string) => {
-    const cmp = collator.compare(a, b);
-    return sort.dir === "asc" ? cmp : -cmp;
-  };
-  const copy = [...rows];
-  copy.sort((a, b) => {
-    switch (sort.key) {
-      case "name":
-        return text(a.name, b.name);
-      case "norad":
-        return compareNullable(a.norad, b.norad, sort.dir);
-      case "group":
-        return text(groupName(a.group), groupName(b.group));
-      case "status":
-        return compareNullable(STATUS_RANK[a.status], STATUS_RANK[b.status], sort.dir);
-      case "alt":
-        return compareNullable(a.approxAltitudeKm, b.approxAltitudeKm, sort.dir);
-      case "rate":
-        return compareNullable(a.climbKmPerDay, b.climbKmPerDay, sort.dir);
-      case "inc":
-        return compareNullable(a.inclinationDeg, b.inclinationDeg, sort.dir);
-      case "period":
-        return compareNullable(a.periodMin, b.periodMin, sort.dir);
-      case "perigee":
-        return compareNullable(a.perigeeKm, b.perigeeKm, sort.dir);
-      case "apogee":
-        return compareNullable(a.apogeeKm, b.apogeeKm, sort.dir);
-      case "epoch":
-        return compareNullable(epochMs(a.epoch), epochMs(b.epoch), sort.dir);
-      default:
-        return 0;
-    }
-  });
-  return copy;
+  return sortByColumn(
+    rows,
+    sort,
+    (row, key) => {
+      switch (key) {
+        case "name":
+          return row.name;
+        case "norad":
+          return row.norad;
+        case "group":
+          return groupName(row.group);
+        case "status":
+          return STATUS_RANK[row.status];
+        case "alt":
+          return row.approxAltitudeKm;
+        case "rate":
+          return row.climbKmPerDay;
+        case "inc":
+          return row.inclinationDeg;
+        case "period":
+          return row.periodMin;
+        case "perigee":
+          return row.perigeeKm;
+        case "apogee":
+          return row.apogeeKm;
+        case "epoch":
+          return epochMs(row.epoch);
+        default:
+          return null;
+      }
+    },
+    lang,
+  );
+}
+
+export function sortPassRows<T extends PassSortRow>(
+  rows: readonly T[],
+  sort: PassSort | null,
+  groupName: (groupId: string) => string,
+  lang: Lang,
+): T[] {
+  return sortByColumn(
+    rows,
+    sort,
+    (row, key) => {
+      switch (key) {
+        case "aos":
+          return row.aos;
+        case "los":
+          return row.los;
+        case "duration":
+          return row.los - row.aos;
+        case "maxEl":
+          return row.maxElevationDeg;
+        case "name":
+          return row.name;
+        case "batch":
+          return groupName(row.group);
+        case "altitude":
+          return row.altitudeKm;
+        case "status":
+          return STATUS_RANK[row.status];
+        default:
+          return null;
+      }
+    },
+    lang,
+  );
 }
