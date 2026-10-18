@@ -143,7 +143,7 @@
   },
   "constellation": {
     "title": "Constellation",
-    "caption": "Raised is at least 450 km. Below that, climbing means a recent altitude history steeper than 0.8 km/day, or, when that rate is unknown, an object that is not on the not-climbing list. The figure beside an altitude is that slope in kilometres per day. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
+    "caption": "Raised is at least 450 km. Below that, climbing means a recent altitude history steeper than 0.8 km/day, or, when that rate is unknown, an object that is not on the not-climbing list. The rate column is that slope in kilometres per day. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
     "xAxis": "Days since launch",
     "yAxis": "Approx. altitude (a − Re), km",
     "onOrbit": "Catalogued on orbit",
@@ -161,6 +161,7 @@
       "group": "Launch group",
       "status": "Status",
       "alt": "Approx. alt. km",
+      "rate": "Rate",
       "inc": "Incl. deg",
       "period": "Period min",
       "perigee": "Perigee km",
