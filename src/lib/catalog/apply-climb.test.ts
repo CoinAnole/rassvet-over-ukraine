@@ -4,6 +4,7 @@ import { applyClimbRates } from "./apply-climb.ts";
 import { buildCatalog, indexOmms } from "./build.ts";
 import type { CatalogOmm } from "./types.ts";
 import type { HistoryRow } from "./altitude-history.mjs";
+import liveRows from "../orbit/climb-rate.live.json" with { type: "json" };
 
 function omm(norad: number, meanMotion: number): CatalogOmm {
   return {
@@ -94,6 +95,23 @@ describe("applyClimbRates", () => {
     const obj = rated.objects.find((o) => o.norad === 68360);
     assert.equal(obj?.status, "raised");
     assert.ok(obj?.climbKmPerDay != null && obj.climbKmPerDay < -0.8);
+  });
+
+  it("keeps a raised object raised when the history is climbing faster than 0.8 km/day", () => {
+    const twenty = omm(100086, HIGH);
+    const twentyEight = omm(100094, HIGH);
+    twenty.EPOCH = "2026-09-01T00:00:00.000000";
+    twentyEight.EPOCH = "2026-09-01T00:00:00.000000";
+    const rated = applyClimbRates(catalogFor([twenty, twentyEight]), liveRows as HistoryRow[]);
+    for (const norad of [100086, 100094]) {
+      const obj = rated.objects.find((o) => o.norad === norad);
+      assert.ok(obj);
+      assert.ok(obj.approxAltitudeKm != null && obj.approxAltitudeKm >= 450);
+      assert.equal(obj.status, "raised");
+      assert.ok(obj.climbKmPerDay != null && obj.climbKmPerDay > 0.8, `${obj.climbKmPerDay}`);
+    }
+    const climbing = rated.objects.filter((o) => o.status === "climbing");
+    assert.equal(climbing.length, 0);
   });
 
   it("marks a sustained loss under 450 km as not climbing", () => {

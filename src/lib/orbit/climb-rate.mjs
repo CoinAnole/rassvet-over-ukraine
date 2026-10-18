@@ -2,10 +2,13 @@
  * Climb rate from a short history of Brouwer altitudes.
  *
  * Least-squares slope over the newest samples inside a 72-hour window
- * (about two to three days). At least three points must span at least
- * 36 hours. One point that sits far off the line of the others is dropped
- * and the line is fit again. A single element set's MEAN_MOTION_DOT is
- * not an input: that derivative is a short-arc fit and can have the wrong sign.
+ * (about two to three days), anchored on each object's own newest epoch.
+ * At least three points must span at least 36 hours. One interior point
+ * that misses the track between its neighbors is dropped and the line is
+ * fit again. The newest epoch stays: it is the current altitude, and a
+ * burn or a change of rate shows up there. A single element set's
+ * MEAN_MOTION_DOT is not an input: that derivative is a short-arc fit
+ * and can have the wrong sign.
  */
 
 /** Newest samples kept for the fit. */
@@ -19,9 +22,12 @@ export const CLIMB_MIN_POINTS = 3;
 /** More than this many km/day is climbing. Steeper than this downward is decaying. */
 export const CLIMB_KM_PER_DAY = 0.8;
 
-/** A lone residual must clear this many kilometres, and this multiple of the next one. */
-export const OUTLIER_MIN_KM = 1.5;
-export const OUTLIER_RATIO = 3;
+/**
+ * An interior point this far off the chord between its neighbors is a
+ * spike, not a change of rate. A couple of kilometres of curvature is
+ * normal for thrusting. The October 2026 history bows by under 2 km.
+ */
+export const OUTLIER_MIN_KM = 5;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -124,12 +130,22 @@ function fitSamples(samples) {
 }
 
 /**
- * @param {{ t0: number, slope: number, intercept: number }} fit
- * @param {TimedSample} sample
+ * Kilometres by which an interior point misses the straight line between
+ * the epochs on either side of it. Endpoints have no such chord: the newest
+ * epoch is the current altitude, and dropping it is what hid real burns.
+ * @param {TimedSample[]} samples
+ * @param {number} index
  */
-function residualKm(fit, sample) {
-  const tDays = (sample.t - fit.t0) / DAY_MS;
-  return Math.abs(sample.altKm - (fit.intercept + fit.slope * tDays));
+function neighborChordMissKm(samples, index) {
+  const prev = samples[index - 1];
+  const point = samples[index];
+  const next = samples[index + 1];
+  if (!prev || !point || !next) return 0;
+  const span = next.t - prev.t;
+  if (!(span > 0)) return 0;
+  const fraction = (point.t - prev.t) / span;
+  const predicted = prev.altKm + fraction * (next.altKm - prev.altKm);
+  return Math.abs(point.altKm - predicted);
 }
 
 /**
@@ -138,26 +154,18 @@ function residualKm(fit, sample) {
  */
 function dropSingleOutlier(samples) {
   if (samples.length < CLIMB_MIN_POINTS + 1) return { samples, dropped: false };
-  let bestIndex = -1;
-  let bestErr = 0;
-  for (let i = 0; i < samples.length; i++) {
-    const sample = samples[i];
-    const rest = samples.filter((_, j) => j !== i);
-    const fit = fitSamples(rest);
-    if (!fit || !sample) continue;
-    const err = residualKm(fit, sample);
-    if (err < OUTLIER_MIN_KM) continue;
-    // The remaining points have to sit on their own line. A second spike
-    // does not, so it is not "one bad point".
-    let worstOther = 0;
-    for (const other of rest) worstOther = Math.max(worstOther, residualKm(fit, other));
-    if (err >= OUTLIER_RATIO * Math.max(worstOther, 1e-9) && err > bestErr) {
-      bestIndex = i;
-      bestErr = err;
-    }
+  /** @type {{ index: number, missKm: number }[]} */
+  const spikes = [];
+  for (let i = 1; i < samples.length - 1; i++) {
+    const missKm = neighborChordMissKm(samples, i);
+    if (missKm >= OUTLIER_MIN_KM) spikes.push({ index: i, missKm });
   }
-  if (bestIndex < 0) return { samples, dropped: false };
-  return { samples: samples.filter((_, i) => i !== bestIndex), dropped: true };
+  // Two bends are a curve, not one bad point. A neighbor's chord runs
+  // through the spike, so it is not a second vote.
+  if (spikes.length !== 1) return { samples, dropped: false };
+  const spike = spikes[0];
+  if (!spike) return { samples, dropped: false };
+  return { samples: samples.filter((_, i) => i !== spike.index), dropped: true };
 }
 
 /**
