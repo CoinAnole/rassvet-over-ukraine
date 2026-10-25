@@ -48,7 +48,7 @@ Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid
 
 - `source`: `live` (a GP response was parsed) or `seed` (live fetch failed; `src/data/catalog-seed.json` is in use).
 - `fetchedAt`: element-set fetch time. The seed snapshot is dated `2026-09-20T12:32:36Z`.
-- `objectCount`, `staleOnOrbit` (raised, climbing, and not climbing), `warning`.
+- `objectCount`, `staleOnOrbit` (raised, climbing, not climbing, and rate pending), `warning`.
 - Top-level `gpFixture`: `stale-in-set`, `stale-outside-set`, or null. A fixture launch still reports `source: live`, because the app parsed GP JSON. Say so in the proof notes. It is not a CelesTrak round trip.
 
 Do not add a test-only catalog endpoint. Do not block CelesTrak to force the seed path. If `source` is `seed`, keep driving; the seed banner is the real fallback, and the proof notes must say so. `npm run verify:catalog` queries CelesTrak for NORAD identity and is not a substitute for this doctor.
