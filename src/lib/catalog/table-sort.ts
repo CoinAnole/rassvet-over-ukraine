@@ -54,8 +54,9 @@ const STATUS_RANK: Record<ObjectStatus, number> = {
   raised: 1,
   stuck: 2,
   pending: 3,
-  decayed: 4,
-  missing: 5,
+  reentering: 4,
+  decayed: 5,
+  missing: 6,
 };
 
 export function nextColumnSort<K extends string>(

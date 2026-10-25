@@ -14,6 +14,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseHistoryDocument } from "../src/lib/catalog/altitude-history.mjs";
+import { parseReentryDocument } from "../src/lib/catalog/reentries.mjs";
 import { auditCatalog, renderAudit } from "./catalog-hygiene.mjs";
 
 function isMainModule(moduleUrl) {
@@ -76,6 +77,26 @@ export async function fetchGpQuery(url, userAgent) {
   return { url, ok: false, error: lastError, count: 0, objects: [] };
 }
 
+export async function fetchJsonDoc(url, userAgent) {
+  if (!url) return { ok: false, error: "no url", data: null };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": userAgent, Accept: "application/json" },
+    });
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, data: null };
+    return { ok: true, error: null, data: await res.json() };
+  } catch (err) {
+    const aborted = err && typeof err === "object" && "name" in err && err.name === "AbortError";
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: aborted ? "timeout after 15000ms" : message, data: null };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchAltitudeHistory(url, userAgent) {
   if (!url) return { ok: false, error: "no altitudeHistoryUrl", rows: [] };
   const ctrl = new AbortController();
@@ -132,6 +153,8 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
   const history = seedOnly
     ? null
     : await fetchAltitudeHistory(config.altitudeHistoryUrl, userAgent);
+  const reentryDoc = seedOnly ? null : await fetchJsonDoc(config.reentriesUrl, userAgent);
+  const reentries = reentryDoc?.ok ? parseReentryDocument(reentryDoc.data) : [];
 
   const report = auditCatalog({
     config,
@@ -141,6 +164,8 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     now,
     seed: { fetchedAt: seed.fetchedAt, ids: seed.ids },
     history,
+    reentries,
+    reentriesError: reentryDoc && !reentryDoc.ok ? reentryDoc.error : null,
   });
   return { report, text: renderAudit(report) };
 }

@@ -1,6 +1,8 @@
 import seed from "../../data/catalog-seed.json" with { type: "json" };
 import { applyClimbRates } from "./apply-climb.ts";
+import { applyReentries } from "./reentry.ts";
 import { parseHistoryDocument } from "./altitude-history.mjs";
+import { parseReentryDocument } from "./reentries.mjs";
 import { getObjectsConfig, buildCatalog, indexOmms } from "./build.ts";
 import type { CatalogOmm, CatalogPayload } from "./types.ts";
 
@@ -60,11 +62,12 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
   const wanted = new Set(cfg.objects.map((o) => o.norad));
   const merged = new Map<number, CatalogOmm>(seedOmms);
 
-  const [results, historyDoc] = await Promise.all([
+  const [results, historyDoc, reentryDoc] = await Promise.all([
     Promise.all(cfg.celestrak.queries.map((url) => fetchJson(url, cfg.userAgent))),
     cfg.altitudeHistoryUrl
       ? fetchHistory(cfg.altitudeHistoryUrl, cfg.userAgent)
       : Promise.resolve(null),
+    cfg.reentriesUrl ? fetchHistory(cfg.reentriesUrl, cfg.userAgent) : Promise.resolve(null),
   ]);
   let liveHits = 0;
   for (const list of results) {
@@ -78,17 +81,22 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
   }
 
   const liveOk = liveHits > 0;
-  const payload = applyClimbRates(
-    buildCatalog({
-      omms: merged,
-      fetchedAt: liveOk ? now.toISOString() : seedFetchedAt,
-      source: liveOk ? "live" : "seed",
-      warning: liveOk
-        ? null
-        : "Live catalog fetch failed; using a checked-in public GP snapshot from 2026-09-20.",
-      now,
-    }),
-    parseHistoryDocument(historyDoc),
+  const historyRows = parseHistoryDocument(historyDoc);
+  const payload = applyReentries(
+    applyClimbRates(
+      buildCatalog({
+        omms: merged,
+        fetchedAt: liveOk ? now.toISOString() : seedFetchedAt,
+        source: liveOk ? "live" : "seed",
+        warning: liveOk
+          ? null
+          : "Live catalog fetch failed; using a checked-in public GP snapshot from 2026-09-20.",
+        now,
+      }),
+      historyRows,
+    ),
+    parseReentryDocument(reentryDoc),
+    historyRows,
   );
 
   if (liveOk && payload.missingKnownIds.length > 0) {

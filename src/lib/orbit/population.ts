@@ -9,7 +9,7 @@ const productionGroups = new Set(
 
 /** Whether this object is propagated for the coverage set the clock is using. */
 export function inPopulation(obj: LiveObject, filter: PopulationFilter): boolean {
-  if (obj.status === "decayed" || obj.status === "missing") return false;
+  if (obj.status === "decayed" || obj.status === "reentering" || obj.status === "missing") return false;
   if (!obj.omm) return false;
   if (filter === "all") return true;
   if (filter === "raised") return obj.status === "raised";

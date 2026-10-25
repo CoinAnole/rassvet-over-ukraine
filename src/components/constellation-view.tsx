@@ -35,11 +35,14 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
   const select = useSelection((s) => s.select);
   const selected = useSelection((s) => s.norad);
 
-  const onOrbit = catalog.objects.filter((o) => o.status !== "decayed" && o.status !== "missing");
+  const onOrbit = catalog.objects.filter(
+    (o) => o.status !== "decayed" && o.status !== "missing" && o.status !== "reentering",
+  );
   const raised = onOrbit.filter((o) => o.status === "raised");
   const climbing = onOrbit.filter((o) => o.status === "climbing");
   const stuck = onOrbit.filter((o) => o.status === "stuck");
   const pending = onOrbit.filter((o) => o.status === "pending");
+  const reentering = catalog.objects.filter((o) => o.status === "reentering");
   const decayed = catalog.objects.filter((o) => o.status === "decayed");
 
   const rows = useMemo(() => {
@@ -77,6 +80,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
         <Stat label={t.constellation.climbing} value={climbing.length} />
         <Stat label={t.constellation.stuck} value={stuck.length} />
         <Stat label={t.constellation.pending} value={pending.length} />
+        <Stat label={t.constellation.reentering} value={reentering.length} />
         <Stat label={t.constellation.decayed} value={decayed.length} />
         <Stat
           label={t.constellation.groups}
@@ -277,7 +281,17 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
                 <td className="px-3 py-2 font-mono text-xs">{row.norad}</td>
                 <td className="px-3 py-2 text-xs">{groupLabel(lang, row.group, row.group)}</td>
                 <td className="px-3 py-2">
-                  <StatusChip lang={lang} status={row.status} />
+                  <StatusChip
+                    lang={lang}
+                    status={row.status}
+                    detail={
+                      row.status === "decayed"
+                        ? row.decayDate
+                        : row.status === "reentering" && row.epoch
+                          ? row.epoch.slice(0, 10)
+                          : null
+                    }
+                  />
                 </td>
                 <td className="px-3 py-2 font-mono text-xs tabular">
                   {row.approxAltitudeKm != null ? row.approxAltitudeKm.toFixed(0) : "—"}

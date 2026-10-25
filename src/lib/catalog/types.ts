@@ -16,7 +16,14 @@ export type PopulationFilter =
   | "prod-2026-03"
   | "prod-2026-07";
 
-export type ObjectStatus = "climbing" | "raised" | "stuck" | "pending" | "decayed" | "missing";
+export type ObjectStatus =
+  | "climbing"
+  | "raised"
+  | "stuck"
+  | "pending"
+  | "reentering"
+  | "decayed"
+  | "missing";
 
 export type GroupKind = "production" | "experimental";
 
@@ -47,9 +54,10 @@ export type ObjectsConfig = {
   userAgent: string;
   /** Raw URL of altitude-history.json on the data branch. Missing file means no rates. */
   altitudeHistoryUrl: string;
+  /** Raw URL of reentries.json on the data branch. Missing file means no SATCAT decay dates. */
+  reentriesUrl: string;
   celestrak: { queries: string[] };
   groups: GroupDef[];
-  decayed: number[];
   objects: ConfigObject[];
 };
 
@@ -95,6 +103,8 @@ export type LiveObject = {
    * Null when the history is missing or the window is too short.
    */
   climbKmPerDay: number | null;
+  /** SATCAT decay date when the object is a confirmed reentry. */
+  decayDate: string | null;
 };
 
 export type CatalogPayload = {

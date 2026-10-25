@@ -13,7 +13,6 @@ function config(overrides = {}) {
     groups: [
       { id: "batch", launchDate: "2026-03-23", label: { en: "Batch", uk: "Batch", ru: "Batch" } },
     ],
-    decayed: [],
     objects: [
       {
         norad: 1,
@@ -118,17 +117,19 @@ describe("auditCatalog", () => {
     assert.match(report.failures[0], /not in GP/);
   });
 
-  it("accepts a decayed ID that GP no longer publishes", () => {
-    const report = live(config({ decayed: [1] }), []);
-    assert.equal(report.exitCode, 0);
+  it("accepts a confirmed reentry that GP no longer publishes", () => {
+    const report = live(config(), [], {
+      reentries: [{ norad: 1, decay_date: "2026-06-06" }],
+    });
+    assert.equal(report.exitCode, 0, report.failures.join("\n"));
     assert.equal(report.missing.length, 1);
-    assert.match(renderAudit(report), /on decayed list/);
+    assert.match(renderAudit(report), /confirmed reentry/);
   });
 
-  it("fails a decayed override that still has a healthy GP row", () => {
+  it("fails a leftover manual decayed list", () => {
     const report = live(config({ decayed: [1] }), [row()]);
     assert.equal(report.exitCode, 1);
-    assert.match(report.failures[0], /still in GP/);
+    assert.match(report.failures.join("\n"), /manual reentry list/);
   });
 
   it("notes a low perigee without failing", () => {
@@ -174,10 +175,10 @@ describe("auditCatalog", () => {
     assert.match(renderAudit(report), /Result: incomplete fetch/);
   });
 
-  it("fails a decayed ID that is not in objects", () => {
-    const report = live(config({ decayed: [68363] }), [row()]);
+  it("still fails a curated ID with neither GP nor a reentry record", () => {
+    const report = live(config(), [row({ NORAD_CAT_ID: 99, OBJECT_ID: "2026-061B", OBJECT_NAME: "OTHER" })]);
     assert.equal(report.exitCode, 1);
-    assert.match(report.failures[0], /not in objects/);
+    assert.match(report.failures.join("\n"), /has no confirmed reentry/);
   });
 });
 
@@ -186,8 +187,10 @@ describe("checked-in catalog", () => {
     const cfg = readObjectsConfig();
     const now = new Date("2026-10-06T00:00:00Z");
     assert.equal(cfg.stuck, undefined);
+    assert.equal(cfg.decayed, undefined);
+    const reentries = [{ norad: 68363, decay_date: "2026-06-06", name: "RASSVET-3 4" }];
     const records = cfg.objects
-      .filter((obj) => !cfg.decayed.includes(obj.norad))
+      .filter((obj) => obj.norad !== 68363)
       .map((obj) =>
         row({
           NORAD_CAT_ID: obj.norad,
@@ -200,11 +203,12 @@ describe("checked-in catalog", () => {
     const report = live(cfg, records, {
       now,
       history: { ok: true, error: null, rows: [] },
+      reentries,
     });
     assert.equal(report.exitCode, 0, report.failures.join("\n"));
     assert.deepEqual(
       report.missing.map((obj) => obj.norad),
-      cfg.decayed,
+      [68363],
     );
     assert.equal(report.climbing.length, 0);
     assert.equal(report.notClimbing.length, 0);

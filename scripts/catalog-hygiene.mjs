@@ -3,8 +3,8 @@
  *
  * Altitude is the same Brouwer semi-major axis as the runtime catalog.
  * This module only reports: present, missing, unexpected RASSVET names, catalogName /
- * COSPAR mismatches, whether the manual `decayed` list still matches the
- * perigee rule, and whether a below-450 km object has a current climb rate.
+ * COSPAR mismatches, whether a confirmed reentry is absent from GP, and
+ * whether a below-450 km object has a current climb rate.
  * A stale history or an unknown rate is a warning, not a failure.
  */
 
@@ -64,10 +64,12 @@ export function auditCatalog(opts) {
   const queries = opts.queries ?? [];
   const fetchComplete = queries.length > 0 && queries.every((q) => q.ok);
   const objects = Array.isArray(config.objects) ? config.objects : [];
-  const decayed = Array.isArray(config.decayed) ? config.decayed : [];
   const groups = Array.isArray(config.groups) ? config.groups : [];
   const groupIds = new Set(groups.map((g) => g.id));
-  const decayedSet = new Set(decayed);
+  const reentries = Array.isArray(opts.reentries) ? opts.reentries : [];
+  const reentrySet = new Set(
+    reentries.map((record) => Number(record?.norad)).filter((id) => Number.isFinite(id)),
+  );
   const decayPerigeeKm = Number(config.decayPerigeeKm);
   const raisedAltitudeKm = Number(config.raisedAltitudeKm);
   const staleHours = Number(config.staleHours);
@@ -75,8 +77,18 @@ export function auditCatalog(opts) {
   const failures = [];
   const notes = [];
 
-  if (!Array.isArray(config.objects) || !Array.isArray(config.decayed)) {
-    failures.push("objects.json is missing `objects` or `decayed`.");
+  if (!Array.isArray(config.objects)) {
+    failures.push("objects.json is missing `objects`.");
+  }
+  if (opts.reentriesError) {
+    notes.push(
+      `Reentry records were not loaded (${opts.reentriesError}). Confirmed decays were not checked.`,
+    );
+  }
+  if (config.decayed != null) {
+    failures.push(
+      "`decayed` was the manual reentry list. Remove it. Confirmed reentries come from reentries.json on the data branch.",
+    );
   }
   if (config.stuck != null) {
     failures.push(
@@ -89,17 +101,7 @@ export function auditCatalog(opts) {
   for (const id of duplicates(objects.map((o) => o.cospar))) {
     failures.push(`Duplicate COSPAR ${id} in objects.`);
   }
-  for (const id of duplicates(decayed)) {
-    failures.push(`Duplicate NORAD ${id} in decayed.`);
-  }
   const objectIds = new Set(objects.map((o) => o.norad));
-  for (const id of decayed) {
-    if (!objectIds.has(id)) {
-      failures.push(
-        `Decayed NORAD ${id} is not in objects. The override cannot label an ID the catalog does not list.`,
-      );
-    }
-  }
   for (const obj of objects) {
     if (!groupIds.has(obj.group)) {
       failures.push(`NORAD ${obj.norad} group ${JSON.stringify(obj.group)} is not in groups.`);
@@ -138,9 +140,13 @@ export function auditCatalog(opts) {
       const row = byNorad.get(obj.norad) ?? null;
       if (!row) {
         missing.push(obj);
-        if (!decayedSet.has(obj.norad)) {
+        if (!reentrySet.has(obj.norad)) {
           failures.push(
-            `NORAD ${obj.norad} (${obj.cospar} ${obj.name}) is not in GP and is not on the decayed list. It will show as missing.`,
+            `NORAD ${obj.norad} (${obj.cospar} ${obj.name}) is not in GP and has no confirmed reentry. It will show as missing.`,
+          );
+        } else {
+          notes.push(
+            `NORAD ${obj.norad} (${obj.name}) has no GP row and a confirmed reentry. The site marks it decayed.`,
           );
         }
         continue;
@@ -168,29 +174,13 @@ export function auditCatalog(opts) {
       }
       if (orbit && orbit.perigeeKm < decayPerigeeKm) {
         lowPerigee.push(entry);
-        if (!decayedSet.has(obj.norad)) {
-          notes.push(
-            `NORAD ${obj.norad} perigee ${km(orbit.perigeeKm)} km is under ${decayPerigeeKm} km. The runtime marks it decayed from the element set. Add it to decayed once GP drops the element set, or it will later show as missing.`,
-          );
-        }
-      } else if (orbit && orbit.approxAltitudeKm < raisedAltitudeKm && !decayedSet.has(obj.norad)) {
+        notes.push(
+          `NORAD ${obj.norad} perigee ${km(orbit.perigeeKm)} km is under ${decayPerigeeKm} km. The runtime marks it decayed from the element set.`,
+        );
+      } else if (orbit && orbit.approxAltitudeKm < raisedAltitudeKm && !reentrySet.has(obj.norad)) {
         underRaised.push(entry);
       }
       if (ageH != null && ageH > staleHours) stale.push(entry);
-
-      if (decayedSet.has(obj.norad) && orbit && orbit.perigeeKm >= decayPerigeeKm) {
-        failures.push(
-          `Decayed override ${obj.norad} (${obj.name}) is still in GP at perigee ${km(orbit.perigeeKm)} km, which is at or above ${decayPerigeeKm} km. The override drops the element set and hides a live object.`,
-        );
-      }
-    }
-
-    for (const id of decayed) {
-      if (!byNorad.has(id) && objectIds.has(id)) {
-        notes.push(
-          `Decayed NORAD ${id} has no GP row. That matches the override: without it the same ID would be missing rather than decayed.`,
-        );
-      }
     }
   } else {
     notes.push(
@@ -228,7 +218,7 @@ export function auditCatalog(opts) {
     const seedIds = new Set(opts.seed.ids);
     const absent = objects
       .filter((o) => !seedIds.has(o.norad))
-      .map((o) => ({ norad: o.norad, name: o.name, decayed: decayedSet.has(o.norad) }));
+      .map((o) => ({ norad: o.norad, name: o.name, decayed: reentrySet.has(o.norad) }));
     const extra = [...seedIds].filter((id) => !objectIds.has(id));
     seedNote = { fetchedAt: opts.seed.fetchedAt, absent, extra };
   }
@@ -244,7 +234,7 @@ export function auditCatalog(opts) {
     fetchComplete,
     present,
     underRaised,
-    decayedSet,
+    decayedSet: reentrySet,
     notes,
   });
 
@@ -271,7 +261,7 @@ export function auditCatalog(opts) {
     notClimbing: rates.notClimbing,
     ratePending: rates.ratePending,
     stale,
-    decayed,
+    decayed: [...reentrySet],
     decayPerigeeKm,
     raisedAltitudeKm,
     staleHours,
@@ -425,7 +415,7 @@ export function renderAudit(report) {
     push("");
     push(`Missing from GP: ${report.missing.length}`);
     for (const obj of report.missing) {
-      const flag = report.decayed.includes(obj.norad) ? "on decayed list" : "NOT on decayed list";
+      const flag = report.decayed.includes(obj.norad) ? "confirmed reentry" : "NOT a confirmed reentry";
       push(`  ${obj.norad}  ${obj.cospar}  ${obj.name}  ${flag}`);
     }
 
@@ -454,7 +444,7 @@ export function renderAudit(report) {
     }
 
     push("");
-    push(`Decayed list (${report.decayed.length}): ${report.decayed.join(", ") || "(empty)"}`);
+    push(`Confirmed reentries (${report.decayed.length}): ${report.decayed.join(", ") || "(empty)"}`);
     push(`Perigee under ${report.decayPerigeeKm} km: ${report.lowPerigee.length}`);
     for (const entry of report.lowPerigee) {
       push(`  ${entry.obj.norad}  ${entry.obj.name}  perigee ${km(entry.orbit?.perigeeKm)}`);

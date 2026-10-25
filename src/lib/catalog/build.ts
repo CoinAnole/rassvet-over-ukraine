@@ -85,7 +85,6 @@ export function buildCatalog(opts: {
   now?: Date;
 }): CatalogPayload {
   const now = opts.now ?? new Date();
-  const decayedSet = new Set(config.decayed);
   const decayPerigeeKm = config.decayPerigeeKm || DECAY_PERIGEE_KM;
   const raisedAltitudeKm = config.raisedAltitudeKm || RAISED_ALTITUDE_KM;
   const groupById = new Map(config.groups.map((g) => [g.id, g]));
@@ -95,28 +94,6 @@ export function buildCatalog(opts: {
   for (const meta of config.objects as ConfigObject[]) {
     const omm = opts.omms.get(meta.norad) ?? null;
     const group = groupById.get(meta.group);
-    if (decayedSet.has(meta.norad)) {
-      objects.push({
-        norad: meta.norad,
-        name: meta.name,
-        catalogName: meta.catalogName,
-        cospar: meta.cospar,
-        group: meta.group,
-        launchDate: group?.launchDate ?? null,
-        omm: null,
-        epoch: null,
-        status: "decayed",
-        stale: false,
-        approxAltitudeKm: null,
-        inclinationDeg: null,
-        periodMin: null,
-        perigeeKm: null,
-        apogeeKm: null,
-        elementSetCount: omm ? 1 : 0,
-        climbKmPerDay: null,
-      });
-      continue;
-    }
     if (!omm) {
       missingKnownIds.push(meta.norad);
       objects.push({
@@ -137,6 +114,7 @@ export function buildCatalog(opts: {
         apogeeKm: null,
         elementSetCount: 0,
         climbKmPerDay: null,
+        decayDate: null,
       });
       continue;
     }
@@ -168,6 +146,7 @@ export function buildCatalog(opts: {
       apogeeKm: orbit.apogeeKm,
       elementSetCount: 1,
       climbKmPerDay: null,
+      decayDate: null,
     });
   }
 
@@ -177,7 +156,7 @@ export function buildCatalog(opts: {
     warning: opts.warning,
     missingKnownIds,
     objects,
-    decayed: [...config.decayed],
+    decayed: [],
     raisedAltitudeKm: config.raisedAltitudeKm,
     staleHours: config.staleHours,
     stepSeconds: config.stepSeconds,
