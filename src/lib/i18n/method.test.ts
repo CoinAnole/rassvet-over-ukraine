@@ -76,6 +76,7 @@ describe("method copy", () => {
     assert.match(enText, /set=raised/);
     assert.match(enText, /least-squares/);
     assert.match(enText, /36 hours/);
+    assert.match(enText, /up to five days/);
     assert.match(enText, /0\.8 km\/day/);
     assert.match(enText, /mean-motion derivative/);
     assert.match(enText, /rate pending/);
@@ -89,6 +90,7 @@ describe("method copy", () => {
     const ukText = uk.paragraphs.join(" ");
     assert.match(ukText, /найменших квадратів/);
     assert.match(ukText, /36 годин/);
+    assert.match(ukText, /п’яти діб/);
     assert.match(ukText, /0\.8 км\/добу/);
     assert.match(ukText, /RASSVET-3/);
     assert.match(ukText, /не піднімається/);
@@ -101,6 +103,7 @@ describe("method copy", () => {
     const ruText = ru.paragraphs.join(" ");
     assert.match(ruText, /наименьших квадратов/);
     assert.match(ruText, /36 часов/);
+    assert.match(ruText, /пяти суток/);
     assert.match(ruText, /0\.8 км\/сут/);
     assert.match(ruText, /не поднимается/);
     assert.match(ruText, /темп ожидается/);

@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   CLIMB_KM_PER_DAY,
+  CLIMB_WINDOW_MAX_MS,
   climbClass,
   HISTORY_STALE_MS,
   rateIsStale,
@@ -82,6 +83,36 @@ describe("gap and sample count", () => {
 
   it("is unknown when three points span less than 36 hours", () => {
     assert.equal(climbRate(series(2, { n: 3, spanHours: 30 })), null);
+  });
+
+  it("reaches back by whole epochs, up to five days, when the 72-hour window is short", () => {
+    assert.equal(CLIMB_WINDOW_MAX_MS, 120 * 60 * 60 * 1000);
+    const newest = T0 + 10 * 86_400_000;
+    const line = (hours: number, altKm: number) => ({
+      epoch: new Date(newest - hours * 3_600_000).toISOString().replace(/Z$/, ""),
+      altKm,
+    });
+    const onLine = (hours: number) => 200 - 2 * (hours / 24);
+    const rate = climbRate([
+      line(130, 50),
+      line(80, onLine(80)),
+      line(30, onLine(30)),
+      line(10, onLine(10)),
+      line(0, onLine(0)),
+    ]);
+    assert.ok(rate);
+    assert.equal(rate.points, 4);
+    assert.equal(rate.spanHours, 80);
+    assert.ok(Math.abs(rate.kmPerDay - 2) < 1e-6, `${rate.kmPerDay}`);
+    assert.equal(climbRate([line(130, onLine(130)), line(20, onLine(20)), line(0, onLine(0))]), null);
+    const exactly = climbRate([
+      line(120, onLine(120)),
+      line(20, onLine(20)),
+      line(0, onLine(0)),
+    ]);
+    assert.ok(exactly);
+    assert.equal(exactly.spanHours, 120);
+    assert.equal(exactly.points, 3);
   });
 
   it("accepts three points that span exactly 36 hours", () => {

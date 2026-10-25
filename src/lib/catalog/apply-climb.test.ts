@@ -149,14 +149,41 @@ describe("applyClimbRates", () => {
     const got = (norad: number) => rated.objects.find((obj) => obj.norad === norad);
 
     const raised = got(68370);
+    const elevenRate = climbRate(byNorad(68370));
     assert.equal(raised?.status, "raised");
-    assert.equal(raised?.climbKmPerDay, null);
+    assert.ok(elevenRate);
+    assert.equal(elevenRate.points, 4);
+    assert.ok(Math.abs(elevenRate.spanHours - 75) < 0.1, `${elevenRate.spanHours}`);
+    assert.ok(Math.abs(elevenRate.kmPerDay - 4.552) < 0.01, `${elevenRate.kmPerDay}`);
+    assert.ok(raised?.climbKmPerDay != null && Math.abs(raised.climbKmPerDay - 4.552) < 0.01);
 
-    for (const norad of [68373, 100083, 100089]) {
-      const pending = got(norad);
-      assert.equal(pending?.status, "pending", String(norad));
-      assert.equal(pending?.climbKmPerDay, null);
-    }
+    const fourteenRate = climbRate(byNorad(68373));
+    const fourteenObj = got(68373);
+    assert.ok(fourteenRate);
+    assert.equal(fourteenRate.klass, "holding");
+    assert.equal(fourteenRate.points, 4);
+    assert.ok(Math.abs(fourteenRate.spanHours - 74.7) < 0.1, `${fourteenRate.spanHours}`);
+    assert.ok(Math.abs(fourteenRate.kmPerDay - -0.253) < 0.01, `${fourteenRate.kmPerDay}`);
+    assert.equal(fourteenObj?.status, "stuck");
+    assert.ok(
+      fourteenObj?.climbKmPerDay != null && Math.abs(fourteenObj.climbKmPerDay - -0.253) < 0.01,
+    );
+
+    const seventeenRate = climbRate(byNorad(100083));
+    const seventeenObj = got(100083);
+    assert.ok(seventeenRate);
+    assert.equal(seventeenRate.klass, "decaying");
+    assert.equal(seventeenRate.points, 4);
+    assert.ok(Math.abs(seventeenRate.spanHours - 78.6) < 0.1, `${seventeenRate.spanHours}`);
+    assert.ok(Math.abs(seventeenRate.kmPerDay - -4.232) < 0.01, `${seventeenRate.kmPerDay}`);
+    assert.equal(seventeenObj?.status, "stuck");
+    assert.ok(
+      seventeenObj?.climbKmPerDay != null && Math.abs(seventeenObj.climbKmPerDay - -4.232) < 0.01,
+    );
+
+    const twentyThreeObj = got(100089);
+    assert.equal(twentyThreeObj?.status, "pending");
+    assert.equal(twentyThreeObj?.climbKmPerDay, null);
 
     const stalled = got(100092);
     assert.equal(stalled?.status, "stuck");
