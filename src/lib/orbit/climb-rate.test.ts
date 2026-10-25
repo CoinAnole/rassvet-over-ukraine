@@ -2,8 +2,10 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   CLIMB_KM_PER_DAY,
+  CLIMB_WINDOW_MAX_MS,
   climbClass,
-  climbListDisagreement,
+  HISTORY_STALE_MS,
+  rateIsStale,
   climbRate,
   formatClimbRate,
   leastSquaresSlope,
@@ -81,6 +83,36 @@ describe("gap and sample count", () => {
 
   it("is unknown when three points span less than 36 hours", () => {
     assert.equal(climbRate(series(2, { n: 3, spanHours: 30 })), null);
+  });
+
+  it("reaches back by whole epochs, up to five days, when the 72-hour window is short", () => {
+    assert.equal(CLIMB_WINDOW_MAX_MS, 120 * 60 * 60 * 1000);
+    const newest = T0 + 10 * 86_400_000;
+    const line = (hours: number, altKm: number) => ({
+      epoch: new Date(newest - hours * 3_600_000).toISOString().replace(/Z$/, ""),
+      altKm,
+    });
+    const onLine = (hours: number) => 200 - 2 * (hours / 24);
+    const rate = climbRate([
+      line(130, 50),
+      line(80, onLine(80)),
+      line(30, onLine(30)),
+      line(10, onLine(10)),
+      line(0, onLine(0)),
+    ]);
+    assert.ok(rate);
+    assert.equal(rate.points, 4);
+    assert.equal(rate.spanHours, 80);
+    assert.ok(Math.abs(rate.kmPerDay - 2) < 1e-6, `${rate.kmPerDay}`);
+    assert.equal(climbRate([line(130, onLine(130)), line(20, onLine(20)), line(0, onLine(0))]), null);
+    const exactly = climbRate([
+      line(120, onLine(120)),
+      line(20, onLine(20)),
+      line(0, onLine(0)),
+    ]);
+    assert.ok(exactly);
+    assert.equal(exactly.spanHours, 120);
+    assert.equal(exactly.points, 3);
   });
 
   it("accepts three points that span exactly 36 hours", () => {
@@ -191,13 +223,13 @@ describe("classes", () => {
     assert.equal(formatClimbRate(0), "+0.0");
   });
 
-  it("flags a manual list that disagrees and lets decaying agree with not-climbing", () => {
-    assert.equal(climbListDisagreement(true, "climbing"), true);
-    assert.equal(climbListDisagreement(false, "holding"), true);
-    assert.equal(climbListDisagreement(false, "decaying"), true);
-    assert.equal(climbListDisagreement(true, "holding"), false);
-    assert.equal(climbListDisagreement(true, "decaying"), false);
-    assert.equal(climbListDisagreement(false, "climbing"), false);
-    assert.equal(climbListDisagreement(false, null), false);
+  it("treats a history more than 72 hours behind the catalog as stale", () => {
+    assert.equal(HISTORY_STALE_MS, 72 * 60 * 60 * 1000);
+    const catalog = Date.parse("2026-10-24T07:39:07.751Z");
+    assert.equal(rateIsStale(catalog - 73.9 * 3_600_000, catalog), true);
+    assert.equal(rateIsStale(catalog - 2.7 * 3_600_000, catalog), false);
+    assert.equal(rateIsStale(catalog - HISTORY_STALE_MS, catalog), false);
+    assert.equal(rateIsStale(null, catalog), false);
+    assert.equal(rateIsStale(catalog, null), false);
   });
 });

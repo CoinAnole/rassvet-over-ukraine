@@ -21,7 +21,7 @@ There is no sign-in and no database. A high score or a preference in `localStora
 
 - UI: `src/routes`, `src/components`
 - Copy: `src/config/i18n/{en,uk,ru}.json` and Method text in `src/lib/i18n/method.ts`
-- Catalog rules: `src/config/objects.json` (raised gate, decayed, not-climbing, stale hours)
+- Catalog rules: `src/config/objects.json` (raised gate, decayed, stale hours)
 - Propagation and coverage: `src/lib/orbit`, `src/lib/catalog`
 - Seed snapshot: `src/data/catalog-seed.json`, used when a CelesTrak fetch fails
 - Altitude history: `altitude-history.json` on the `data` branch, written by `.github/workflows/altitude-history.yml`. The app fetches that raw URL. Do not commit the history file to `main`

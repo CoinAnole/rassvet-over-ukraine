@@ -1,18 +1,38 @@
 /**
  * Climb rate from a short history of Brouwer altitudes.
  *
- * Least-squares slope over the newest samples inside a 72-hour window
- * (about two to three days), anchored on each object's own newest epoch.
- * At least three points must span at least 36 hours. One interior point
- * that misses the track between its neighbors is dropped and the line is
- * fit again. The newest epoch stays: it is the current altitude, and a
- * burn or a change of rate shows up there. A single element set's
- * MEAN_MOTION_DOT is not an input: that derivative is a short-arc fit
- * and can have the wrong sign.
+ * Least-squares slope over the newest samples inside a 72-hour window,
+ * anchored on each object's own newest epoch. If that window has fewer
+ * than three points or spans under 36 hours, older epochs are added one
+ * at a time, up to five days from the newest epoch, until the minimum is
+ * met. One interior point that misses the track between its neighbors is
+ * dropped and the line is fit again. The newest epoch stays: it is the
+ * current altitude, and a burn or a change of rate shows up there. A
+ * single element set's MEAN_MOTION_DOT is not an input: that derivative
+ * is a short-arc fit and can have the wrong sign.
  */
 
-/** Newest samples kept for the fit. */
+/** First window. Older epochs stay out while this one already qualifies. */
 export const CLIMB_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+/** Furthest lookback when the 72-hour window is too short. */
+export const CLIMB_WINDOW_MAX_MS = 120 * 60 * 60 * 1000;
+
+/**
+ * A history whose newest epoch is more than three days behind the newest
+ * epoch in the catalog is not a live rate. The clock is the catalog, not
+ * wall time, so a late fetch does not blank every object at once.
+ */
+export const HISTORY_STALE_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * @param {number | null | undefined} newestMs
+ * @param {number | null | undefined} referenceMs
+ */
+export function rateIsStale(newestMs, referenceMs) {
+  if (newestMs == null || referenceMs == null) return false;
+  return referenceMs - newestMs > HISTORY_STALE_MS;
+}
 
 /** The kept points must cover at least this long. */
 export const CLIMB_MIN_SPAN_MS = 36 * 60 * 60 * 1000;
@@ -95,17 +115,6 @@ export function formatClimbRate(kmPerDay) {
 }
 
 /**
- * Manual list versus a computed class. Decaying counts as not climbing.
- * @param {boolean} manualStuck
- * @param {"climbing" | "holding" | "decaying" | null | undefined} klass
- */
-export function climbListDisagreement(manualStuck, klass) {
-  if (klass !== "climbing" && klass !== "holding" && klass !== "decaying") return false;
-  const computedNotClimbing = klass !== "climbing";
-  return Boolean(manualStuck) !== computedNotClimbing;
-}
-
-/**
  * @typedef {{ t: number, altKm: number }} TimedSample
  * @typedef {{
  *   kmPerDay: number,
@@ -180,6 +189,29 @@ function longEnough(samples) {
 }
 
 /**
+ * Prefer the newest 72 hours. When that set is short, add the next older
+ * epoch, and only that epoch, until the minimum is met or five days is
+ * reached. A 72-hour window that already qualifies does not grow.
+ * @param {TimedSample[]} deduped sorted by t, newest last
+ * @returns {TimedSample[]}
+ */
+function selectWindow(deduped) {
+  const newest = deduped[deduped.length - 1];
+  if (!newest) return [];
+  const primary = deduped.filter((s) => newest.t - s.t <= CLIMB_WINDOW_MS);
+  if (longEnough(primary)) return primary;
+  const older = deduped.filter(
+    (s) => newest.t - s.t > CLIMB_WINDOW_MS && newest.t - s.t <= CLIMB_WINDOW_MAX_MS,
+  );
+  const window = primary.slice();
+  for (let i = older.length - 1; i >= 0 && !longEnough(window); i--) {
+    const sample = older[i];
+    if (sample) window.unshift(sample);
+  }
+  return window;
+}
+
+/**
  * @param {Array<{ epoch?: string | number, altKm?: number, alt_km?: number }> | null | undefined} rows
  * @returns {ClimbRateResult | null}
  */
@@ -201,9 +233,7 @@ export function climbRate(rows) {
     else deduped.push(sample);
   }
   if (deduped.length === 0) return null;
-  const newest = deduped[deduped.length - 1];
-  if (!newest) return null;
-  const windowed = deduped.filter((s) => newest.t - s.t <= CLIMB_WINDOW_MS);
+  const windowed = selectWindow(deduped);
   if (!longEnough(windowed)) return null;
   const { samples, dropped } = dropSingleOutlier(windowed);
   if (!longEnough(samples)) return null;

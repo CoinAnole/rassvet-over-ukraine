@@ -185,7 +185,7 @@ describe("checked-in catalog", () => {
   it("is structurally consistent when GP echoes catalogName and COSPAR", () => {
     const cfg = readObjectsConfig();
     const now = new Date("2026-10-06T00:00:00Z");
-    const stuck = new Set(cfg.stuck);
+    assert.equal(cfg.stuck, undefined);
     const records = cfg.objects
       .filter((obj) => !cfg.decayed.includes(obj.norad))
       .map((obj) =>
@@ -194,43 +194,32 @@ describe("checked-in catalog", () => {
           OBJECT_ID: obj.cospar,
           OBJECT_NAME: obj.catalogName,
           EPOCH: "2026-10-05T12:00:00.000000",
-          MEAN_MOTION: stuck.has(obj.norad) ? 15.65 : 15.184,
+          MEAN_MOTION: 15.184,
         }),
       );
-    const report = live(cfg, records, { now });
+    const report = live(cfg, records, {
+      now,
+      history: { ok: true, error: null, rows: [] },
+    });
     assert.equal(report.exitCode, 0, report.failures.join("\n"));
     assert.deepEqual(
       report.missing.map((obj) => obj.norad),
       cfg.decayed,
     );
-    assert.deepEqual(
-      report.stuck.map((entry) => entry.obj.norad).sort((a, b) => a - b),
-      [...cfg.stuck].sort((a, b) => a - b),
-    );
-    assert.equal(report.climbing.some((entry) => cfg.stuck.includes(entry.obj.norad)), false);
-    assert.equal(cfg.stuck.includes(68370), false);
+    assert.equal(report.climbing.length, 0);
+    assert.equal(report.notClimbing.length, 0);
+    assert.equal(report.ratePending.length, 0);
   });
 });
 
-describe("not-climbing list", () => {
-  it("accepts a listed NORAD that is still under 450 km", () => {
+describe("climb rate warnings", () => {
+  it("rejects a leftover manual not-climbing list", () => {
     const report = live(config({ stuck: [1] }), [row({ MEAN_MOTION: 15.65 })]);
-    assert.equal(report.exitCode, 0, report.failures.join("\n"));
-    assert.deepEqual(
-      report.stuck.map((entry) => entry.obj.norad),
-      [1],
-    );
-    assert.equal(report.climbing.length, 0);
-    assert.match(renderAudit(report), /Not climbing, manual list \(1\): 1/);
-  });
-
-  it("fails a listed NORAD that has reached the raised gate", () => {
-    const report = live(config({ stuck: [1] }), [row({ MEAN_MOTION: 15.184 })]);
     assert.equal(report.exitCode, 1);
-    assert.match(report.failures.join("\n"), /raised gate/);
+    assert.match(report.failures.join("\n"), /manual not-climbing list/);
   });
 
-  it("warns when a computed rate disagrees with the manual list and still exits 0", () => {
+  it("warns on an unknown rate under 450 km and still exits 0", () => {
     const gp = row({ MEAN_MOTION: 15.65, EPOCH: "2026-10-05T12:00:00.000000" });
     const orbit = orbitFromGp(gp);
     assert.ok(orbit && orbit.approxAltitudeKm < 450);
@@ -241,15 +230,15 @@ describe("not-climbing list", () => {
       epoch: new Date(end - hours * 3_600_000).toISOString().replace(/Z$/, ""),
       alt_km: orbit.approxAltitudeKm - 2.6 * (hours / 24),
     }));
-    const disagreed = live(config({ stuck: [1] }), [gp], {
+    const climbing = live(config(), [gp], {
       history: { ok: true, error: null, rows: rising },
     });
-    assert.equal(disagreed.exitCode, 0, disagreed.failures.join("\n"));
-    assert.ok(
-      disagreed.notes.some((line) => /is \+2\.6 km\/day \(climbing\)/.test(line)),
-      disagreed.notes.join("\n"),
+    assert.equal(climbing.exitCode, 0, climbing.failures.join("\n"));
+    assert.deepEqual(
+      climbing.climbing.map((entry) => entry.obj.norad),
+      [1],
     );
-    assert.match(renderAudit(disagreed), /warning, not a failure/);
+    assert.equal(climbing.notes.some((line) => /unknown rate/.test(line)), false);
 
     const flat = [48, 24, 0].map((hours) => ({
       norad: 1,
@@ -257,26 +246,60 @@ describe("not-climbing list", () => {
       epoch: new Date(end - hours * 3_600_000).toISOString().replace(/Z$/, ""),
       alt_km: orbit.approxAltitudeKm,
     }));
-    const agreed = live(config({ stuck: [1] }), [gp], {
+    const holding = live(config(), [gp], {
       history: { ok: true, error: null, rows: flat },
     });
-    assert.equal(agreed.notes.some((line) => line.startsWith("Climb rate for")), false);
+    assert.deepEqual(
+      holding.notClimbing.map((entry) => entry.obj.norad),
+      [1],
+    );
+    assert.match(renderAudit(holding), /Not climbing \(holding or decaying/);
 
-    const raised = live(config({ stuck: [] }), [row({ MEAN_MOTION: 15.184 })], {
+    const staleEnd = end - 80 * 3_600_000;
+    const staleGp = row({
+      MEAN_MOTION: 15.65,
+      EPOCH: new Date(staleEnd).toISOString().replace(/Z$/, ""),
+    });
+    const staleRising = [48, 24, 0].map((hours) => ({
+      norad: 1,
+      name: "RASSVET-3 1",
+      epoch: new Date(staleEnd - hours * 3_600_000).toISOString().replace(/Z$/, ""),
+      alt_km: orbit.approxAltitudeKm - 2.6 * (hours / 24),
+    }));
+    const reference = {
+      norad: 2,
+      name: "RASSVET-3 2",
+      epoch: new Date(end).toISOString().replace(/Z$/, ""),
+      alt_km: 500,
+    };
+    const stale = live(config(), [staleGp], {
+      history: { ok: true, error: null, rows: [...staleRising, reference] },
+    });
+    assert.equal(stale.exitCode, 0, stale.failures.join("\n"));
+    assert.deepEqual(
+      stale.ratePending.map((entry) => entry.obj.norad),
+      [1],
+    );
+    assert.equal(stale.climbing.length, 0);
+    assert.match(stale.notes.join("\n"), /Stale altitude history/);
+    assert.match(stale.notes.join("\n"), /unknown rate/);
+    assert.match(renderAudit(stale), /warning, not a failure/);
+
+    const raised = live(config(), [row({ MEAN_MOTION: 15.184 })], {
       history: { ok: true, error: null, rows: rising },
     });
-    assert.equal(raised.notes.some((line) => line.startsWith("Climb rate for")), false);
+    assert.equal(raised.climbing.length, 0);
+    assert.equal(raised.ratePending.length, 0);
 
     const missing = live(config(), [gp], {
       history: { ok: false, error: "HTTP 404", rows: [] },
     });
     assert.equal(missing.exitCode, 0);
     assert.match(missing.notes.join("\n"), /Altitude history was not loaded/);
-  });
-
-  it("fails a listed NORAD that is not in objects", () => {
-    const report = live(config({ stuck: [68373] }), [row()]);
-    assert.equal(report.exitCode, 1);
-    assert.match(report.failures.join("\n"), /not in objects/);
+    assert.match(missing.notes.join("\n"), /unknown rate/);
+    assert.deepEqual(
+      missing.ratePending.map((entry) => entry.obj.norad),
+      [1],
+    );
   });
 });

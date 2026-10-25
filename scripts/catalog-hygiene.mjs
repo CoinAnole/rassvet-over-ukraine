@@ -4,16 +4,12 @@
  * Altitude is the same Brouwer semi-major axis as the runtime catalog.
  * This module only reports: present, missing, unexpected RASSVET names, catalogName /
  * COSPAR mismatches, whether the manual `decayed` list still matches the
- * perigee rule, and whether the manual `stuck` (not-climbing) list is still
- * under the raised gate and still in GP.
+ * perigee rule, and whether a below-450 km object has a current climb rate.
+ * A stale history or an unknown rate is a warning, not a failure.
  */
 
 import { orbitFromGp as brouwerOrbit } from "../src/lib/orbit/brouwer-altitude.mjs";
-import {
-  climbListDisagreement,
-  climbRate,
-  formatClimbRate,
-} from "../src/lib/orbit/climb-rate.mjs";
+import { climbRate, epochToMs, rateIsStale } from "../src/lib/orbit/climb-rate.mjs";
 
 const RASSVET_NAME = /rassvet|рассвет/i;
 
@@ -69,11 +65,9 @@ export function auditCatalog(opts) {
   const fetchComplete = queries.length > 0 && queries.every((q) => q.ok);
   const objects = Array.isArray(config.objects) ? config.objects : [];
   const decayed = Array.isArray(config.decayed) ? config.decayed : [];
-  const stuck = Array.isArray(config.stuck) ? config.stuck : [];
   const groups = Array.isArray(config.groups) ? config.groups : [];
   const groupIds = new Set(groups.map((g) => g.id));
   const decayedSet = new Set(decayed);
-  const stuckSet = new Set(stuck);
   const decayPerigeeKm = Number(config.decayPerigeeKm);
   const raisedAltitudeKm = Number(config.raisedAltitudeKm);
   const staleHours = Number(config.staleHours);
@@ -84,8 +78,10 @@ export function auditCatalog(opts) {
   if (!Array.isArray(config.objects) || !Array.isArray(config.decayed)) {
     failures.push("objects.json is missing `objects` or `decayed`.");
   }
-  if (config.stuck != null && !Array.isArray(config.stuck)) {
-    failures.push("`stuck` must be an array of NORAD ids.");
+  if (config.stuck != null) {
+    failures.push(
+      "`stuck` was the manual not-climbing list. Remove it. Status under 450 km comes from altitude history.",
+    );
   }
   for (const id of duplicates(objects.map((o) => o.norad))) {
     failures.push(`Duplicate NORAD ${id} in objects.`);
@@ -96,25 +92,12 @@ export function auditCatalog(opts) {
   for (const id of duplicates(decayed)) {
     failures.push(`Duplicate NORAD ${id} in decayed.`);
   }
-  for (const id of duplicates(stuck)) {
-    failures.push(`Duplicate NORAD ${id} in stuck.`);
-  }
   const objectIds = new Set(objects.map((o) => o.norad));
   for (const id of decayed) {
     if (!objectIds.has(id)) {
       failures.push(
         `Decayed NORAD ${id} is not in objects. The override cannot label an ID the catalog does not list.`,
       );
-    }
-  }
-  for (const id of stuck) {
-    if (!objectIds.has(id)) {
-      failures.push(
-        `Not-climbing NORAD ${id} is not in objects. The override cannot label an ID the catalog does not list.`,
-      );
-    }
-    if (decayedSet.has(id)) {
-      failures.push(`NORAD ${id} is on both decayed and stuck. Decayed already drops it from coverage.`);
     }
   }
   for (const obj of objects) {
@@ -147,8 +130,7 @@ export function auditCatalog(opts) {
   const mismatches = [];
   const displayDiffs = [];
   const lowPerigee = [];
-  const climbing = [];
-  const stuckRows = [];
+  const underRaised = [];
   const stale = [];
 
   if (fetchComplete) {
@@ -159,11 +141,6 @@ export function auditCatalog(opts) {
         if (!decayedSet.has(obj.norad)) {
           failures.push(
             `NORAD ${obj.norad} (${obj.cospar} ${obj.name}) is not in GP and is not on the decayed list. It will show as missing.`,
-          );
-        }
-        if (stuckSet.has(obj.norad)) {
-          failures.push(
-            `Not-climbing NORAD ${obj.norad} (${obj.name}) has no GP row. The list is for an object that is still published. Move it to decayed once reentry is confirmed, or drop it from stuck.`,
           );
         }
         continue;
@@ -197,23 +174,7 @@ export function auditCatalog(opts) {
           );
         }
       } else if (orbit && orbit.approxAltitudeKm < raisedAltitudeKm && !decayedSet.has(obj.norad)) {
-        if (stuckSet.has(obj.norad)) stuckRows.push(entry);
-        else climbing.push(entry);
-      }
-      if (stuckSet.has(obj.norad) && orbit && orbit.perigeeKm < decayPerigeeKm) {
-        failures.push(
-          `Not-climbing NORAD ${obj.norad} (${obj.name}) has perigee ${km(orbit.perigeeKm)} km, under the ${decayPerigeeKm} km decay gate. Remove it from stuck. The runtime already marks it decayed.`,
-        );
-      }
-      if (
-        stuckSet.has(obj.norad) &&
-        orbit &&
-        orbit.perigeeKm >= decayPerigeeKm &&
-        orbit.approxAltitudeKm >= raisedAltitudeKm
-      ) {
-        failures.push(
-          `Not-climbing override ${obj.norad} (${obj.name}) is at ${km(orbit.approxAltitudeKm)} km, at or above the ${raisedAltitudeKm} km raised gate. Remove it from stuck. The runtime already counts it as raised.`,
-        );
+        underRaised.push(entry);
       }
       if (ageH != null && ageH > staleHours) stale.push(entry);
 
@@ -278,14 +239,12 @@ export function auditCatalog(opts) {
     );
   }
 
-  noteClimbRates({
+  const rates = classifyUnderRaised({
     history: opts.history,
     fetchComplete,
     present,
+    underRaised,
     decayedSet,
-    stuckSet,
-    decayPerigeeKm,
-    raisedAltitudeKm,
     notes,
   });
 
@@ -308,9 +267,9 @@ export function auditCatalog(opts) {
     unexpected,
     rideshare,
     lowPerigee,
-    climbing,
-    stuck: stuckRows,
-    stuckIds: stuck,
+    climbing: rates.climbing,
+    notClimbing: rates.notClimbing,
+    ratePending: rates.ratePending,
     stale,
     decayed,
     decayPerigeeKm,
@@ -321,53 +280,96 @@ export function auditCatalog(opts) {
   };
 }
 
-function noteClimbRates(args) {
+function listObjects(entries) {
+  return entries
+    .map((entry) => `${entry.obj.norad} (${entry.obj.name})`)
+    .join(", ");
+}
+
+/**
+ * Below 450 km, a fresh rate above 0.8 km/day is climbing and any other
+ * fresh rate is not climbing. No rate, including a history more than 72 h
+ * behind the newest catalog epoch, is rate pending. Both the stale history
+ * and the unknown rate are warnings.
+ */
+function classifyUnderRaised(args) {
+  const empty = { climbing: [], notClimbing: [], ratePending: [] };
+  if (!args.fetchComplete) return empty;
   const history = args.history;
-  if (!history) return;
-  if (!history.ok) {
+  if (!history || !history.ok || !Array.isArray(history.rows) || history.rows.length === 0) {
+    const why = !history
+      ? "Altitude history was not supplied."
+      : !history.ok
+        ? `Altitude history was not loaded (${history.error || "unavailable"}).`
+        : "Altitude history has no rows.";
     args.notes.push(
-      `Altitude history was not loaded (${history.error || "unavailable"}). Climb rates were not compared with the manual list. The site falls back to that list.`,
+      `${why} Rates under 450 km are unknown, so those objects are rate pending and are not counted as climbing.`,
     );
-    return;
+    if (args.underRaised.length > 0) {
+      args.notes.push(
+        `Below 450 km with an unknown rate (rate pending, not counted as climbing): ${listObjects(args.underRaised)}. This is a warning, not a failure.`,
+      );
+    }
+    return { ...empty, ratePending: args.underRaised };
   }
-  const rows = Array.isArray(history.rows) ? history.rows : [];
-  if (rows.length === 0) {
-    args.notes.push(
-      "Altitude history has no rows. Climb rates were not compared with the manual list. The site falls back to that list.",
-    );
-    return;
-  }
-  if (!args.fetchComplete) return;
 
   const byNorad = new Map();
-  for (const row of rows) {
+  let referenceMs = 0;
+  for (const row of history.rows) {
     const norad = Number(row?.norad);
-    if (!Number.isFinite(norad)) continue;
-    const list = byNorad.get(norad);
-    if (list) list.push(row);
-    else byNorad.set(norad, [row]);
+    if (Number.isFinite(norad)) {
+      const list = byNorad.get(norad);
+      if (list) list.push(row);
+      else byNorad.set(norad, [row]);
+    }
+    const t = epochToMs(row?.epoch);
+    if (t != null && t > referenceMs) referenceMs = t;
+  }
+  for (const entry of args.present) {
+    const t = epochToMs(entry.row?.EPOCH);
+    if (t != null && t > referenceMs) referenceMs = t;
   }
 
+  const climbing = [];
+  const notClimbing = [];
+  const ratePending = [];
+  const stale = [];
   for (const entry of args.present) {
     if (args.decayedSet.has(entry.obj.norad)) continue;
-    const orbit = entry.orbit;
-    if (!orbit) continue;
-    if (orbit.perigeeKm < args.decayPerigeeKm) continue;
-    if (orbit.approxAltitudeKm >= args.raisedAltitudeKm) continue;
     const samples = [...(byNorad.get(entry.obj.norad) ?? [])];
-    if (entry.row?.EPOCH) {
-      samples.push({ epoch: String(entry.row.EPOCH), alt_km: orbit.approxAltitudeKm });
+    if (entry.row?.EPOCH && entry.orbit) {
+      samples.push({
+        epoch: String(entry.row.EPOCH),
+        alt_km: entry.orbit.approxAltitudeKm,
+      });
     }
-    const rate = climbRate(samples);
-    if (!rate) continue;
-    const manualStuck = args.stuckSet.has(entry.obj.norad);
-    if (!climbListDisagreement(manualStuck, rate.klass)) continue;
-    const manual = manualStuck ? "not climbing" : "climbing";
-    const signed = formatClimbRate(rate.kmPerDay) ?? "unknown";
+    let newestMs = null;
+    for (const sample of samples) {
+      const t = epochToMs(sample.epoch);
+      if (t != null && (newestMs == null || t > newestMs)) newestMs = t;
+    }
+    const historyStale = rateIsStale(newestMs, referenceMs || null);
+    if (historyStale) {
+      const behindH = (referenceMs - newestMs) / 3_600_000;
+      stale.push(`${entry.obj.norad} (${entry.obj.name}, ${behindH.toFixed(1)} h behind)`);
+    }
+    if (!args.underRaised.includes(entry)) continue;
+    const rate = historyStale ? null : climbRate(samples);
+    if (!rate) ratePending.push(entry);
+    else if (rate.klass === "climbing") climbing.push(entry);
+    else notClimbing.push(entry);
+  }
+  if (stale.length > 0) {
     args.notes.push(
-      `Climb rate for NORAD ${entry.obj.norad} (${entry.obj.name}) is ${signed} km/day (${rate.klass}), and the manual list says ${manual}. The site shows the computed status. This is a warning, not a failure.`,
+      `Stale altitude history, more than 72 h behind the newest catalog epoch: ${stale.join(", ")}. That rate is not used. This is a warning, not a failure.`,
     );
   }
+  if (ratePending.length > 0) {
+    args.notes.push(
+      `Below 450 km with an unknown rate (rate pending, not counted as climbing): ${listObjects(ratePending)}. This is a warning, not a failure.`,
+    );
+  }
+  return { climbing, notClimbing, ratePending };
 }
 
 function queryLabel(url) {
@@ -453,24 +455,34 @@ export function renderAudit(report) {
 
     push("");
     push(`Decayed list (${report.decayed.length}): ${report.decayed.join(", ") || "(empty)"}`);
-    push(
-      `Not climbing, manual list (${report.stuckIds.length}): ${report.stuckIds.join(", ") || "(empty)"}`,
-    );
-    push(`Not climbing, still under the raised gate: ${report.stuck.length}`);
-    const stuckSorted = [...report.stuck].sort(
-      (a, b) => (a.orbit?.approxAltitudeKm ?? 0) - (b.orbit?.approxAltitudeKm ?? 0),
-    );
-    for (const entry of stuckSorted) {
-      push(
-        `  ${entry.obj.norad}  ${entry.obj.name}  alt ${km(entry.orbit?.approxAltitudeKm)}  perigee ${km(entry.orbit?.perigeeKm)}`,
-      );
-    }
     push(`Perigee under ${report.decayPerigeeKm} km: ${report.lowPerigee.length}`);
     for (const entry of report.lowPerigee) {
       push(`  ${entry.obj.norad}  ${entry.obj.name}  perigee ${km(entry.orbit?.perigeeKm)}`);
     }
     push(
-      `Climbing (approx altitude < ${report.raisedAltitudeKm} km, not on the not-climbing list, perigee still above the decay gate): ${report.climbing.length}`,
+      `Not climbing (holding or decaying, under ${report.raisedAltitudeKm} km): ${report.notClimbing.length}`,
+    );
+    const notClimbing = [...report.notClimbing].sort(
+      (a, b) => (a.orbit?.approxAltitudeKm ?? 0) - (b.orbit?.approxAltitudeKm ?? 0),
+    );
+    for (const entry of notClimbing) {
+      push(
+        `  ${entry.obj.norad}  ${entry.obj.name}  alt ${km(entry.orbit?.approxAltitudeKm)}  perigee ${km(entry.orbit?.perigeeKm)}`,
+      );
+    }
+    push(
+      `Rate pending (under ${report.raisedAltitudeKm} km, rate unknown or stale): ${report.ratePending.length}`,
+    );
+    const pending = [...report.ratePending].sort(
+      (a, b) => (a.orbit?.approxAltitudeKm ?? 0) - (b.orbit?.approxAltitudeKm ?? 0),
+    );
+    for (const entry of pending) {
+      push(
+        `  ${entry.obj.norad}  ${entry.obj.name}  alt ${km(entry.orbit?.approxAltitudeKm)}  perigee ${km(entry.orbit?.perigeeKm)}`,
+      );
+    }
+    push(
+      `Climbing (rate above 0.8 km/day, under ${report.raisedAltitudeKm} km): ${report.climbing.length}`,
     );
     const climbing = [...report.climbing].sort(
       (a, b) => (a.orbit?.approxAltitudeKm ?? 0) - (b.orbit?.approxAltitudeKm ?? 0),

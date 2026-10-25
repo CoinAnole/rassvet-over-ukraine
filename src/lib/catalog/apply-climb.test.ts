@@ -5,6 +5,8 @@ import { buildCatalog, indexOmms } from "./build.ts";
 import type { CatalogOmm } from "./types.ts";
 import type { HistoryRow } from "./altitude-history.mjs";
 import liveRows from "../orbit/climb-rate.live.json" with { type: "json" };
+import octoberRows from "./history-2026-10-24.json" with { type: "json" };
+import { climbRate } from "../orbit/climb-rate.ts";
 
 function omm(norad: number, meanMotion: number): CatalogOmm {
   return {
@@ -60,17 +62,17 @@ describe("applyClimbRates", () => {
   const LOW = 15.65;
   const HIGH = 15.184;
 
-  it("keeps the manual list when the history is missing", () => {
+  it("marks every object under 450 km as rate pending when the history is missing", () => {
     const catalog = applyClimbRates(catalogFor([omm(68373, LOW), omm(68370, LOW)]), null);
     const fourteen = catalog.objects.find((o) => o.norad === 68373);
     const eleven = catalog.objects.find((o) => o.norad === 68370);
-    assert.equal(fourteen?.status, "stuck");
+    assert.equal(fourteen?.status, "pending");
     assert.equal(fourteen?.climbKmPerDay, null);
-    assert.equal(eleven?.status, "climbing");
+    assert.equal(eleven?.status, "pending");
     assert.equal(eleven?.climbKmPerDay, null);
   });
 
-  it("shows a computed climb on a manual not-climbing object, and holding on a manual climber", () => {
+  it("shows a computed climb, and holding when the slope is flat", () => {
     const low = catalogFor([omm(68373, LOW), omm(68370, LOW)]);
     const fourteenAlt = low.objects.find((o) => o.norad === 68373)?.approxAltitudeKm;
     const elevenAlt = low.objects.find((o) => o.norad === 68370)?.approxAltitudeKm;
@@ -122,5 +124,69 @@ describe("applyClimbRates", () => {
     const obj = rated.objects.find((o) => o.norad === 100092);
     assert.equal(obj?.status, "stuck");
     assert.ok(obj?.climbKmPerDay != null && obj.climbKmPerDay < -0.8);
+  });
+
+  it("classifies the 2026-10-24 history for 11, 14, 17, 23, and 26", () => {
+    const rows = octoberRows as HistoryRow[];
+    const byNorad = (norad: number) => rows.filter((row) => row.norad === norad);
+    const twentyThree = climbRate(byNorad(100089));
+    assert.ok(twentyThree);
+    assert.equal(twentyThree.klass, "climbing");
+    assert.ok(Math.abs(twentyThree.kmPerDay - 0.856) < 0.02, `${twentyThree.kmPerDay}`);
+
+    const eleven = omm(68370, HIGH);
+    const fourteen = omm(68373, LOW);
+    const seventeen = omm(100083, LOW);
+    const twenty = omm(100089, LOW);
+    const twentySix = omm(100092, LOW);
+    for (const obj of [eleven, fourteen, seventeen, twenty, twentySix]) {
+      obj.EPOCH = "2026-09-01T00:00:00.000000";
+    }
+    const rated = applyClimbRates(
+      catalogFor([eleven, fourteen, seventeen, twenty, twentySix]),
+      rows,
+    );
+    const got = (norad: number) => rated.objects.find((obj) => obj.norad === norad);
+
+    const raised = got(68370);
+    const elevenRate = climbRate(byNorad(68370));
+    assert.equal(raised?.status, "raised");
+    assert.ok(elevenRate);
+    assert.equal(elevenRate.points, 4);
+    assert.ok(Math.abs(elevenRate.spanHours - 75) < 0.1, `${elevenRate.spanHours}`);
+    assert.ok(Math.abs(elevenRate.kmPerDay - 4.552) < 0.01, `${elevenRate.kmPerDay}`);
+    assert.ok(raised?.climbKmPerDay != null && Math.abs(raised.climbKmPerDay - 4.552) < 0.01);
+
+    const fourteenRate = climbRate(byNorad(68373));
+    const fourteenObj = got(68373);
+    assert.ok(fourteenRate);
+    assert.equal(fourteenRate.klass, "holding");
+    assert.equal(fourteenRate.points, 4);
+    assert.ok(Math.abs(fourteenRate.spanHours - 74.7) < 0.1, `${fourteenRate.spanHours}`);
+    assert.ok(Math.abs(fourteenRate.kmPerDay - -0.253) < 0.01, `${fourteenRate.kmPerDay}`);
+    assert.equal(fourteenObj?.status, "stuck");
+    assert.ok(
+      fourteenObj?.climbKmPerDay != null && Math.abs(fourteenObj.climbKmPerDay - -0.253) < 0.01,
+    );
+
+    const seventeenRate = climbRate(byNorad(100083));
+    const seventeenObj = got(100083);
+    assert.ok(seventeenRate);
+    assert.equal(seventeenRate.klass, "decaying");
+    assert.equal(seventeenRate.points, 4);
+    assert.ok(Math.abs(seventeenRate.spanHours - 78.6) < 0.1, `${seventeenRate.spanHours}`);
+    assert.ok(Math.abs(seventeenRate.kmPerDay - -4.232) < 0.01, `${seventeenRate.kmPerDay}`);
+    assert.equal(seventeenObj?.status, "stuck");
+    assert.ok(
+      seventeenObj?.climbKmPerDay != null && Math.abs(seventeenObj.climbKmPerDay - -4.232) < 0.01,
+    );
+
+    const twentyThreeObj = got(100089);
+    assert.equal(twentyThreeObj?.status, "pending");
+    assert.equal(twentyThreeObj?.climbKmPerDay, null);
+
+    const stalled = got(100092);
+    assert.equal(stalled?.status, "stuck");
+    assert.ok(stalled?.climbKmPerDay != null && Math.abs(stalled.climbKmPerDay) < 0.1);
   });
 });

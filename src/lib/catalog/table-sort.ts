@@ -46,15 +46,16 @@ export type PassSortRow = {
 };
 
 /**
- * Climbing, then raised, then not climbing. Decayed and missing follow
- * so they stay out of that class order.
+ * Climbing, then raised, then not climbing, then rate pending.
+ * Decayed and missing follow so they stay out of that class order.
  */
 const STATUS_RANK: Record<ObjectStatus, number> = {
   climbing: 0,
   raised: 1,
   stuck: 2,
-  decayed: 3,
-  missing: 4,
+  pending: 3,
+  decayed: 4,
+  missing: 5,
 };
 
 export function nextColumnSort<K extends string>(

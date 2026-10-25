@@ -163,7 +163,7 @@ describe("decayed and stale classification", () => {
   });
 });
 
-describe("production default and not-climbing list", () => {
+describe("production default and rate pending", () => {
   const LOW = 15.65;
   const HIGH = 15.184;
 
@@ -199,7 +199,7 @@ describe("production default and not-climbing list", () => {
     });
   }
 
-  it("classifies the curated not-climbing list and leaves RASSVET-3 11 climbing", () => {
+  it("leaves an object under 450 km as rate pending until a climb rate is known", () => {
     const catalog = catalogFor([
       omm(68370, LOW),
       omm(68373, LOW),
@@ -216,24 +216,16 @@ describe("production default and not-climbing list", () => {
       return obj;
     };
 
-    const eleven = by(68370);
-    assert.equal(eleven.status, "climbing");
-    assert.equal(inPopulation(eleven, "climbing"), true);
-    assert.equal(inPopulation(eleven, "prod-raised"), false);
-
-    for (const norad of [68373, 100083, 100089]) {
-      const stuck = by(norad);
-      assert.equal(stuck.status, "stuck");
-      assert.equal(inPopulation(stuck, "climbing"), false);
-      assert.equal(inPopulation(stuck, "prod-raised"), false);
-      assert.equal(inPopulation(stuck, "all"), true);
+    for (const norad of [68370, 68373, 100083, 100089, 100092]) {
+      const pending = by(norad);
+      assert.equal(pending.status, "pending");
+      assert.equal(pending.climbKmPerDay, null);
+      assert.equal(inPopulation(pending, "climbing"), false);
+      assert.equal(inPopulation(pending, "prod-raised"), false);
+      assert.equal(inPopulation(pending, "all"), true);
     }
     assert.equal(inPopulation(by(68373), "prod-2026-03"), true);
     assert.equal(inPopulation(by(100083), "prod-2026-07"), true);
-
-    const twentySix = by(100092);
-    assert.equal(twentySix.status, "climbing");
-    assert.equal(inPopulation(twentySix, "climbing"), true);
 
     const production = by(68360);
     assert.equal(production.status, "raised");
@@ -250,31 +242,43 @@ describe("production default and not-climbing list", () => {
     assert.equal(inPopulation(by(59779), "exp-2024"), true);
   });
 
-  it("lets the 450 km gate override a stale not-climbing entry", () => {
+  it("lets the 450 km gate win over a climb rate, and decay win over both", () => {
     assert.equal(RAISED_ALTITUDE_KM, 450);
     assert.equal(
       classifyStatus({
         manualDecayed: false,
-        manualStuck: true,
         hasElements: true,
         perigeeKm: 510,
         approxAltitudeKm: 517,
         decayPerigeeKm: 150,
         raisedAltitudeKm: RAISED_ALTITUDE_KM,
+        climbClass: "decaying",
       }),
       "raised",
     );
     assert.equal(
       classifyStatus({
         manualDecayed: true,
-        manualStuck: true,
         hasElements: true,
         perigeeKm: 340,
         approxAltitudeKm: 350,
         decayPerigeeKm: 150,
         raisedAltitudeKm: RAISED_ALTITUDE_KM,
+        climbClass: "climbing",
       }),
       "decayed",
+    );
+    assert.equal(
+      classifyStatus({
+        manualDecayed: false,
+        hasElements: true,
+        perigeeKm: 340,
+        approxAltitudeKm: 350,
+        decayPerigeeKm: 150,
+        raisedAltitudeKm: RAISED_ALTITUDE_KM,
+        climbClass: null,
+      }),
+      "pending",
     );
     const catalog = catalogFor([omm(68373, HIGH)]);
     const fourteen = catalog.objects.find((o) => o.norad === 68373);
@@ -284,7 +288,7 @@ describe("production default and not-climbing list", () => {
 });
 
 describe("altitude gate", () => {
-  it("treats a ~500 km object as raised and a ~350 km object as climbing", () => {
+  it("treats a ~500 km object as raised and a ~350 km object as under the gate", () => {
     const raised = orbitFromOmm({ MEAN_MOTION: 15.184, ECCENTRICITY: 0.0002, INCLINATION: 82.3 });
     const climbing = orbitFromOmm({ MEAN_MOTION: 15.65, ECCENTRICITY: 0.0005, INCLINATION: 82.3 });
     assert.ok(raised.approxAltitudeKm >= RAISED_ALTITUDE_KM, `raised ${raised.approxAltitudeKm}`);

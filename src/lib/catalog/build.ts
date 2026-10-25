@@ -18,14 +18,12 @@ export function getObjectsConfig(): ObjectsConfig {
 }
 
 /**
- * Altitude, a recent climb rate, and the manual lists decide status.
- * The raised gate wins over the rate and over `stuck`.
- * When `climbClass` is set, holding and decaying are not climbing.
- * When it is null, `stuck` is the manual not-climbing list.
+ * Altitude and a recent climb rate decide status. The raised gate wins.
+ * Under 450 km, a rate above 0.8 km/day is climbing. Holding or a sustained
+ * loss is not climbing. No current rate is rate pending, which is not counted as climbing.
  */
 export function classifyStatus(args: {
   manualDecayed: boolean;
-  manualStuck: boolean;
   hasElements: boolean;
   perigeeKm: number | null;
   approxAltitudeKm: number | null;
@@ -41,8 +39,7 @@ export function classifyStatus(args: {
   }
   if (args.climbClass === "climbing") return "climbing";
   if (args.climbClass === "holding" || args.climbClass === "decaying") return "stuck";
-  if (args.manualStuck) return "stuck";
-  return "climbing";
+  return "pending";
 }
 
 function asOmm(raw: Record<string, unknown>): CatalogOmm | null {
@@ -89,7 +86,6 @@ export function buildCatalog(opts: {
 }): CatalogPayload {
   const now = opts.now ?? new Date();
   const decayedSet = new Set(config.decayed);
-  const stuckSet = new Set(config.stuck ?? []);
   const decayPerigeeKm = config.decayPerigeeKm || DECAY_PERIGEE_KM;
   const raisedAltitudeKm = config.raisedAltitudeKm || RAISED_ALTITUDE_KM;
   const groupById = new Map(config.groups.map((g) => [g.id, g]));
@@ -148,7 +144,6 @@ export function buildCatalog(opts: {
     const stale = hoursOld(String(omm.EPOCH), now) > (config.staleHours || STALE_HOURS);
     const status = classifyStatus({
       manualDecayed: false,
-      manualStuck: stuckSet.has(meta.norad),
       hasElements: true,
       perigeeKm: orbit.perigeeKm,
       approxAltitudeKm: orbit.approxAltitudeKm,
