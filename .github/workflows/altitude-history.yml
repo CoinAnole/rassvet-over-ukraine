@@ -54,7 +54,7 @@ jobs:
         if: steps.record.outputs.changed == 'true'
         run: |
           set -euo pipefail
-          git -C /tmp/altitude-data add altitude-history.json
+          git -C /tmp/altitude-data add altitude-history.json reentries.json
           git -C /tmp/altitude-data \
             -c user.name="github-actions[bot]" \
             -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \

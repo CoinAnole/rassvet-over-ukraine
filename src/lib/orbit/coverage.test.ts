@@ -6,6 +6,7 @@ import { CITY_STRIP, PLACES, RAISED_ALTITUDE_KM } from "./constants.ts";
 import { DICTS, coverageSentence, getDict } from "../i18n/index.ts";
 import { methodSections } from "../i18n/method.ts";
 import { buildCatalog, classifyStatus, indexOmms } from "../catalog/build.ts";
+import { applyReentries } from "../catalog/reentry.ts";
 import { computeCoverage, inPopulation } from "./coverage.ts";
 import {
   CLOCK_WINDOW_MS,
@@ -115,14 +116,27 @@ describe("caveat sentence snapshot", () => {
 });
 
 describe("decayed and stale classification", () => {
-  it("excludes the manual decayed NORAD from raised/all populations", () => {
-    const catalog = buildCatalog({
-      omms: indexOmms([]),
-      fetchedAt: "2026-09-20T00:00:00Z",
-      source: "seed",
-      warning: null,
-      now: new Date("2026-09-20T12:00:00Z"),
-    });
+  it("excludes a SATCAT-confirmed reentry from raised/all populations", () => {
+    const catalog = applyReentries(
+      buildCatalog({
+        omms: indexOmms([]),
+        fetchedAt: "2026-09-20T00:00:00Z",
+        source: "seed",
+        warning: null,
+        now: new Date("2026-09-20T12:00:00Z"),
+      }),
+      [
+        {
+          norad: 68363,
+          name: "RASSVET-3 4",
+          decay_date: "2026-06-06",
+          last_epoch: null,
+          last_alt_km: null,
+          first_seen: "2026-06-07T00:00:00.000Z",
+        },
+      ],
+      null,
+    );
     const decayed = catalog.objects.find((o) => o.norad === 68363);
     assert.ok(decayed);
     assert.equal(decayed.status, "decayed");

@@ -885,7 +885,15 @@ export function ClimbRateNote({
   );
 }
 
-export function StatusChip({ lang, status }: { lang: Lang; status: ObjectStatus }) {
+export function StatusChip({
+  lang,
+  status,
+  detail,
+}: {
+  lang: Lang;
+  status: ObjectStatus;
+  detail?: string | null;
+}) {
   const t = getDict(lang);
   const color =
     status === "raised"
@@ -896,8 +904,15 @@ export function StatusChip({ lang, status }: { lang: Lang; status: ObjectStatus 
           ? "text-status-stuck"
           : status === "pending"
             ? "text-status-pending"
-            : status === "decayed"
-            ? "text-status-decay"
-            : "text-status-stale";
-  return <span className={cn("text-xs font-medium", color)}>{t.status[status]}</span>;
+            : status === "reentering"
+              ? "text-status-reentering"
+              : status === "decayed"
+                ? "text-status-decay"
+                : "text-status-stale";
+  return (
+    <span className={cn("text-xs font-medium", color)}>
+      {t.status[status]}
+      {detail ? <span className="ml-1 font-mono text-[10px] font-normal text-muted">{detail}</span> : null}
+    </span>
+  );
 }

@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCatalog, indexOmms } from "./build.ts";
+import { applyReentries } from "./reentry.ts";
 import { dataFreshness, onOrbitStaleCount } from "./freshness.ts";
 import { ageParts, staleObjectRole, summarizeStale, type StaleSummary } from "./stale-summary.ts";
 import { staleBannerLine } from "../i18n/stale.ts";
@@ -162,11 +163,24 @@ describe("stale summary", () => {
     );
   });
 
-  it("leaves a manually decayed id out even when its element set is old", () => {
-    const withDecayed = catalog([
-      omm(68363, "2026-10-01T00:00:00.000000", LOW),
-      omm(57179, "2026-10-07T08:00:00.000000", HIGH),
-    ]);
+  it("leaves a confirmed reentry out even when its element set is old", () => {
+    const withDecayed = applyReentries(
+      catalog([
+        omm(68363, "2026-10-01T00:00:00.000000", LOW),
+        omm(57179, "2026-10-07T08:00:00.000000", HIGH),
+      ]),
+      [
+        {
+          norad: 68363,
+          name: "RASSVET-3 4",
+          decay_date: "2026-06-06",
+          last_epoch: "2026-10-01T00:00:00.000000",
+          last_alt_km: 200,
+          first_seen: "2026-06-07T00:00:00.000Z",
+        },
+      ],
+      null,
+    );
     const summary = summarizeStale(withDecayed, { now, set: "all" });
     assert.deepEqual(
       summary.objects.map((obj) => obj.norad),

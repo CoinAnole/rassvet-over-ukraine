@@ -17,6 +17,13 @@ import {
   rassvetGpUrl,
   rowsFromGp,
 } from "../src/lib/catalog/altitude-history.mjs";
+import {
+  confirmedDecay,
+  mergeReentryRecords,
+  parseReentryDocument,
+  reentryDocument,
+  satcatUrl,
+} from "../src/lib/catalog/reentries.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TIMEOUT_MS = 30_000;
@@ -94,31 +101,110 @@ async function main() {
   }
 
   const fetched = await fetchGp(url, userAgent);
-  if (!fetched.ok) {
-    console.error(`CelesTrak unavailable (${fetched.error}). Leaving altitude history unchanged.`);
-    output("changed", "false");
-    return;
-  }
-  const incoming = rowsFromGp(fetched.objects);
-  if (incoming.length === 0) {
-    console.error("CelesTrak returned no usable altitudes. Leaving altitude history unchanged.");
-    output("changed", "false");
-    return;
-  }
-
+  const incoming = fetched.ok ? rowsFromGp(fetched.objects) : [];
   const existing = readExisting(file);
   const now = new Date();
-  const rows = mergeHistory(existing, incoming, now);
-  if (JSON.stringify(existing) === JSON.stringify(rows)) {
-    console.log(`Altitude history unchanged (${rows.length} rows).`);
-    output("changed", "false");
-    return;
+  let rows = existing;
+  let changed = false;
+  if (!fetched.ok || incoming.length === 0) {
+    console.error(
+      `CelesTrak GP unavailable (${fetched.error || "no altitudes"}). Leaving altitude history unchanged.`,
+    );
+  } else {
+    rows = mergeHistory(existing, incoming, now);
+    if (JSON.stringify(existing) === JSON.stringify(rows)) {
+      console.log(`Altitude history unchanged (${rows.length} rows).`);
+    } else {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, `${JSON.stringify(historyDocument(rows, now))}\n`);
+      console.log(`Wrote ${rows.length} altitude rows (${incoming.length} from this fetch).`);
+      changed = true;
+    }
   }
 
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(historyDocument(rows, now))}\n`);
-  console.log(`Wrote ${rows.length} altitude rows (${incoming.length} from this fetch).`);
-  output("changed", "true");
+  const reentriesChanged = await recordReentries({
+    file: file.replace(/altitude-history\.json$/, "reentries.json"),
+    objects: Array.isArray(config.objects) ? config.objects : [],
+    history: rows,
+    userAgent,
+    now,
+  });
+  output("changed", changed || reentriesChanged ? "true" : "false");
+}
+
+function sleep(ms) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+}
+
+async function fetchSatcat(norad, userAgent) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(satcatUrl(norad), {
+      signal: ctrl.signal,
+      headers: { "User-Agent": userAgent, Accept: "application/json" },
+    });
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, decay: null };
+    const data = await res.json();
+    const row = Array.isArray(data) ? data[0] : null;
+    return { ok: true, error: null, decay: confirmedDecay(row) };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message, decay: null };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function newestSample(rows, norad) {
+  let best = null;
+  for (const row of rows) {
+    if (row.norad !== norad) continue;
+    if (!best || String(row.epoch) > String(best.epoch)) best = row;
+  }
+  return best;
+}
+
+async function recordReentries(args) {
+  let existing = [];
+  try {
+    existing = parseReentryDocument(JSON.parse(readFileSync(args.file, "utf8")));
+  } catch {
+    existing = [];
+  }
+  const updates = [];
+  let failures = 0;
+  for (const obj of args.objects) {
+    await sleep(200);
+    const sat = await fetchSatcat(obj.norad, args.userAgent);
+    if (!sat.ok) {
+      failures += 1;
+      console.error(`SATCAT ${obj.norad} unavailable (${sat.error}). Keeping any existing reentry record.`);
+      continue;
+    }
+    if (!sat.decay) continue;
+    const last = newestSample(args.history, obj.norad);
+    updates.push({
+      norad: obj.norad,
+      name: obj.name,
+      decay_date: sat.decay.decay_date,
+      last_epoch: last?.epoch ?? null,
+      last_alt_km: last?.alt_km ?? null,
+    });
+  }
+  if (failures === args.objects.length && args.objects.length > 0) {
+    console.error("Every SATCAT query failed. Leaving reentries.json unchanged.");
+    return false;
+  }
+  const records = mergeReentryRecords(existing, updates, args.now.toISOString());
+  if (JSON.stringify(existing) === JSON.stringify(records)) {
+    console.log(`Reentries unchanged (${records.length} records).`);
+    return false;
+  }
+  mkdirSync(dirname(args.file), { recursive: true });
+  writeFileSync(args.file, `${JSON.stringify(reentryDocument(records, args.now.toISOString()))}\n`);
+  console.log(`Wrote ${records.length} reentry records (${updates.length} confirmed this run).`);
+  return true;
 }
 
 main().catch((err) => {

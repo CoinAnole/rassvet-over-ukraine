@@ -15,7 +15,6 @@ export function applyClimbRates(
 ): CatalogPayload {
   if (!rows) return payload;
   const cfg = getObjectsConfig();
-  const decayed = new Set(cfg.decayed);
   const byNorad = new Map<number, HistoryRow[]>();
   let referenceMs = 0;
   for (const row of rows) {
@@ -32,7 +31,6 @@ export function applyClimbRates(
 
   const objects = payload.objects.map((obj) =>
     withRate(obj, byNorad.get(obj.norad) ?? [], referenceMs || null, {
-      decayed: decayed.has(obj.norad),
       decayPerigeeKm: cfg.decayPerigeeKm,
       raisedAltitudeKm: payload.raisedAltitudeKm,
     }),
@@ -45,12 +43,11 @@ function withRate(
   history: HistoryRow[],
   referenceMs: number | null,
   flags: {
-    decayed: boolean;
     decayPerigeeKm: number;
     raisedAltitudeKm: number;
   },
 ): LiveObject {
-  if (flags.decayed || obj.status === "missing" || obj.omm == null) {
+  if (obj.status === "decayed" || obj.status === "missing" || obj.omm == null) {
     return { ...obj, climbKmPerDay: null };
   }
   const samples = [...history];
@@ -71,7 +68,7 @@ function withRate(
   const stale = rateIsStale(newestMs, referenceMs);
   const rate = stale ? null : fitted;
   const status = classifyStatus({
-    manualDecayed: flags.decayed,
+    manualDecayed: false,
     hasElements: true,
     perigeeKm: obj.perigeeKm,
     approxAltitudeKm: obj.approxAltitudeKm,

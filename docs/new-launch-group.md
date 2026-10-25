@@ -1,6 +1,6 @@
 # New launch group
 
-Checklist for adding a Rassvet batch to the curated catalog. Follow it in order. The catalog model does not change: `src/config/objects.json` remains the list of groups, objects, the manual `decayed` NORAD list, and the CelesTrak GP query URLs.
+Checklist for adding a Rassvet batch to the curated catalog. Follow it in order. The catalog model does not change: `src/config/objects.json` remains the list of groups, objects, and the CelesTrak GP query URLs. Confirmed reentries live in `reentries.json` on the `data` branch.
 
 Do not hardcode on-orbit counts in the UI. Counts come from this list plus the status rules below.
 
@@ -14,7 +14,8 @@ These match Method copy and `src/lib/catalog/build.ts`.
 | Climbing | In `objects`, has a GP row, perigee ≥ `decayPerigeeKm` (150), altitude under 450 km, and a current rate above 0.8 km/day. |
 | Not climbing | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and a current rate of 0.8 km/day or less (holding, or a sustained loss). Excluded from the climbing population. Still included in all-catalogued and in its launch group. |
 | Rate pending | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and no current rate. That covers too few points, a span under 36 hours, no history, a failed history fetch, or a newest epoch more than 72 hours behind the newest epoch in the catalog. Not counted as climbing. Still included in all-catalogued and in its launch group. |
-| Decayed | NORAD is on the `decayed` list, **or** the latest GP perigee is under 150 km. Excluded from coverage. A `decayed` entry also drops the element set, even if GP still has one. |
+| Decayed | A confirmed reentry in `reentries.json` on the `data` branch (SATCAT `DECAY_DATE` or ops code `D`), or the latest GP perigee is under 150 km. Excluded from coverage. A confirmed reentry drops the element set. |
+| Reentering | No decay date, newest epoch more than 72 hours behind the catalog, and last altitude under 250 km or a decaying rate. Not on orbit. No pass predictions. |
 | Missing | In `objects`, no GP row, and not on `decayed`. Omitted from Now / Today / footprints. |
 | Stale | Newest GP epoch older than `staleHours` (72). Still propagated. |
 
@@ -54,11 +55,10 @@ COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 
 ### Decayed and missing
 
-- [ ] If GP no longer has a curated NORAD, confirm reentry before calling it decayed. CelesTrak SATCAT `https://celestrak.org/satcat/records.php?CATNR=<norad>&FORMAT=JSON` field `DECAY_DATE` (and `OPS_STATUS_CODE` `D`) is the check. The site does not fetch SATCAT at runtime.
-- [ ] Add that NORAD to `decayed` and **keep the object in `objects`**. Dropping it from `objects` removes it from the constellation list. Leaving it off `decayed` labels it missing.
-- [ ] Do not put a NORAD on `decayed` while GP still publishes it and perigee is at or above 150 km. That override hides a live object. `npm run verify:catalog` fails this case.
-- [ ] A perigee under 150 km is already excluded by the runtime. Note it. Add the NORAD to `decayed` once the element set disappears, so the next gap is decayed rather than missing.
-- [ ] Current worked example: `68363` / `2026-061D` / `RASSVET-3 4` is on `decayed`, absent from GP, and SATCAT records decay on 2026-06-06. Leave it there.
+- [ ] Keep the object in `objects`. Dropping it removes it from the constellation list.
+- [ ] Do not add a `decayed` array. The altitude-history Action asks CelesTrak SATCAT for each tracked NORAD and writes confirmed decays (`DECAY_DATE` or ops code `D`) to `reentries.json` on the `data` branch. Those records are not pruned.
+- [ ] A perigee under 150 km is already excluded by the runtime.
+- [ ] An object that is still in GP, with no decay date, a newest epoch more than 72 hours behind the catalog, and a last altitude under 250 km or a decaying rate, shows as reentering. The clock does not predict passes for it.
 
 ### Climb rate
 
@@ -105,9 +105,9 @@ Failures (exit 1):
 
 - duplicate NORAD or COSPAR, a group id that is not in `groups`, or a `decayed` id that is not in `objects`
 - `catalogName` or `cospar` different from the GP row for that NORAD
-- a curated NORAD missing from every successful query and not on `decayed`
+- a curated NORAD missing from every successful query and not in `reentries.json`
 - a GP name containing `RASSVET` or `Рассвет` whose NORAD is not curated
-- a `decayed` NORAD that is still in GP with perigee ≥ 150 km
+- a `decayed` key in `objects.json`
 
 Not failures:
 

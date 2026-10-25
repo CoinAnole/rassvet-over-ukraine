@@ -27,7 +27,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 | Key | Meaning |
 | --- | --- |
 | `raisedAltitudeKm` | 450 — Raised population gate. |
-| `decayed` | Manual NORAD list. RASSVET-3 4 (`68363`) decayed 2026-06-06. |
+| `reentriesUrl` | SATCAT decay records on the `data` branch. RASSVET-3 4 (`68363`) decayed 2026-06-06. |
 | `staleHours` | 72 — mark and still propagate |
 | `stepSeconds` | 30 — elevation sampling |
 | `minPassSeconds` | 60 — ignore shorter passes |
@@ -44,7 +44,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 
 `.github/workflows/altitude-history.yml` runs at 05:17 and 17:17 UTC, and when someone starts it by hand. Each run fetches the Rassvet GP JSON from CelesTrak once, appends `{norad, name, epoch, alt_km}` to `altitude-history.json` on the `data` branch, and drops epochs older than 60 days. That file is not on `main`. If CelesTrak errors, the run leaves the file as it was.
 
-The site reads `https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/altitude-history.json` with the catalog, on the same ten-minute cache. A missing file, a window that is too short, or a newest epoch more than three days behind the newest epoch in the catalog leaves that rate unknown. Under 450 km the status is then rate pending, which is not counted as climbing.
+The site reads `https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/altitude-history.json` and `reentries.json` with the catalog, on the same ten-minute cache. A missing history file, a window that is too short, or a newest epoch more than three days behind the newest epoch in the catalog leaves that rate unknown. Under 450 km the status is then rate pending, which is not counted as climbing, unless the object is reentering: no decay date, that same stale epoch, and a last altitude under 250 km or a decaying rate. `reentries.json` holds SATCAT-confirmed decays and is not pruned.
 
 ## Pass list vs Today tile
 

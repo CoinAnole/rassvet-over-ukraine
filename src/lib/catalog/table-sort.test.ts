@@ -21,6 +21,7 @@ function row(partial: Partial<LiveObject> & { norad: number; name: string }): Li
     apogeeKm: 410,
     elementSetCount: 1,
     climbKmPerDay: 1,
+    decayDate: null,
     ...partial,
   };
 }
@@ -57,16 +58,40 @@ describe("constellation table sort", () => {
   });
 
   it("orders status as climbing, raised, not climbing, then rate pending", () => {
-    const statuses: ObjectStatus[] = ["decayed", "stuck", "pending", "missing", "raised", "climbing"];
+    const statuses: ObjectStatus[] = [
+      "decayed",
+      "reentering",
+      "stuck",
+      "pending",
+      "missing",
+      "raised",
+      "climbing",
+    ];
     const rows = statuses.map((status, i) => row({ norad: i, name: status, status }));
     const asc = sortConstellationRows(rows, { key: "status", dir: "asc" }, identity, "en").map(
       (item) => item.status,
     );
-    assert.deepEqual(asc, ["climbing", "raised", "stuck", "pending", "decayed", "missing"]);
+    assert.deepEqual(asc, [
+      "climbing",
+      "raised",
+      "stuck",
+      "pending",
+      "reentering",
+      "decayed",
+      "missing",
+    ]);
     const desc = sortConstellationRows(rows, { key: "status", dir: "desc" }, identity, "uk").map(
       (item) => item.status,
     );
-    assert.deepEqual(desc, ["missing", "decayed", "pending", "stuck", "raised", "climbing"]);
+    assert.deepEqual(desc, [
+      "missing",
+      "decayed",
+      "reentering",
+      "pending",
+      "stuck",
+      "raised",
+      "climbing",
+    ]);
   });
 
   it("sorts altitude, perigee, apogee, and epoch numerically, with gaps last either way", () => {
