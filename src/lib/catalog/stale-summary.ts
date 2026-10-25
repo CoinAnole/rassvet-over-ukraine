@@ -5,11 +5,11 @@ import { hoursOld } from "../orbit/time.ts";
 
 /**
  * Objects the live stale note is about: an element set past the catalog's
- * 72-hour gate, still on orbit (raised, climbing, or not climbing).
+ * 72-hour gate, still on orbit (raised, climbing, not climbing, or rate pending).
  * The gate itself stays in catalog build. Decayed and missing ids are not
  * flagged stale, and a perigee-decayed object is left out of this note.
  */
-const ON_ORBIT: readonly ObjectStatus[] = ["raised", "climbing", "stuck"];
+const ON_ORBIT: readonly ObjectStatus[] = ["raised", "climbing", "stuck", "pending"];
 
 export type StaleRole =
   | "production-raised"
@@ -18,6 +18,8 @@ export type StaleRole =
   | "experimental-climbing"
   | "not-climbing"
   | "experimental-not-climbing"
+  | "rate-pending"
+  | "experimental-rate-pending"
   | "decayed"
   | "missing";
 
@@ -58,6 +60,7 @@ export function staleObjectRole(obj: { status: ObjectStatus; group: string }): S
   if (obj.status === "decayed") return "decayed";
   if (obj.status === "missing") return "missing";
   if (obj.status === "stuck") return experimental ? "experimental-not-climbing" : "not-climbing";
+  if (obj.status === "pending") return experimental ? "experimental-rate-pending" : "rate-pending";
   if (obj.status === "climbing") return experimental ? "experimental-climbing" : "climbing";
   if (obj.status === "raised") return experimental ? "experimental-raised" : "production-raised";
   return "missing";

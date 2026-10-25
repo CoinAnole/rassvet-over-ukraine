@@ -10,16 +10,17 @@ These match Method copy and `src/lib/catalog/build.ts`.
 
 | Status | Rule |
 | --- | --- |
-| Raised | In `objects`, not decayed, Brouwer mean altitude `a − 6378.135` ≥ `raisedAltitudeKm` (450). The raised gate wins over the not-climbing list. |
-| Climbing | In `objects`, has a GP row, perigee ≥ `decayPerigeeKm` (150), altitude under 450 km, and either a computed rate above 0.8 km/day or, when that rate is unknown, not on `stuck`. |
-| Not climbing | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and either a computed rate of 0.8 km/day or less (holding, or a sustained loss) or, when that rate is unknown, on `stuck`. Excluded from the climbing population. Still included in all-catalogued and in its launch group. |
+| Raised | In `objects`, not decayed, Brouwer mean altitude `a − 6378.135` ≥ `raisedAltitudeKm` (450). The raised gate wins over the rate. |
+| Climbing | In `objects`, has a GP row, perigee ≥ `decayPerigeeKm` (150), altitude under 450 km, and a current rate above 0.8 km/day. |
+| Not climbing | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and a current rate of 0.8 km/day or less (holding, or a sustained loss). Excluded from the climbing population. Still included in all-catalogued and in its launch group. |
+| Rate pending | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and no current rate. That covers too few points, a span under 36 hours, no history, a failed history fetch, or a newest epoch more than 72 hours behind the newest epoch in the catalog. Not counted as climbing. Still included in all-catalogued and in its launch group. |
 | Decayed | NORAD is on the `decayed` list, **or** the latest GP perigee is under 150 km. Excluded from coverage. A `decayed` entry also drops the element set, even if GP still has one. |
 | Missing | In `objects`, no GP row, and not on `decayed`. Omitted from Now / Today / footprints. |
 | Stale | Newest GP epoch older than `staleHours` (72). Still propagated. |
 
 The default coverage population is raised production (`kind: "production"` and status raised). Experimental groups stay out of that default. `set=raised` and `set=operational` in a shared link still mean every raised object, including experimentals.
 
-Climb rate is a least-squares slope of Brouwer altitude over the most recent two to three days of epochs, from `altitude-history.json` on the `data` branch. It needs at least three points spanning at least 36 hours. A single outlier is dropped. More than 0.8 km/day is climbing. A sustained loss steeper than 0.8 km/day downward is not climbing, and the shown rate is negative. Between those is holding, also not climbing. When the history is missing or the window is too short, the manual `stuck` list decides. When the computed rate and that list disagree, the site shows the computed status and `npm run verify:catalog` prints a warning. It does not fail the run. `MEAN_MOTION_DOT` on a single element set is a short-arc fit. On 2026-10-11 it disagreed in size with public altitude-history rates, and for RASSVET-3 26 it disagreed in sign. Do not add a rate column from that field.
+Climb rate is a least-squares slope of Brouwer altitude over the most recent two to three days of epochs, from `altitude-history.json` on the `data` branch. It needs at least three points spanning at least 36 hours. One interior point that misses the track between its neighbors by at least 5 km is dropped. The newest epoch stays. More than 0.8 km/day is climbing. A sustained loss steeper than 0.8 km/day downward is not climbing, and the shown rate is negative. Between those is holding, also not climbing. When the history is missing, the window is too short, or the object’s newest epoch is more than 72 hours behind the newest epoch in the catalog, the rate is unknown and the status under 450 km is rate pending. `npm run verify:catalog` warns on a stale history and on a below-450 object with an unknown rate. It does not fail the run. There is no manual not-climbing list. Do not add `stuck` back. `MEAN_MOTION_DOT` on a single element set is a short-arc fit. Do not add a rate column from that field.
 
 `NAME=RASSVET` does not see experimental objects that CelesTrak still calls `OBJECT <letter>`. Those need their launch `INTDES` query. A rideshare `INTDES` also returns objects that are not Rassvet. Do not add those.
 
@@ -59,16 +60,12 @@ COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 - [ ] A perigee under 150 km is already excluded by the runtime. Note it. Add the NORAD to `decayed` once the element set disappears, so the next gap is decayed rather than missing.
 - [ ] Current worked example: `68363` / `2026-061D` / `RASSVET-3 4` is on `decayed`, absent from GP, and SATCAT records decay on 2026-06-06. Leave it there.
 
-### Not climbing (monthly)
+### Climb rate
 
-The `stuck` array is the manual not-climbing list. Review it whenever you run this checklist, including a month with no new launch.
+There is no manual list. Status under 450 km comes from `altitude-history.json` on the `data` branch.
 
-- [ ] For each NORAD on `stuck`, confirm it is still in GP, perigee is at or above 150 km, and approximate altitude is still under 450 km. `npm run verify:catalog` fails the other cases.
-- [ ] Compare the list with a public altitude history you can cite. The 2026-10-11 check used findrassvet.ru (V. Bulybenko, CC BY 4.0, https://creativecommons.org/licenses/by/4.0/). Name the source and the date in `stuckNote`. Do not copy that site’s rates into the UI.
-- [ ] Remove a NORAD that is climbing again, or that the raised gate now covers. Add a NORAD only when the history shows it is not raising and it is still under 450 km on our altitude.
-- [ ] Do not put RASSVET-3 11 (`68370` / `2026-061L`) on `stuck` while that history shows it climbing. As of 2026-10-11 it is under 450 km and stays climbing. There is no failed-early set of 4, 11, and 14. 4 is decayed. 14 is on `stuck`. 11 is not.
-- [ ] Current list, checked 2026-10-11: `68373` (RASSVET-3 14), `100083` (RASSVET-3 17), `100089` (RASSVET-3 23).
-- [ ] If `npm run verify:catalog` warns that a computed climb rate disagrees with `stuck`, the site is already showing the computed status. Update `stuck` when the history is the one you trust, so the fallback matches the next time the rate is unknown. The warning is not a failure.
+- [ ] Read the `npm run verify:catalog` notes. A stale history, or an object under 450 km with an unknown rate, is a warning. The site shows rate pending and does not count it as climbing. The warning is not a failure.
+- [ ] Do not add a `stuck` array or a `stuckNote`. The catalog check fails if `stuck` is present.
 
 ## 3. Wire the population filter
 
@@ -117,10 +114,10 @@ Not failures:
 - curated display `name` different from `OBJECT_NAME` (experimental labels)
 - other objects on an `INTDES` query (rideshare)
 - perigee under 150 km (printed as a note; the runtime already marks it decayed)
-- altitude under 450 km and not on `stuck` (printed as climbing)
-- altitude under 450 km and on `stuck` (printed as not climbing, not a failure)
-- a computed climb rate that disagrees with `stuck` (printed as a warning; the site shows the computed status)
+- altitude under 450 km with a current rate of 0.8 km/day or less (printed as not climbing)
+- altitude under 450 km with a current rate above 0.8 km/day (printed as climbing)
+- a stale altitude history, or an object under 450 km with an unknown rate (printed as a warning; the site shows rate pending)
 
-Failures also include a `stuck` id that is not in `objects`, that is also on `decayed`, that has no GP row, whose perigee is under 150 km, or whose altitude is at or above 450 km.
+A `stuck` key in `objects.json` is a failure. That list has been removed.
 
 Exit 2 means a query failed and presence was not scored. Do not treat that run as a clean catalog.

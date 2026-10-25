@@ -123,6 +123,7 @@
   "status": {
     "climbing": "climbing <450 km",
     "stuck": "not climbing",
+    "pending": "rate pending",
     "raised": "raised ≥450 km",
     "decayed": "decayed",
     "missing": "missing",
@@ -134,7 +135,8 @@
     "mask": "min elevation",
     "raised": "Raised ≥450 km",
     "climbing": "Climbing <450 km",
-    "stuck": "Not climbing"
+    "stuck": "Not climbing",
+    "pending": "Rate pending"
   },
   "cityStrip": {
     "label": "Same mask and population, other cities",
@@ -143,13 +145,14 @@
   },
   "constellation": {
     "title": "Constellation",
-    "caption": "Raised is at least 450 km. Below that, climbing means a recent altitude history steeper than 0.8 km/day, or, when that rate is unknown, an object that is not on the not-climbing list. The rate column is that slope in kilometres per day. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
+    "caption": "Raised is at least 450 km. Below that, climbing means a recent altitude history steeper than 0.8 km/day. A flat or falling history is not climbing. When the rate is unknown, the status is rate pending and is not counted as climbing. The rate column is that slope in kilometres per day. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
     "xAxis": "Days since launch",
     "yAxis": "Approx. altitude (a − Re), km",
     "onOrbit": "Catalogued on orbit",
     "raised": "Raised (≥ 450 km)",
     "climbing": "Climbing (< 450 km)",
     "stuck": "Not climbing",
+    "pending": "Rate pending",
     "decayed": "Decayed / lost",
     "groups": "Launch groups",
     "hideDecayed": "Hide decayed",
@@ -206,9 +209,11 @@
       "experimental-climbing": "experimental, climbing",
       "not-climbing": "not climbing",
       "experimental-not-climbing": "experimental, not climbing",
+      "rate-pending": "rate pending",
+      "experimental-rate-pending": "experimental, rate pending",
       "decayed": "decayed, excluded from coverage",
       "missing": "missing"
     }
   },
-  "altitudeGloss": "Raised means at least 450 km. Climbing means still below 450 km and either rising faster than 0.8 km/day or, when no rate is known, not on the not-climbing list."
+  "altitudeGloss": "Raised means at least 450 km. Climbing means still below 450 km and rising faster than 0.8 km/day. A flat or falling rate is not climbing. An unknown rate is rate pending, and is not counted as climbing."
 }

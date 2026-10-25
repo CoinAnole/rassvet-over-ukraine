@@ -56,17 +56,17 @@ describe("constellation table sort", () => {
     assert.ok(desc.indexOf("RASSVET-3 10") < desc.indexOf("RASSVET-3 2"));
   });
 
-  it("orders status as climbing, raised, then not climbing", () => {
-    const statuses: ObjectStatus[] = ["decayed", "stuck", "missing", "raised", "climbing"];
+  it("orders status as climbing, raised, not climbing, then rate pending", () => {
+    const statuses: ObjectStatus[] = ["decayed", "stuck", "pending", "missing", "raised", "climbing"];
     const rows = statuses.map((status, i) => row({ norad: i, name: status, status }));
     const asc = sortConstellationRows(rows, { key: "status", dir: "asc" }, identity, "en").map(
       (item) => item.status,
     );
-    assert.deepEqual(asc, ["climbing", "raised", "stuck", "decayed", "missing"]);
+    assert.deepEqual(asc, ["climbing", "raised", "stuck", "pending", "decayed", "missing"]);
     const desc = sortConstellationRows(rows, { key: "status", dir: "desc" }, identity, "uk").map(
       (item) => item.status,
     );
-    assert.deepEqual(desc, ["missing", "decayed", "stuck", "raised", "climbing"]);
+    assert.deepEqual(desc, ["missing", "decayed", "pending", "stuck", "raised", "climbing"]);
   });
 
   it("sorts altitude, perigee, apogee, and epoch numerically, with gaps last either way", () => {

@@ -894,7 +894,9 @@ export function StatusChip({ lang, status }: { lang: Lang; status: ObjectStatus 
         ? "text-status-climbing"
         : status === "stuck"
           ? "text-status-stuck"
-          : status === "decayed"
+          : status === "pending"
+            ? "text-status-pending"
+            : status === "decayed"
             ? "text-status-decay"
             : "text-status-stale";
   return <span className={cn("text-xs font-medium", color)}>{t.status[status]}</span>;

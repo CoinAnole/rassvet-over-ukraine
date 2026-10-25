@@ -105,9 +105,9 @@ describe("stale summary", () => {
     assert.equal(by(68360).role, "production-raised");
     assert.equal(by(68360).inCoverageSet, true);
     assert.equal(by(68360).name, "RASSVET-3 1");
-    assert.equal(by(68370).role, "climbing");
+    assert.equal(by(68370).role, "rate-pending");
     assert.equal(by(68370).inCoverageSet, false);
-    assert.equal(by(68373).role, "not-climbing");
+    assert.equal(by(68373).role, "rate-pending");
     assert.equal(by(68373).inCoverageSet, false);
     assert.equal(summary.inSetCount, 1);
     assert.equal(summary.quiet, false);
@@ -185,6 +185,11 @@ describe("stale summary", () => {
     assert.equal(
       staleObjectRole({ status: "stuck", group: "exp-2023" }),
       "experimental-not-climbing",
+    );
+    assert.equal(staleObjectRole({ status: "pending", group: "prod-2026-07" }), "rate-pending");
+    assert.equal(
+      staleObjectRole({ status: "pending", group: "exp-2023" }),
+      "experimental-rate-pending",
     );
     assert.equal(staleObjectRole({ status: "raised", group: "exp-2024" }), "experimental-raised");
     assert.equal(staleObjectRole({ status: "decayed", group: "prod-2026-03" }), "decayed");
@@ -273,6 +278,8 @@ describe("stale banner line", () => {
       "experimental-climbing",
       "not-climbing",
       "experimental-not-climbing",
+      "rate-pending",
+      "experimental-rate-pending",
       "decayed",
       "missing",
     ] as const;

@@ -50,8 +50,6 @@
     }
   ],
   "decayed": [68363],
-  "stuck": [68373, 100083, 100089],
-  "stuckNote": "Manual not-climbing list, checked 2026-10-11 against the public altitude history at findrassvet.ru (V. Bulybenko, CC BY 4.0). Not a kilometres-per-day rate. RASSVET-3 11 (68370) is absent on purpose: that history shows it climbing.",
   "objects": [
     { "norad": 57179, "name": "Rassvet-1 No. 1", "catalogName": "OBJECT P", "cospar": "2023-091P", "group": "exp-2023" },
     { "norad": 57183, "name": "Rassvet-1 No. 2", "catalogName": "OBJECT T", "cospar": "2023-091T", "group": "exp-2023" },

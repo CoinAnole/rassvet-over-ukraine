@@ -39,6 +39,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
   const raised = onOrbit.filter((o) => o.status === "raised");
   const climbing = onOrbit.filter((o) => o.status === "climbing");
   const stuck = onOrbit.filter((o) => o.status === "stuck");
+  const pending = onOrbit.filter((o) => o.status === "pending");
   const decayed = catalog.objects.filter((o) => o.status === "decayed");
 
   const rows = useMemo(() => {
@@ -75,6 +76,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
         <Stat label={t.constellation.raised} value={raised.length} />
         <Stat label={t.constellation.climbing} value={climbing.length} />
         <Stat label={t.constellation.stuck} value={stuck.length} />
+        <Stat label={t.constellation.pending} value={pending.length} />
         <Stat label={t.constellation.decayed} value={decayed.length} />
         <Stat
           label={t.constellation.groups}

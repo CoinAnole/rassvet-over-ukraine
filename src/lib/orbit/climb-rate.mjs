@@ -14,6 +14,22 @@
 /** Newest samples kept for the fit. */
 export const CLIMB_WINDOW_MS = 72 * 60 * 60 * 1000;
 
+/**
+ * A history whose newest epoch is more than three days behind the newest
+ * epoch in the catalog is not a live rate. The clock is the catalog, not
+ * wall time, so a late fetch does not blank every object at once.
+ */
+export const HISTORY_STALE_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * @param {number | null | undefined} newestMs
+ * @param {number | null | undefined} referenceMs
+ */
+export function rateIsStale(newestMs, referenceMs) {
+  if (newestMs == null || referenceMs == null) return false;
+  return referenceMs - newestMs > HISTORY_STALE_MS;
+}
+
 /** The kept points must cover at least this long. */
 export const CLIMB_MIN_SPAN_MS = 36 * 60 * 60 * 1000;
 
@@ -92,17 +108,6 @@ export function formatClimbRate(kmPerDay) {
   if (rounded > 0) return `+${digits}`;
   if (rounded < 0) return `-${digits}`;
   return `+${digits}`;
-}
-
-/**
- * Manual list versus a computed class. Decaying counts as not climbing.
- * @param {boolean} manualStuck
- * @param {"climbing" | "holding" | "decaying" | null | undefined} klass
- */
-export function climbListDisagreement(manualStuck, klass) {
-  if (klass !== "climbing" && klass !== "holding" && klass !== "decaying") return false;
-  const computedNotClimbing = klass !== "climbing";
-  return Boolean(manualStuck) !== computedNotClimbing;
 }
 
 /**

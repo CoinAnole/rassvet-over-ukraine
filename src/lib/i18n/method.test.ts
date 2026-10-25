@@ -67,7 +67,7 @@ describe("method copy", () => {
     );
   });
 
-  it("names the default production set, the not-climbing list, and the CC BY source in each language", () => {
+  it("names the default production set and rate pending in each language", () => {
     const en = methodSections("en").find((s) => s.heading === "Which satellites count");
     assert.ok(en);
     const enText = en.paragraphs.join(" ");
@@ -78,13 +78,11 @@ describe("method copy", () => {
     assert.match(enText, /36 hours/);
     assert.match(enText, /0\.8 km\/day/);
     assert.match(enText, /mean-motion derivative/);
-    assert.match(enText, /manual not-climbing list/);
-    assert.match(enText, /RASSVET-3 11 is not on the list/);
-    assert.match(enText, /RASSVET-3 14, 17, and 23/);
-    assert.match(enText, /findrassvet\.ru \(V\. Bulybenko\)/);
-    assert.match(enText, /CC BY 4\.0/);
+    assert.match(enText, /rate pending/);
+    assert.match(enText, /more than three days behind/);
+    assert.equal(enText.includes("manual not-climbing list"), false);
+    assert.equal(enText.includes("findrassvet.ru"), false);
     assert.equal(enText.includes("does not keep altitude history"), false);
-    assert.equal(/RASSVET-3 11.{0,40}fail/i.test(enText), false);
 
     const uk = methodSections("uk").find((s) => s.heading === "Які супутники входять у рахунок");
     assert.ok(uk);
@@ -94,9 +92,9 @@ describe("method copy", () => {
     assert.match(ukText, /0\.8 км\/добу/);
     assert.match(ukText, /RASSVET-3/);
     assert.match(ukText, /не піднімається/);
-    assert.match(ukText, /RASSVET-3 11 у списку немає/);
-    assert.match(ukText, /findrassvet\.ru/);
-    assert.match(ukText, /CC BY 4\.0/);
+    assert.match(ukText, /темп очікується/);
+    assert.match(ukText, /три доби/);
+    assert.equal(ukText.includes("findrassvet.ru"), false);
 
     const ru = methodSections("ru").find((s) => s.heading === "Какие спутники входят в счёт");
     assert.ok(ru);
@@ -105,9 +103,9 @@ describe("method copy", () => {
     assert.match(ruText, /36 часов/);
     assert.match(ruText, /0\.8 км\/сут/);
     assert.match(ruText, /не поднимается/);
-    assert.match(ruText, /RASSVET-3 11 в списке нет/);
-    assert.match(ruText, /findrassvet\.ru/);
-    assert.match(ruText, /CC BY 4\.0/);
+    assert.match(ruText, /темп ожидается/);
+    assert.match(ruText, /трое суток/);
+    assert.equal(ruText.includes("findrassvet.ru"), false);
   });
 
   it("describes the Brouwer altitude and the 450 km gate without a Kepler proxy", () => {

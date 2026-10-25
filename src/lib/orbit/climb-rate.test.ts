@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   CLIMB_KM_PER_DAY,
   climbClass,
-  climbListDisagreement,
+  HISTORY_STALE_MS,
+  rateIsStale,
   climbRate,
   formatClimbRate,
   leastSquaresSlope,
@@ -191,13 +192,13 @@ describe("classes", () => {
     assert.equal(formatClimbRate(0), "+0.0");
   });
 
-  it("flags a manual list that disagrees and lets decaying agree with not-climbing", () => {
-    assert.equal(climbListDisagreement(true, "climbing"), true);
-    assert.equal(climbListDisagreement(false, "holding"), true);
-    assert.equal(climbListDisagreement(false, "decaying"), true);
-    assert.equal(climbListDisagreement(true, "holding"), false);
-    assert.equal(climbListDisagreement(true, "decaying"), false);
-    assert.equal(climbListDisagreement(false, "climbing"), false);
-    assert.equal(climbListDisagreement(false, null), false);
+  it("treats a history more than 72 hours behind the catalog as stale", () => {
+    assert.equal(HISTORY_STALE_MS, 72 * 60 * 60 * 1000);
+    const catalog = Date.parse("2026-10-24T07:39:07.751Z");
+    assert.equal(rateIsStale(catalog - 73.9 * 3_600_000, catalog), true);
+    assert.equal(rateIsStale(catalog - 2.7 * 3_600_000, catalog), false);
+    assert.equal(rateIsStale(catalog - HISTORY_STALE_MS, catalog), false);
+    assert.equal(rateIsStale(null, catalog), false);
+    assert.equal(rateIsStale(catalog, null), false);
   });
 });

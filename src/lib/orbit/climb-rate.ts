@@ -3,12 +3,13 @@ export {
   CLIMB_MIN_POINTS,
   CLIMB_MIN_SPAN_MS,
   CLIMB_WINDOW_MS,
+  HISTORY_STALE_MS,
   climbClass,
-  climbListDisagreement,
   climbRate,
   epochToMs,
   formatClimbRate,
   leastSquaresSlope,
+  rateIsStale,
 } from "./climb-rate.mjs";
 
 export type ClimbClass = "climbing" | "holding" | "decaying";

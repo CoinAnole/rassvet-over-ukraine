@@ -262,7 +262,14 @@ function staleOnOrbit(objects) {
   let n = 0;
   for (const obj of objects) {
     if (!obj?.stale) continue;
-    if (obj.status === "raised" || obj.status === "climbing" || obj.status === "stuck") n += 1;
+    if (
+      obj.status === "raised" ||
+      obj.status === "climbing" ||
+      obj.status === "stuck" ||
+      obj.status === "pending"
+    ) {
+      n += 1;
+    }
   }
   return n;
 }
