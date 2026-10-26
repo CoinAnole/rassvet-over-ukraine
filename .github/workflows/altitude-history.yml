@@ -1,5 +1,6 @@
 # Append one CelesTrak GP snapshot to altitude-history.json on the data branch.
-# The file is never committed to main. A CelesTrak error leaves the branch untouched.
+# The file is never committed to main. A GP fetch that fails after retries
+# fails this job. A feed with no new epochs succeeds and does not commit.
 
 name: Altitude history
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
  * Fetch the Rassvet GP JSON once and append altitudes to the history file.
+ * Then ask SATCAT only about objects that are missing or stale in that fetch.
  *
- * CelesTrak errors leave the file untouched and exit 0. The workflow commits
- * the file only when this process reports changed=true, and only on the data branch.
+ * A GP fetch that still fails after retries exits 1, so the Action goes red.
+ * A feed with no new epochs exits 0 and says so. A SATCAT miss is a warning;
+ * the GP rows already fetched are still saved.
  *
  *   node scripts/record-altitude-history.mjs --file /tmp/altitude-data/altitude-history.json
  */
@@ -18,6 +20,11 @@ import {
   rowsFromGp,
 } from "../src/lib/catalog/altitude-history.mjs";
 import {
+  CELESTRAK_ATTEMPTS,
+  fetchCelestrakJson,
+  satcatCandidates,
+} from "../src/lib/catalog/celestrak-fetch.mjs";
+import {
   confirmedDecay,
   mergeReentryRecords,
   parseReentryDocument,
@@ -26,7 +33,6 @@ import {
 } from "../src/lib/catalog/reentries.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const TIMEOUT_MS = 30_000;
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -43,36 +49,6 @@ function readConfig() {
   return JSON.parse(readFileSync(resolve(root, "src/config/objects.json"), "utf8"));
 }
 
-async function fetchGp(url, userAgent) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        "User-Agent": userAgent,
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, objects: [] };
-    const data = await res.json();
-    if (!Array.isArray(data)) return { ok: false, error: "response was not a JSON array", objects: [] };
-    return { ok: true, error: null, objects: data };
-  } catch (err) {
-    const aborted = err && typeof err === "object" && "name" in err && err.name === "AbortError";
-    const message = err instanceof Error ? err.message : String(err);
-    const cause =
-      err instanceof Error && err.cause instanceof Error ? `: ${err.cause.message}` : "";
-    return {
-      ok: false,
-      error: aborted ? `timeout after ${TIMEOUT_MS}ms` : `${message}${cause}`,
-      objects: [],
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function readExisting(file) {
   try {
     return parseHistoryDocument(JSON.parse(readFileSync(file, "utf8"))) ?? [];
@@ -81,78 +57,11 @@ function readExisting(file) {
   }
 }
 
-async function main() {
-  const file = arg("--file");
-  if (!file) {
-    console.error("usage: node scripts/record-altitude-history.mjs --file <altitude-history.json>");
-    process.exitCode = 1;
-    return;
-  }
-
-  const config = readConfig();
-  const url = rassvetGpUrl(config);
-  const userAgent = String(
-    config.userAgent || "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)",
-  );
-  if (!url) {
-    console.error("objects.json has no NAME=RASSVET query. Leaving altitude history unchanged.");
-    output("changed", "false");
-    return;
-  }
-
-  const fetched = await fetchGp(url, userAgent);
-  const incoming = fetched.ok ? rowsFromGp(fetched.objects) : [];
-  const existing = readExisting(file);
-  const now = new Date();
-  let rows = existing;
-  let changed = false;
-  if (!fetched.ok || incoming.length === 0) {
-    console.error(
-      `CelesTrak GP unavailable (${fetched.error || "no altitudes"}). Leaving altitude history unchanged.`,
-    );
-  } else {
-    rows = mergeHistory(existing, incoming, now);
-    if (JSON.stringify(existing) === JSON.stringify(rows)) {
-      console.log(`Altitude history unchanged (${rows.length} rows).`);
-    } else {
-      mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, `${JSON.stringify(historyDocument(rows, now))}\n`);
-      console.log(`Wrote ${rows.length} altitude rows (${incoming.length} from this fetch).`);
-      changed = true;
-    }
-  }
-
-  const reentriesChanged = await recordReentries({
-    file: file.replace(/altitude-history\.json$/, "reentries.json"),
-    objects: Array.isArray(config.objects) ? config.objects : [],
-    history: rows,
-    userAgent,
-    now,
-  });
-  output("changed", changed || reentriesChanged ? "true" : "false");
-}
-
-function sleep(ms) {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
-}
-
-async function fetchSatcat(norad, userAgent) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+function readReentries(file) {
   try {
-    const res = await fetch(satcatUrl(norad), {
-      signal: ctrl.signal,
-      headers: { "User-Agent": userAgent, Accept: "application/json" },
-    });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, decay: null };
-    const data = await res.json();
-    const row = Array.isArray(data) ? data[0] : null;
-    return { ok: true, error: null, decay: confirmedDecay(row) };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message, decay: null };
-  } finally {
-    clearTimeout(timer);
+    return parseReentryDocument(JSON.parse(readFileSync(file, "utf8")));
+  } catch {
+    return [];
   }
 }
 
@@ -165,50 +74,168 @@ function newestSample(rows, norad) {
   return best;
 }
 
-async function recordReentries(args) {
-  let existing = [];
-  try {
-    existing = parseReentryDocument(JSON.parse(readFileSync(args.file, "utf8")));
-  } catch {
-    existing = [];
+function writeSummary(lines) {
+  if (!process.env.GITHUB_STEP_SUMMARY) return;
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join("\n")}\n`);
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.file
+ * @param {object} opts.config
+ * @param {typeof fetch} [opts.fetchImpl]
+ * @param {(ms: number) => Promise<void>} [opts.sleep]
+ * @param {Date} [opts.now]
+ * @param {(msg: string) => void} [opts.log]
+ * @param {(msg: string) => void} [opts.warn]
+ * @param {number} [opts.attempts]
+ * @param {number} [opts.timeoutMs]
+ */
+export async function recordAltitudes(opts) {
+  const log = opts.log ?? ((msg) => console.log(msg));
+  const warn = opts.warn ?? ((msg) => console.error(`::warning::${msg}`));
+  const now = opts.now ?? new Date();
+  const attempts = opts.attempts ?? CELESTRAK_ATTEMPTS;
+  const file = opts.file;
+  const reentryFile = file.replace(/altitude-history\.json$/, "reentries.json");
+  const config = opts.config;
+  const userAgent = String(
+    config.userAgent || "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)",
+  );
+  const url = rassvetGpUrl(config);
+  const summary = [];
+  /** @type {string[]} */
+  const warnings = [];
+  const note = (msg) => {
+    warnings.push(msg);
+    warn(msg);
+  };
+
+  if (!url) {
+    const msg = "objects.json has no NAME=RASSVET query. Altitude history was not updated.";
+    note(msg);
+    summary.push(`GP: ${msg}`);
+    writeSummary(summary);
+    return { exitCode: 1, changed: false, warnings };
   }
+
+  const fetched = await fetchCelestrakJson(url, {
+    userAgent,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    attempts,
+    timeoutMs: opts.timeoutMs,
+  });
+  if (!fetched.ok || !Array.isArray(fetched.data)) {
+    const why = fetched.ok ? "response was not a JSON array" : fetched.error;
+    const msg = `CelesTrak GP unavailable (${why}). Altitude history was not updated.`;
+    console.error(`::error::${msg}`);
+    summary.push(`GP: ${msg}`);
+    writeSummary(summary);
+    log(msg);
+    return { exitCode: 1, changed: false, warnings };
+  }
+
+  const incoming = rowsFromGp(fetched.data);
+  if (incoming.length === 0) {
+    const msg = "CelesTrak GP returned no usable altitudes. Altitude history was not updated.";
+    console.error(`::error::${msg}`);
+    summary.push(`GP: ${msg}`);
+    writeSummary(summary);
+    log(msg);
+    return { exitCode: 1, changed: false, warnings };
+  }
+
+  const existing = readExisting(file);
+  const rows = mergeHistory(existing, incoming, now);
+  let changed = false;
+  if (JSON.stringify(existing) === JSON.stringify(rows)) {
+    log(`Altitude history unchanged (${rows.length} rows). No new GP epochs.`);
+    summary.push(`GP: ${incoming.length} objects, no new epochs (${rows.length} rows already stored).`);
+  } else {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${JSON.stringify(historyDocument(rows, now))}\n`);
+    log(`Wrote ${rows.length} altitude rows (${incoming.length} from this fetch).`);
+    summary.push(`GP: wrote ${rows.length} rows (${incoming.length} from this fetch).`);
+    changed = true;
+  }
+
+  const gpByNorad = new Map();
+  for (const row of fetched.data) {
+    const norad = Number(row?.NORAD_CAT_ID);
+    if (Number.isFinite(norad)) gpByNorad.set(norad, row);
+  }
+  const recorded = readReentries(reentryFile);
+  const confirmed = new Set(recorded.map((record) => record.norad));
+  const tracked = Array.isArray(config.objects) ? config.objects : [];
+  const candidates = satcatCandidates(tracked, gpByNorad, confirmed);
+  log(
+    `SATCAT candidates: ${candidates.length} (missing from this GP fetch, or more than 72 h behind its newest epoch, and not already recorded).`,
+  );
+
   const updates = [];
-  let failures = 0;
-  for (const obj of args.objects) {
-    await sleep(200);
-    const sat = await fetchSatcat(obj.norad, args.userAgent);
-    if (!sat.ok) {
-      failures += 1;
-      console.error(`SATCAT ${obj.norad} unavailable (${sat.error}). Keeping any existing reentry record.`);
+  let satcatFailures = 0;
+  for (const obj of candidates) {
+    const sat = await fetchCelestrakJson(satcatUrl(obj.norad), {
+      userAgent,
+      fetchImpl: opts.fetchImpl,
+      sleep: opts.sleep,
+      attempts,
+      timeoutMs: opts.timeoutMs,
+    });
+    if (!sat.ok || !Array.isArray(sat.data)) {
+      satcatFailures += 1;
+      note(`SATCAT ${obj.norad} (${obj.name}) unavailable (${sat.error || "not a JSON array"}).`);
       continue;
     }
-    if (!sat.decay) continue;
-    const last = newestSample(args.history, obj.norad);
+    const decay = confirmedDecay(sat.data[0]);
+    if (!decay) continue;
+    const last = newestSample(rows, obj.norad);
     updates.push({
       norad: obj.norad,
       name: obj.name,
-      decay_date: sat.decay.decay_date,
+      decay_date: decay.decay_date,
       last_epoch: last?.epoch ?? null,
       last_alt_km: last?.alt_km ?? null,
     });
   }
-  if (failures === args.objects.length && args.objects.length > 0) {
-    console.error("Every SATCAT query failed. Leaving reentries.json unchanged.");
-    return false;
+  if (satcatFailures > 0) {
+    summary.push(`SATCAT: ${satcatFailures} of ${candidates.length} candidate queries failed. GP rows were kept.`);
+  } else {
+    summary.push(`SATCAT: checked ${candidates.length} candidate${candidates.length === 1 ? "" : "s"}.`);
   }
-  const records = mergeReentryRecords(existing, updates, args.now.toISOString());
-  if (JSON.stringify(existing) === JSON.stringify(records)) {
-    console.log(`Reentries unchanged (${records.length} records).`);
-    return false;
+
+  const records = mergeReentryRecords(recorded, updates, now.toISOString());
+  if (JSON.stringify(recorded) === JSON.stringify(records)) {
+    log(`Reentries unchanged (${records.length} records).`);
+  } else {
+    mkdirSync(dirname(reentryFile), { recursive: true });
+    writeFileSync(reentryFile, `${JSON.stringify(reentryDocument(records, now.toISOString()))}\n`);
+    log(`Wrote ${records.length} reentry records (${updates.length} confirmed this run).`);
+    changed = true;
   }
-  mkdirSync(dirname(args.file), { recursive: true });
-  writeFileSync(args.file, `${JSON.stringify(reentryDocument(records, args.now.toISOString()))}\n`);
-  console.log(`Wrote ${records.length} reentry records (${updates.length} confirmed this run).`);
-  return true;
+
+  writeSummary(summary);
+  return { exitCode: 0, changed, warnings };
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  output("changed", "false");
-  process.exitCode = 1;
-});
+async function main() {
+  const file = arg("--file");
+  if (!file) {
+    console.error("usage: node scripts/record-altitude-history.mjs --file <altitude-history.json>");
+    process.exitCode = 1;
+    return;
+  }
+  const result = await recordAltitudes({ file, config: readConfig() });
+  output("changed", result.changed ? "true" : "false");
+  process.exitCode = result.exitCode;
+}
+
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    output("changed", "false");
+    process.exitCode = 1;
+  });
+}
