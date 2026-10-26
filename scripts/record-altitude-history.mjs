@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Fetch the Rassvet GP JSON once and append altitudes to the history file.
- * Then ask SATCAT only about objects that are missing or stale in that fetch.
+ * Fetch the Rassvet name query and each experimental launch query, and append
+ * altitudes for catalogued NORADs. Then ask SATCAT only about objects that
+ * are missing or stale in that combined fetch.
  *
  * A GP fetch that still fails after retries exits 1, so the Action goes red.
  * A feed with no new epochs exits 0 and says so. A SATCAT miss is a warning;
@@ -14,10 +15,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   historyDocument,
+  experimentalGpUrls,
   mergeHistory,
   parseHistoryDocument,
   rassvetGpUrl,
-  rowsFromGp,
+  rowsForCatalog,
 } from "../src/lib/catalog/altitude-history.mjs";
 import {
   CELESTRAK_ATTEMPTS,
@@ -102,7 +104,19 @@ export async function recordAltitudes(opts) {
   const userAgent = String(
     config.userAgent || "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)",
   );
-  const url = rassvetGpUrl(config);
+  const tracked = Array.isArray(config.objects) ? config.objects : [];
+  const queries = [];
+  const nameUrl = rassvetGpUrl(config);
+  if (nameUrl) queries.push({ url: nameUrl, label: "NAME=RASSVET" });
+  for (const url of experimentalGpUrls(config)) {
+    let label = url;
+    try {
+      label = `INTDES=${new URL(url).searchParams.get("INTDES")}`;
+    } catch {
+      /* keep the raw url */
+    }
+    queries.push({ url, label });
+  }
   const summary = [];
   /** @type {string[]} */
   const warnings = [];
@@ -111,36 +125,40 @@ export async function recordAltitudes(opts) {
     warn(msg);
   };
 
-  if (!url) {
-    const msg = "objects.json has no NAME=RASSVET query. Altitude history was not updated.";
+  if (queries.length === 0) {
+    const msg = "objects.json has no GP queries. Altitude history was not updated.";
     note(msg);
     summary.push(`GP: ${msg}`);
     writeSummary(summary);
     return { exitCode: 1, changed: false, warnings };
   }
 
-  const fetched = await fetchCelestrakJson(url, {
-    userAgent,
-    fetchImpl: opts.fetchImpl,
-    sleep: opts.sleep,
-    attempts,
-    timeoutMs: opts.timeoutMs,
-  });
-  if (!fetched.ok || !Array.isArray(fetched.data)) {
-    const why = fetched.ok ? "response was not a JSON array" : fetched.error;
-    const msg = `CelesTrak GP unavailable (${why}). Altitude history was not updated.`;
-    console.error(`::error::${msg}`);
-    summary.push(`GP: ${msg}`);
-    writeSummary(summary);
-    log(msg);
-    return { exitCode: 1, changed: false, warnings };
+  /** @type {object[]} */
+  const gpRows = [];
+  let successfulQueries = 0;
+  for (const query of queries) {
+    const fetched = await fetchCelestrakJson(query.url, {
+      userAgent,
+      fetchImpl: opts.fetchImpl,
+      sleep: opts.sleep,
+      attempts,
+      timeoutMs: opts.timeoutMs,
+    });
+    if (!fetched.ok || !Array.isArray(fetched.data)) {
+      const why = fetched.ok ? "response was not a JSON array" : fetched.error;
+      note(`${query.label} unavailable (${why}).`);
+      continue;
+    }
+    successfulQueries += 1;
+    gpRows.push(...fetched.data);
   }
 
-  const incoming = rowsFromGp(fetched.data);
+  const incoming = rowsForCatalog(gpRows, tracked);
   if (incoming.length === 0) {
-    const msg = "CelesTrak GP returned no usable altitudes. Altitude history was not updated.";
+    const msg = "CelesTrak returned no usable altitudes for catalogued objects. Altitude history was not updated.";
     console.error(`::error::${msg}`);
     summary.push(`GP: ${msg}`);
+    for (const msg of warnings) summary.push(`Warning: ${msg}`);
     writeSummary(summary);
     log(msg);
     return { exitCode: 1, changed: false, warnings };
@@ -151,23 +169,27 @@ export async function recordAltitudes(opts) {
   let changed = false;
   if (JSON.stringify(existing) === JSON.stringify(rows)) {
     log(`Altitude history unchanged (${rows.length} rows). No new GP epochs.`);
-    summary.push(`GP: ${incoming.length} objects, no new epochs (${rows.length} rows already stored).`);
+    summary.push(
+      `GP: ${incoming.length} catalogued objects, no new epochs (${rows.length} rows already stored, ${successfulQueries} of ${queries.length} queries).`,
+    );
   } else {
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, `${JSON.stringify(historyDocument(rows, now))}\n`);
-    log(`Wrote ${rows.length} altitude rows (${incoming.length} from this fetch).`);
-    summary.push(`GP: wrote ${rows.length} rows (${incoming.length} from this fetch).`);
+    log(`Wrote ${rows.length} altitude rows (${incoming.length} from this fetch, ${successfulQueries} queries).`);
+    summary.push(
+      `GP: wrote ${rows.length} rows (${incoming.length} from this fetch, ${successfulQueries} of ${queries.length} queries).`,
+    );
     changed = true;
   }
 
+  const trackedIds = new Set(tracked.map((obj) => Number(obj.norad)));
   const gpByNorad = new Map();
-  for (const row of fetched.data) {
+  for (const row of gpRows) {
     const norad = Number(row?.NORAD_CAT_ID);
-    if (Number.isFinite(norad)) gpByNorad.set(norad, row);
+    if (trackedIds.has(norad)) gpByNorad.set(norad, row);
   }
   const recorded = readReentries(reentryFile);
   const confirmed = new Set(recorded.map((record) => record.norad));
-  const tracked = Array.isArray(config.objects) ? config.objects : [];
   const candidates = satcatCandidates(tracked, gpByNorad, confirmed);
   log(
     `SATCAT candidates: ${candidates.length} (missing from this GP fetch, or more than 72 h behind its newest epoch, and not already recorded).`,
@@ -215,6 +237,7 @@ export async function recordAltitudes(opts) {
     changed = true;
   }
 
+  for (const msg of warnings) summary.push(`Warning: ${msg}`);
   writeSummary(summary);
   return { exitCode: 0, changed, warnings };
 }
