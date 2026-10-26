@@ -42,7 +42,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 
 ## Altitude history
 
-`.github/workflows/altitude-history.yml` runs at 05:17 and 17:17 UTC, and when someone starts it by hand. Each run fetches the Rassvet GP JSON from CelesTrak once, appends `{norad, name, epoch, alt_km}` to `altitude-history.json` on the `data` branch, and drops epochs older than 60 days. That file is not on `main`. If CelesTrak errors, the run leaves the file as it was.
+`.github/workflows/altitude-history.yml` runs at 05:17 and 17:17 UTC, and when someone starts it by hand. Each run fetches the Rassvet GP JSON from CelesTrak once, appends `{norad, name, epoch, alt_km}` to `altitude-history.json` on the `data` branch, and drops epochs older than 60 days. That file is not on `main`. The run asks CelesTrak once for the GP group, and asks SATCAT only about a tracked object that is missing from that response or whose epoch is more than 72 hours behind it. A failed GP fetch retries, then fails the job. A feed with no new epochs succeeds and leaves the file as it was.
 
 The site reads `https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/altitude-history.json` and `reentries.json` with the catalog, on the same ten-minute cache. A missing history file, a window that is too short, or a newest epoch more than three days behind the newest epoch in the catalog leaves that rate unknown. Under 450 km the status is then rate pending, which is not counted as climbing, unless the object is reentering: no decay date, that same stale epoch, and a last altitude under 250 km or a decaying rate. `reentries.json` holds SATCAT-confirmed decays and is not pruned.
 
