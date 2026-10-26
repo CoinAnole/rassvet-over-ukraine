@@ -13,7 +13,7 @@ export const HISTORY_KEEP_MS = 60 * 24 * 60 * 60 * 1000;
  */
 
 /**
- * The one CelesTrak request per recorder run: the Rassvet name query.
+ * The Rassvet name query. Production objects are named RASSVET on CelesTrak.
  * @param {{ celestrak?: { queries?: string[] } } | null | undefined} config
  * @returns {string | null}
  */
@@ -21,6 +21,39 @@ export function rassvetGpUrl(config) {
   const queries = Array.isArray(config?.celestrak?.queries) ? config.celestrak.queries : [];
   const named = queries.find((url) => typeof url === "string" && url.includes("NAME=RASSVET"));
   return named ?? null;
+}
+
+/**
+ * Launch queries for experimental groups. CelesTrak still calls those
+ * objects `OBJECT <letter>`, so the name query never returns them.
+ * One URL per designator already listed in `celestrak.queries`.
+ * Production INTDES queries are left out: the name query already covers them.
+ * @param {{ celestrak?: { queries?: string[] }, groups?: { id: string, kind?: string }[], objects?: { group?: string, cospar?: string }[] } | null | undefined} config
+ * @returns {string[]}
+ */
+export function experimentalGpUrls(config) {
+  const queries = Array.isArray(config?.celestrak?.queries) ? config.celestrak.queries : [];
+  const groups = Array.isArray(config?.groups) ? config.groups : [];
+  const objects = Array.isArray(config?.objects) ? config.objects : [];
+  const experimental = new Set(
+    groups.filter((group) => group?.kind === "experimental").map((group) => group.id),
+  );
+  const designators = new Set();
+  for (const obj of objects) {
+    const groupId = obj?.group;
+    if (typeof groupId !== "string" || !experimental.has(groupId)) continue;
+    const match = /^(\d{4}-\d{3})/.exec(String(obj?.cospar ?? ""));
+    if (match) designators.add(match[1]);
+  }
+  return queries.filter((url) => {
+    if (typeof url !== "string") return false;
+    try {
+      const intdes = new URL(url).searchParams.get("INTDES");
+      return intdes != null && designators.has(intdes);
+    } catch {
+      return false;
+    }
+  });
 }
 
 /**
@@ -47,6 +80,26 @@ export function rowsFromGp(list) {
     });
   }
   return rows;
+}
+
+/**
+ * Keep GP rows whose NORAD is in the catalog and store our display name.
+ * An INTDES rideshare and a CelesTrak `OBJECT P` label both drop out.
+ * @param {unknown} list
+ * @param {Array<{ norad?: number, name?: string }> | null | undefined} objects
+ * @returns {HistoryRow[]}
+ */
+export function rowsForCatalog(list, objects) {
+  /** @type {Map<number, string>} */
+  const names = new Map();
+  for (const obj of objects ?? []) {
+    const norad = Number(obj?.norad);
+    if (!Number.isFinite(norad)) continue;
+    names.set(norad, typeof obj?.name === "string" ? obj.name : "");
+  }
+  return rowsFromGp(list)
+    .filter((row) => names.has(row.norad))
+    .map((row) => ({ ...row, name: names.get(row.norad) || row.name }));
 }
 
 /**

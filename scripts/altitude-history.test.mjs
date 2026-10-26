@@ -4,7 +4,9 @@ import {
   HISTORY_KEEP_MS,
   mergeHistory,
   parseHistoryDocument,
+  experimentalGpUrls,
   rassvetGpUrl,
+  rowsForCatalog,
   rowsFromGp,
 } from "../src/lib/catalog/altitude-history.mjs";
 
@@ -25,6 +27,60 @@ describe("altitude history file", () => {
       },
     });
     assert.equal(url, "https://celestrak.org/NORAD/elements/gp.php?NAME=RASSVET&FORMAT=json");
+  });
+
+  it("selects only the experimental launch queries", () => {
+    const urls = experimentalGpUrls({
+      celestrak: {
+        queries: [
+          "https://celestrak.org/NORAD/elements/gp.php?NAME=RASSVET&FORMAT=json",
+          "https://celestrak.org/NORAD/elements/gp.php?INTDES=2026-061&FORMAT=json",
+          "https://celestrak.org/NORAD/elements/gp.php?INTDES=2024-092&FORMAT=json",
+          "https://celestrak.org/NORAD/elements/gp.php?INTDES=2023-091&FORMAT=json",
+        ],
+      },
+      groups: [
+        { id: "exp-2023", kind: "experimental" },
+        { id: "exp-2024", kind: "experimental" },
+        { id: "prod-2026-03", kind: "production" },
+      ],
+      objects: [
+        { norad: 57179, name: "Rassvet-1 No. 1", cospar: "2023-091P", group: "exp-2023" },
+        { norad: 59779, name: "Rassvet-2 No. 1", cospar: "2024-092G", group: "exp-2024" },
+        { norad: 68360, name: "RASSVET-3 1", cospar: "2026-061A", group: "prod-2026-03" },
+      ],
+    });
+    assert.deepEqual(urls, [
+      "https://celestrak.org/NORAD/elements/gp.php?INTDES=2024-092&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?INTDES=2023-091&FORMAT=json",
+    ]);
+  });
+
+  it("keeps catalogued NORADs and replaces OBJECT P with the display name", () => {
+    const rows = rowsForCatalog(
+      [
+        {
+          OBJECT_NAME: "OBJECT P",
+          NORAD_CAT_ID: 57179,
+          EPOCH: "2026-10-26T06:00:00.000000",
+          MEAN_MOTION: 15.18532325,
+          ECCENTRICITY: 0.00011197,
+          INCLINATION: 82.2883,
+        },
+        {
+          OBJECT_NAME: "NOT RASSVET",
+          NORAD_CAT_ID: 99999,
+          EPOCH: "2026-10-26T06:00:00.000000",
+          MEAN_MOTION: 15.18532325,
+          ECCENTRICITY: 0.00011197,
+          INCLINATION: 82.2883,
+        },
+      ],
+      [{ norad: 57179, name: "Rassvet-1 No. 1" }],
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].name, "Rassvet-1 No. 1");
+    assert.equal(rows[0].norad, 57179);
   });
 
   it("turns a GP object into a Brouwer altitude row", () => {
