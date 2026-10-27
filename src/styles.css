@@ -299,15 +299,6 @@
   color: var(--color-fg);
 }
 
-.leaflet-control-attribution {
-  background: color-mix(in oklab, var(--color-surface) 88%, transparent);
-  color: var(--color-muted);
-}
-
-.leaflet-control-attribution a {
-  color: var(--color-fg);
-}
-
 .leaflet-attribution-flag {
   display: none !important;
 }

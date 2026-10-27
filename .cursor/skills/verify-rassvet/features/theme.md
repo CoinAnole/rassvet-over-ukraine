@@ -31,5 +31,5 @@ Preconditions:
 
 - System is the absence of `data-theme`, not `data-theme="system"`.
 - `--computed` compares `getComputedStyle` with spaces removed, so `rgb(8, 9, 12)` is `rgb(8,9,12)`.
-- The light map requests a CARTO Positron basemap. The dark map stays the flat canvas with country borders. Attribution is the Leaflet control, not the hidden flag.
+- Both themes draw the map as a flat canvas with country borders and the Ukraine outline. There is no tile server. Attribution is the Leaflet control, and the flag stays hidden.
 - `og.jpg` does not change with the theme.
