@@ -5,7 +5,7 @@ This directory is the maintained source for verifying the user-facing behavior o
 ## Baseline preconditions
 
 - Launch the verification server with `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs launch` so it listens at `http://127.0.0.1:4173`.
-- Run `doctor` and require `ok: true`, that URL, and a catalog `source` of `live` or `seed`. Record which one.
+- Run `doctor` and require `ok: true`, that URL, and a catalog `source` of `live`, `saved`, or `seed`. Record which one.
 - Use the browser profile created by this launch (`.cursor/skills/verify-rassvet/.run/browser-profile`). It starts empty, in English (`locale=en-US`).
 - Do not drive port 8080 (`npm run dev`) or 8081 (`npm run preview`), and do not drive a server this harness did not start.
 - One verification server at a time. A second launch must refuse a taken port.
@@ -24,7 +24,7 @@ This directory is the maintained source for verifying the user-facing behavior o
 - Capture the user action and the resulting state, not only the final screen.
 - UI proof includes an ARIA snapshot and a screenshot with the heading `Rassvet over Ukraine` visible.
 - URL-backed proof includes the command JSON `url` and a `browser expect --url-includes` result.
-- Record `catalog.source` from doctor with every run. Seed and live are different freshness screens.
+- Record `catalog.source` from doctor with every run. Live, saved, and seed are different freshness screens.
 - Record the feature id (`--feature`) and the entry point with every artifact.
 - Report an unreachable path with the attempted command and the unmet precondition.
 - Do not report a skipped entry point as verified through a different path.
