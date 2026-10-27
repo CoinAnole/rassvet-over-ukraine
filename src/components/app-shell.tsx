@@ -6,6 +6,7 @@ import type { Lang } from "@/lib/catalog/types";
 import type { DataFreshness } from "@/lib/catalog/freshness";
 import type { StaleSummary } from "@/lib/catalog/stale-summary";
 import { readRememberedHome, resolveNavSearch, type AppRoute, type ViewSearch } from "@/lib/view-state";
+import { ThemeSwitch } from "@/components/theme-switch";
 import { cn } from "@/lib/cn";
 
 const NAV = [
@@ -86,6 +87,7 @@ export function AppShell({
                   </button>
                 ))}
               </div>
+              <ThemeSwitch lang={lang} />
               <div className="font-mono text-[10px] leading-snug text-muted tabular">
                 <div>
                   {t.header.catalogEpoch}{" "}

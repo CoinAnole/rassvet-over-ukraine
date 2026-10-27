@@ -6,8 +6,11 @@ import sansCyrillic from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-cyrillic
 import monoLatin from "@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2?url";
 import site from "@/lib/og/site.json";
 import { DocumentLangProvider, useDocumentLang } from "@/components/document-lang";
+import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { LANG_KEY } from "@/lib/i18n";
 import { langFromMatch } from "@/lib/i18n/resolve-lang";
+import { readThemeChoice } from "@/lib/theme-server";
+import { THEME_COLOR, themeAttribute, themeFromCookieHeader, type ThemeChoice } from "@/lib/theme";
 import { useState, type ReactNode } from "react";
 
 const SHARE_ORIGIN = site.url.replace(/\/+$/, "");
@@ -36,13 +39,13 @@ function fontPreload(href: string) {
 }
 
 export const Route = createRootRoute({
+  beforeLoad: async () => ({ theme: await themeForRequest() }),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: site.title },
       { name: "description", content: site.description },
-      { name: "theme-color", content: `#${site.color}` },
       { property: "og:title", content: site.title },
       { property: "og:description", content: site.description },
       { property: "og:type", content: "website" },
@@ -66,22 +69,44 @@ export const Route = createRootRoute({
   component: Root,
 });
 
+async function themeForRequest(): Promise<ThemeChoice> {
+  if (typeof window !== "undefined") return themeFromCookieHeader(document.cookie);
+  return readThemeChoice();
+}
+
 function Root() {
+  const { theme } = Route.useRouteContext();
   const matches = useMatches();
   const serverLang = langFromMatch(matches[matches.length - 1]);
   return (
-    <DocumentLangProvider serverLang={serverLang}>
-      <RootHtml />
-    </DocumentLangProvider>
+    <ThemeProvider serverChoice={theme}>
+      <DocumentLangProvider serverLang={serverLang}>
+        <RootHtml />
+      </DocumentLangProvider>
+    </ThemeProvider>
+  );
+}
+
+function ThemeColor() {
+  const { choice } = useTheme();
+  if (choice === "light") return <meta name="theme-color" content={THEME_COLOR.light} />;
+  if (choice === "dark") return <meta name="theme-color" content={THEME_COLOR.dark} />;
+  return (
+    <>
+      <meta name="theme-color" media="(prefers-color-scheme: light)" content={THEME_COLOR.light} />
+      <meta name="theme-color" media="(prefers-color-scheme: dark)" content={THEME_COLOR.dark} />
+    </>
   );
 }
 
 function RootHtml() {
   const doc = useDocumentLang();
+  const { choice } = useTheme();
   const lang = doc?.lang ?? "en";
   return (
-    <html lang={lang} className="antialiased">
+    <html lang={lang} data-theme={themeAttribute(choice)} className="antialiased">
       <head>
+        <ThemeColor />
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} />
       </head>

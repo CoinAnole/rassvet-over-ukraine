@@ -1,0 +1,63 @@
+[
+  { "action": "open", "path": "/" },
+  { "action": "expect", "selector": "html[data-theme]", "count": 0 },
+  { "action": "expect", "role": "radio", "name": "System" },
+  { "action": "media", "colorScheme": "light" },
+  { "action": "expect", "selector": "body", "computed": "background-color=rgb(246,244,239)" },
+  { "action": "focus", "role": "radio", "name": "System" },
+  { "action": "press", "key": "ArrowRight" },
+  { "action": "expect", "focusedName": "Light" },
+  { "action": "expect", "focusedAttr": "aria-checked=true" },
+  { "action": "expect", "selector": "html[data-theme='light']", "count": 1 },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/theme/ukraine-light.png",
+    "fullPage": true,
+    "feature": "theme"
+  },
+  { "action": "open", "path": "/constellation" },
+  { "action": "expect", "selector": "html[data-theme='light']", "count": 1 },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/theme/constellation-light.png",
+    "fullPage": true,
+    "feature": "theme"
+  },
+  { "action": "open", "path": "/method" },
+  { "action": "expect", "selector": "html[data-theme='light']", "count": 1 },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/theme/method-light.png",
+    "fullPage": true,
+    "feature": "theme"
+  },
+  { "action": "click", "role": "radio", "name": "Dark" },
+  { "action": "expect", "selector": "html[data-theme='dark']", "count": 1 },
+  { "action": "expect", "selector": "body", "computed": "background-color=rgb(8,9,12)" },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/theme/method-dark.png",
+    "fullPage": true,
+    "feature": "theme"
+  },
+  { "action": "open", "path": "/constellation" },
+  { "action": "expect", "selector": "html[data-theme='dark']", "count": 1 },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/theme/constellation-dark.png",
+    "fullPage": true,
+    "feature": "theme"
+  },
+  { "action": "open", "path": "/" },
+  { "action": "expect", "selector": "html[data-theme='dark']", "count": 1 },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/theme/ukraine-dark.png",
+    "fullPage": true,
+    "feature": "theme"
+  },
+  { "action": "click", "role": "radio", "name": "System" },
+  { "action": "expect", "selector": "html[data-theme]", "count": 0 },
+  { "action": "media", "colorScheme": "dark" },
+  { "action": "expect", "selector": "body", "computed": "background-color=rgb(8,9,12)" }
+]

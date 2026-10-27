@@ -81,6 +81,7 @@ Stable handles, English UI:
 | Skip link | link `Skip to content` (first tab stop; Enter moves to `#main`) |
 | Product title | heading `Rassvet over Ukraine` |
 | Language | button `EN`, `UK`, or `RU` (`aria-pressed`). `documentElement.lang` matches the active language |
+| Theme | radiogroup `Theme`; radios `System` (default), `Light`, `Dark`. One tab stop; arrows move the choice. `html[data-theme]` is `light` or `dark`, and absent for System |
 | Primary nav | navigation `Primary` in English (`Основне` in UK, `Основное` in RU). The current link has `aria-current="page"`. Links `Ukraine today`, `Constellation`, `Method`. From the other pages, `Ukraine today` points at the last home query minus any held clock |
 | Catalog freshness | status whose text starts with `Not live`, `Stale GP`, or `Older GP` |
 | Location | label `Location` (options include `Lviv`, `Vinnytsia`, `Custom lat/lon`) |
@@ -172,6 +173,7 @@ The helper is executable. From the repo root:
 | `browser focus --role <role> --name <name>` | Focus a control before `press`. `--selector` works too. `press` in a later command loads a new document, so the key never reaches this focus. Keep focus and press in one `browser sequence`. Programmatic focus does not draw `:focus-visible`; Tab does. |
 | `browser press --key <key>` | Send a key to the focused element (`ArrowRight`, `Enter`). |
 | `browser dom` | Print `htmlLang` and the focused element's role, name, `aria-selected`, tabindex, and outline. |
+| `browser media --color-scheme light\|dark` | Emulate `prefers-color-scheme` for the rest of this page, including a `browser sequence`. |
 | `browser range --name <name> --value <number>` | Set `Offset from real now` and commit with Enter. |
 | `browser screenshot --path <file> [--full-page] [--feature <id>]` | PNG under `evidence/`. Does not hide the text caret. |
 | `browser snapshot --aria --path <file> [--feature <id>]` | ARIA snapshot, first line is the URL. |
@@ -179,6 +181,6 @@ The helper is executable. From the repo root:
 | `browser text` | Print `body` inner text. |
 | `browser section --contains <text>` | Print the nearest section that contains that text. |
 | `browser count --selector <css>` | Count matching nodes. |
-| `browser expect --text <t> [--any <t> ...] [--absent <t>] [--url-includes <t>] [--url-absent <t>] [--html-lang <code>] [--section <t>] [--selector <css>] [--count <n>] [--attr <name=value>] [--role <r> --name <n>] [--focused-role <r>] [--focused-name <t>] [--focused-attr <name=value>] [--focus-ring]` | Assert, exit 1 on failure. Repeated `--any` passes when one string is present. With `--section` or `--selector`, `--text` and `--absent` apply to that region only. `--attr` reads an attribute of `--selector` (`aria-expanded=true`). `--count` is how many nodes match `--selector`. `--html-lang` reads `document.documentElement.lang`. `--focused-*` and `--focus-ring` read the focused element (`aria-selected=true`, a solid outline). `--url-absent` fails when the URL contains that string. |
+| `browser expect --text <t> [--any <t> ...] [--absent <t>] [--url-includes <t>] [--url-absent <t>] [--html-lang <code>] [--section <t>] [--selector <css>] [--count <n>] [--attr <name=value>] [--computed <prop=value>] [--role <r> --name <n>] [--focused-role <r>] [--focused-name <t>] [--focused-attr <name=value>] [--focus-ring]` | Assert, exit 1 on failure. Repeated `--any` passes when one string is present. With `--section` or `--selector`, `--text` and `--absent` apply to that region only. `--attr` reads an attribute of `--selector`. `--computed` reads `getComputedStyle` (`background-color=rgb(8,9,12)`). `--count` is how many nodes match `--selector`. `--html-lang` reads `document.documentElement.lang`. `--focused-*` and `--focus-ring` read the focused element. `--url-absent` fails when the URL contains that string. |
 
 `--wait-text` on `click`, `select`, `fill`, and `range` waits until that string is visible before the command returns. Relative `--path` values resolve from the current working directory and must land under `evidence/`, `/opt/cursor/artifacts`, or `/tmp`.

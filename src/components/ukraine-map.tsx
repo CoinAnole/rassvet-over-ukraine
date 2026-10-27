@@ -9,6 +9,31 @@ import type { Lang } from "@/lib/catalog/types";
 import region from "../data/region.json" with { type: "json" };
 import { Button } from "@/components/ui/button";
 
+type MapScheme = "light" | "dark";
+
+function mapScheme(): MapScheme {
+  const explicit = document.documentElement.dataset.theme;
+  if (explicit === "light" || explicit === "dark") return explicit;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+function regionPaint(scheme: MapScheme, isUa: boolean) {
+  if (scheme === "light") {
+    return {
+      color: isUa ? "rgba(28,30,36,0.72)" : "rgba(28,30,36,0.28)",
+      weight: isUa ? 1.2 : 0.8,
+      fillColor: isUa ? "rgba(26,77,102,0.08)" : "transparent",
+      fillOpacity: 1,
+    };
+  }
+  return {
+    color: isUa ? "rgba(232,234,238,0.55)" : "rgba(232,234,238,0.18)",
+    weight: isUa ? 1.2 : 0.8,
+    fillColor: isUa ? "rgba(158,182,196,0.06)" : "transparent",
+    fillOpacity: 1,
+  };
+}
+
 type Props = {
   lang: Lang;
   result: CoverageResult | null;
@@ -55,24 +80,36 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
         maxZoom: 9,
       }).setView(MAP_CENTER, MAP_DEFAULT_ZOOM);
       map.fitBounds(MAP_BOUNDS);
-      L.geoJSON(region as GeoJSON.GeoJsonObject, {
+      const regions = L.geoJSON(region as GeoJSON.GeoJsonObject, {
         style: (feat) => {
           const name = (feat?.properties as { name?: string } | undefined)?.name;
-          const isUa = name === "Ukraine";
-          return {
-            color: isUa ? "rgba(232,234,238,0.55)" : "rgba(232,234,238,0.18)",
-            weight: isUa ? 1.2 : 0.8,
-            fillColor: isUa ? "rgba(158,182,196,0.06)" : "transparent",
-            fillOpacity: 1,
-          };
+          return regionPaint(mapScheme(), name === "Ukraine");
         },
       }).addTo(map);
       const layers = L.layerGroup().addTo(map);
       layerRef.current = layers;
+      (map as MapChrome).__rassvetRegions = regions;
       mapRef.current = map;
+      applyMapScheme(map);
     })();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const apply = () => {
+      const map = mapRef.current;
+      if (map) applyMapScheme(map);
+    };
+    apply();
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    media.addEventListener("change", apply);
+    const obs = new MutationObserver(apply);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => {
+      media.removeEventListener("change", apply);
+      obs.disconnect();
     };
   }, []);
 
@@ -200,6 +237,19 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
       </div>
     </section>
   );
+}
+
+type MapChrome = import("leaflet").Map & {
+  __rassvetRegions?: import("leaflet").GeoJSON;
+};
+
+function applyMapScheme(map: import("leaflet").Map) {
+  const scheme = mapScheme();
+  const regions = (map as MapChrome).__rassvetRegions;
+  regions?.setStyle((feat) => {
+    const name = (feat?.properties as { name?: string } | undefined)?.name;
+    return regionPaint(scheme, name === "Ukraine");
+  });
 }
 
 function splitTrack(track: [number, number][]): [number, number][][] {
