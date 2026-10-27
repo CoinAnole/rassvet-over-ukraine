@@ -8,12 +8,18 @@ import {
   canonicalSearch,
   defaultView,
   heldFromClockInstant,
+  homeQueryWithoutClock,
   parseClockInstant,
+  readRememberedHome,
+  rememberHomeSearch,
+  resolveNavSearch,
   searchFromView,
   shareSearchString,
   shareUrl,
+  ukraineReturnSearch,
   viewFromSearch,
   viewSearchEqual,
+  type ViewSearch,
   type ViewState,
 } from "./view-state.ts";
 
@@ -206,6 +212,114 @@ describe("held clock query", () => {
     const a = new Date(wall - 21 * 3_600_000).toISOString();
     const b = new Date(wall - 5 * 3_600_000).toISOString();
     assert.equal(viewSearchEqual({ at: a }, { at: b }), false);
+  });
+});
+
+function memoryStorage(): Storage {
+  const map = new Map<string, string>();
+  return {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (key) => map.get(key) ?? null,
+    key: (index) => [...map.keys()][index] ?? null,
+    removeItem: (key) => {
+      map.delete(key);
+    },
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+  };
+}
+
+describe("return to Ukraine today", () => {
+  const saved: ViewSearch = {
+    place: "lviv",
+    el: 10,
+    set: "all",
+    tz: "utc",
+    lat: 49.84,
+    lon: 24.03,
+    at: "2020-01-01T00:00:00.000Z",
+    lang: "uk",
+  };
+
+  it("restores place, elevation, population, and timezone after Constellation or Method, without the clock", () => {
+    const storage = memoryStorage();
+    rememberHomeSearch(saved, storage);
+    const remembered = readRememberedHome(storage);
+    assert.equal(remembered?.at, undefined);
+    for (const current of ["/constellation", "/method"] as const) {
+      assert.deepEqual(
+        resolveNavSearch({
+          to: "/",
+          current,
+          currentSearch: { lang: "uk" },
+          remembered,
+          lang: "uk",
+        }),
+        { place: "lviv", el: 10, set: "all", tz: "utc", lang: "uk" },
+      );
+    }
+  });
+
+  it("keeps a custom lat/lon and drops at", () => {
+    const storage = memoryStorage();
+    rememberHomeSearch(
+      { place: "custom", lat: 49.123456, lon: 32.987654, at: "2026-10-27T12:00:00.000Z" },
+      storage,
+    );
+    const remembered = readRememberedHome(storage);
+    assert.deepEqual(remembered, { lat: 49.1235, lon: 32.9877 });
+    assert.equal(ukraineReturnSearch(remembered, "en").at, undefined);
+  });
+
+  it("lets the current Ukraine URL win over a remembered query", () => {
+    const explicit = viewFromSearch({ place: "odesa", el: 40 }, "en");
+    assert.equal(explicit.place, "odesa");
+    assert.equal(explicit.el, 40);
+    assert.deepEqual(
+      resolveNavSearch({
+        to: "/",
+        current: "/",
+        currentSearch: { place: "odesa", el: 40, at: "2026-10-27T12:00:00.000Z" },
+        remembered: { place: "lviv", el: 10 },
+        lang: "en",
+      }),
+      { place: "odesa", el: 40, at: "2026-10-27T12:00:00.000Z" },
+    );
+  });
+
+  it("carries the language of the page you are leaving", () => {
+    assert.deepEqual(
+      resolveNavSearch({
+        to: "/",
+        current: "/method",
+        currentSearch: { lang: "ru" },
+        remembered: { place: "lviv", lang: "uk" },
+        lang: "ru",
+      }),
+      { place: "lviv", lang: "ru" },
+    );
+    assert.deepEqual(
+      resolveNavSearch({
+        to: "/constellation",
+        current: "/",
+        currentSearch: saved,
+        remembered: saved,
+        lang: "uk",
+      }),
+      { lang: "uk" },
+    );
+  });
+
+  it("remembers an empty home visit as the defaults", () => {
+    const storage = memoryStorage();
+    rememberHomeSearch({ at: "2026-10-27T12:00:00.000Z" }, storage);
+    assert.deepEqual(readRememberedHome(storage), {});
+    assert.deepEqual(homeQueryWithoutClock({ at: "2026-10-27T12:00:00.000Z", place: "kyiv" }), {});
+    assert.equal(readRememberedHome(memoryStorage()), null);
   });
 });
 

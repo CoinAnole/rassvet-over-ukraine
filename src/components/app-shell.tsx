@@ -1,16 +1,18 @@
+import { useLayoutEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { FreshnessBanner } from "@/components/freshness-banner";
 import { getDict } from "@/lib/i18n";
 import type { Lang } from "@/lib/catalog/types";
 import type { DataFreshness } from "@/lib/catalog/freshness";
 import type { StaleSummary } from "@/lib/catalog/stale-summary";
+import { readRememberedHome, resolveNavSearch, type AppRoute, type ViewSearch } from "@/lib/view-state";
 import { cn } from "@/lib/cn";
 
 const NAV = [
-  { to: "/", key: "ukraine" as const },
-  { to: "/constellation", key: "constellation" as const },
-  { to: "/method", key: "method" as const },
-];
+  { to: "/", key: "ukraine" },
+  { to: "/constellation", key: "constellation" },
+  { to: "/method", key: "method" },
+] as const;
 
 export function AppShell({
   lang,
@@ -38,7 +40,18 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const t = getDict(lang);
-  const routeLang = lang === "en" ? undefined : lang;
+  const [remembered, setRemembered] = useState<ViewSearch | null>(null);
+  useLayoutEffect(() => {
+    setRemembered(readRememberedHome());
+  }, [current]);
+  const linkSearch = (to: AppRoute, prev: ViewSearch) =>
+    resolveNavSearch({
+      to,
+      current,
+      currentSearch: prev,
+      remembered,
+      lang,
+    });
   return (
     <div className="min-h-dvh bg-bg text-fg">
       <a
@@ -100,11 +113,7 @@ export function AppShell({
                 <Link
                   key={item.to}
                   to={item.to}
-                  search={
-                    current === item.to
-                      ? (prev) => ({ ...prev, lang: routeLang })
-                      : { lang: routeLang }
-                  }
+                  search={(prev) => linkSearch(item.to, prev)}
                   aria-current={current === item.to ? "page" : undefined}
                   className={cn(
                     "min-h-9 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm",

@@ -34,5 +34,5 @@ Preconditions:
 - English omits `lang`. Assert that with `--url-absent lang=`. Assert `lang=uk` and `lang=ru` only after those switches.
 - `localStorage` key `rassvet-lang` is not the source of the current page. A stored value is copied into the cookie for the next document.
 - The browser profile remembers the cookie. A later feature that expects English must click `EN` or start from a profile cleanup created.
-- Navigation after a switch carries `lang` and drops other Ukraine query keys such as `place`.
+- Constellation and Method URLs carry `lang` only. The Ukraine today link puts the last home query back, without a held clock. See the home-return map.
 - Hydration warnings fail the command by themselves. Do not treat a green-looking screenshot as a pass when `hydrationWarnings` is non-empty.

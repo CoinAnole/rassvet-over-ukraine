@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LangFrame } from "@/components/lang-frame";
 import { UkraineBoard, CityStrip, PassTable } from "@/components/ukraine-board";
 import { UkraineMap } from "@/components/ukraine-map";
@@ -15,7 +15,8 @@ import type { PlaceId } from "@/lib/orbit/constants";
 import {
   canonicalSearch,
   heldFromClockInstant,
-  parseClockInstant,
+  parseViewSearch,
+  rememberHomeSearch,
   shareSearchString,
   viewFromSearch,
   viewSearchEqual,
@@ -24,26 +25,8 @@ import {
   type ViewState,
 } from "@/lib/view-state";
 
-function parseSearch(raw: Record<string, unknown>): ViewSearch {
-  const num = (v: unknown) => {
-    if (typeof v === "number") return v;
-    if (typeof v === "string" && v !== "" && !Number.isNaN(Number(v))) return Number(v);
-    return undefined;
-  };
-  return {
-    lat: num(raw.lat),
-    lon: num(raw.lon),
-    el: num(raw.el),
-    lang: raw.lang === "en" || raw.lang === "uk" || raw.lang === "ru" ? raw.lang : undefined,
-    set: typeof raw.set === "string" ? (raw.set as ViewSearch["set"]) : undefined,
-    tz: raw.tz === "kyiv" || raw.tz === "utc" || raw.tz === "moscow" ? raw.tz : undefined,
-    place: typeof raw.place === "string" ? (raw.place as ViewSearch["place"]) : undefined,
-    at: parseClockInstant(raw.at),
-  };
-}
-
 export const Route = createFileRoute("/")({
-  validateSearch: (search: Record<string, unknown>) => parseSearch(search),
+  validateSearch: (search: Record<string, unknown>) => parseViewSearch(search),
   loader: async () => {
     const [catalog, profile] = await Promise.all([getCatalog(), readProfileLang()]);
     return { catalog, profile, nowIso: new Date().toISOString() };
@@ -208,6 +191,10 @@ function UkraineToday({ lang }: { lang: Lang }) {
 
   const t = getDict(lang);
   const placeLabel = view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
+
+  useLayoutEffect(() => {
+    rememberHomeSearch(search);
+  }, [search]);
 
   return (
     <div className="flex flex-col gap-4">
