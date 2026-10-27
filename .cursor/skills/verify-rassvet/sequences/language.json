@@ -1,0 +1,47 @@
+[
+  { "action": "open", "path": "/" },
+  { "action": "expect", "htmlLang": "en" },
+  { "action": "expect", "urlAbsent": "lang=" },
+  { "action": "expect", "role": "navigation", "name": "Primary" },
+  { "action": "click", "role": "button", "name": "UK", "waitText": "Рассвет над Україною" },
+  { "action": "expect", "urlIncludes": "lang=uk" },
+  { "action": "expect", "htmlLang": "uk" },
+  { "action": "expect", "text": "жовт" },
+  { "action": "expect", "role": "navigation", "name": "Основне" },
+  { "action": "click", "role": "link", "name": "Угруповання" },
+  { "action": "expect", "urlIncludes": "/constellation" },
+  { "action": "expect", "urlIncludes": "lang=uk" },
+  { "action": "expect", "htmlLang": "uk" },
+  { "action": "expect", "role": "heading", "name": "Угруповання" },
+  { "action": "click", "role": "link", "name": "Метод" },
+  { "action": "expect", "urlIncludes": "/method" },
+  { "action": "expect", "urlIncludes": "lang=uk" },
+  { "action": "expect", "htmlLang": "uk" },
+  { "action": "expect", "text": "Ця сторінка — договір." },
+  { "action": "click", "role": "button", "name": "RU", "waitText": "Рассвет над Украиной" },
+  { "action": "expect", "urlIncludes": "lang=ru" },
+  { "action": "expect", "htmlLang": "ru" },
+  { "action": "click", "role": "link", "name": "Украина сегодня" },
+  { "action": "expect", "urlIncludes": "lang=ru" },
+  { "action": "expect", "htmlLang": "ru" },
+  { "action": "expect", "text": "окт" },
+  { "action": "click", "role": "button", "name": "EN", "waitText": "Rassvet over Ukraine" },
+  { "action": "expect", "htmlLang": "en" },
+  { "action": "expect", "urlAbsent": "lang=" },
+  {
+    "action": "open",
+    "path": "/?lang=uk"
+  },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/language/uk.png",
+    "fullPage": true,
+    "feature": "language"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/language/uk.aria.txt",
+    "feature": "language"
+  }
+]

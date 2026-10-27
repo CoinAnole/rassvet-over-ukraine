@@ -1,0 +1,8 @@
+[
+  { "action": "open", "path": "/" },
+  { "action": "press", "key": "Tab" },
+  { "action": "expect", "focusedName": "Skip to content" },
+  { "action": "press", "key": "Enter" },
+  { "action": "expect", "urlIncludes": "#main" },
+  { "action": "expect", "focusedRole": "main" }
+]

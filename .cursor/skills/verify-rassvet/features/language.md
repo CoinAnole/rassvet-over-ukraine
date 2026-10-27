@@ -1,41 +1,38 @@
 # Language
 
-EN, UK, and RU switch the product title, navigation, and coverage sentence. On Ukraine today the choice is also written into the `lang` query (`uk` or `ru`; English omits it). On Method and Constellation the choice is kept in the browser profile and is not put on the URL.
+EN, UK, and RU switch the product title, navigation, coverage sentence, and the dates on the clock and pass list. The choice is written into the `lang` query on Ukraine today, Constellation, and Method (`uk` or `ru`; English omits it). `<html lang>` matches that language. The cookie remembers it for a later visit; `localStorage` only seeds the cookie and does not change the current page.
 
 ## Sub-features
 
-- `lang-en` shows English copy and does not put `lang` on the Ukraine URL.
-- `lang-uk` shows Ukrainian copy and `lang=uk` on the Ukraine URL.
-- `lang-ru` shows Russian copy and `lang=ru` on the Ukraine URL.
-- `lang-method` switches Method without adding `lang` to `/method`.
+- `lang-en` shows English copy, `html lang` `en`, and no `lang` query.
+- `lang-uk` shows Ukrainian copy, `html lang` `uk`, `lang=uk`, and a pass time containing `жовт`.
+- `lang-ru` shows Russian copy, `html lang` `ru`, `lang=ru`, and a pass time containing `окт`.
+- `lang-routes` keeps `lang` on Constellation and Method after the switch.
+- `lang-hydration` fails the command when the console reports a hydration mismatch.
 
 ## How to get to it (user POV)
 
 - Choose the `EN`, `UK`, or `RU` button in the header. The pressed button is the active language.
-- Open Ukraine today with `?lang=uk` or `?lang=ru`.
-- After switching on Ukraine today, open Method. The Method page follows the profile language.
+- Open any of the three routes with `?lang=uk` or `?lang=ru`.
+- Follow Primary navigation after a switch. The next route keeps the same `lang`.
 
 ## Driving it with verify-rassvet
 
 Preconditions:
 
-- Doctor reports the verification origin.
+- Doctor reports the verification origin. Record `catalog.source`.
 - Fresh English profile, or switch back to `EN` before starting.
 - Button names stay `EN`, `UK`, and `RU` in every language.
+- One `browser sequence` so the switch and the following navigations share the profile page. A later `browser` command reloads the last URL.
 
-- **English baseline.** Open the root. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --role heading --name "Rassvet over Ukraine"`. The URL does not contain `lang=`.
-- **Ukrainian.** Choose UK. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role button --name "UK" --wait-text "Рассвет над Україною"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --url-includes "lang=uk"`. The Primary link for Method reads `Метод`.
-- **Russian.** Choose RU. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role button --name "RU" --wait-text "Рассвет над Украиной"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --url-includes "lang=ru"`.
-- **Back to English.** Choose EN. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role button --name "EN" --wait-text "Rassvet over Ukraine"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser url`. The query does not contain `lang=`.
-- **Method follows the profile.** Choose UK again with the UK click above, then open Method. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser click --role link --name "Метод"`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --url-includes "/method"` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Ця сторінка — договір."`. The Method URL does not contain `lang=`.
-- **Reload keeps the profile.** Open Method again. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /method`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --text "Ця сторінка — договір."`. The command exits 0. The URL does not contain `lang=`.
-- **Ukraine without `lang`.** Open the root in that same profile. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open /`. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser expect --role heading --name "Рассвет над Україною"`. The URL does not contain `lang=`.
-- **Proof.** Capture the Ukrainian Ukraine page before leaving it. Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser open "/?lang=uk"` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser screenshot --path .cursor/skills/verify-rassvet/evidence/language/uk.png --full-page --feature language` and `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser snapshot --aria --path .cursor/skills/verify-rassvet/evidence/language/uk.aria.txt --feature language`. Both show `Рассвет над Україною`.
+- **English, Ukrainian, routes, and Russian.** Run `.cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs browser sequence --file .cursor/skills/verify-rassvet/sequences/language.json`. English starts with `html lang` `en`, navigation `Primary`, and no `lang` in the URL. UK sets `html lang` `uk`, `lang=uk`, navigation `Основне`, and a `жовт` date. Constellation and Method keep `lang=uk` and `html lang` `uk`. RU sets `html lang` `ru` and `lang=ru`, and the Ukraine pass list contains `окт`. The command exits 0 and `hydrationWarnings` is empty.
+- **Proof.** The sequence writes the Ukrainian Ukraine screenshot and ARIA snapshot. Both show `Рассвет над Україною`.
 
 ## Gotchas
 
 - The language button names are always `EN`, `UK`, and `RU`. Do not look for `УК` or `РУ`.
-- English omits `lang`. Assert the parameter only for `uk` and `ru`.
-- Method and Constellation do not write `lang` into their URLs. A missing `lang` on `/method` is not proof that the page is English. Read the Method lede.
-- The browser profile remembers the last language. A later feature that expects English must click `EN` or `browser open /` after cleanup created a new profile.
-- `?lang=uk` on `/method` does not select Ukrainian by itself. Switch with the header button, or set the language on Ukraine today first so the profile stores it.
+- English omits `lang`. Assert that with `--url-absent lang=`. Assert `lang=uk` and `lang=ru` only after those switches.
+- `localStorage` key `rassvet-lang` is not the source of the current page. A stored value is copied into the cookie for the next document.
+- The browser profile remembers the cookie. A later feature that expects English must click `EN` or start from a profile cleanup created.
+- Navigation after a switch carries `lang` and drops other Ukraine query keys such as `place`.
+- Hydration warnings fail the command by themselves. Do not treat a green-looking screenshot as a pass when `hydrationWarnings` is non-empty.

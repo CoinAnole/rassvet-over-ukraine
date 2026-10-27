@@ -32,6 +32,6 @@ Preconditions:
 ## Gotchas
 
 - Hide-decayed and the launch group are not written to the URL or to `localStorage`. Reloading `/constellation` restores the checkbox to checked and the group to `All groups`. A separate browser command is that reload.
-- Language on this page is the profile language, not a `lang` query. See the language map.
+- `lang=uk` or `lang=ru` on `/constellation` selects that language. English omits `lang`. See the language map.
 - The chart is a plot, not a table. Prove a filter with the table text or the select, not with a pixel in the plot.
 - Counts come from the catalog doctor already loaded. Do not assert a hardcoded population.

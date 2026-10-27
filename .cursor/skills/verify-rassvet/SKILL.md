@@ -66,7 +66,7 @@ A `--gp-fixture` launch also writes `.run/altitude-history.json` and the same ho
 
 ## Drive
 
-Browser commands reopen the last URL in a persistent profile at `.cursor/skills/verify-rassvet/.run/browser-profile` (`locale=en-US`, viewport 1280×900). A fresh profile has no `rassvet-lang` entry, so the UI starts in English. State that matters (place, elevation, population, timezone, held clock) lives in the query string. An explicit UK or RU pick on Ukraine today is written there too. Choosing a language also writes `localStorage` key `rassvet-lang`. Method and Constellation have no `lang` query. A client-side navigation and a later full load both show that stored language. Ukraine today does too when the address has no `lang`. Hide decayed and Launch group are page state only. They are not in the URL and not in `localStorage`. Every browser command except the steps inside one `browser sequence` loads the last URL in a new document, so those two controls reset.
+Browser commands reopen the last URL in a persistent profile at `.cursor/skills/verify-rassvet/.run/browser-profile` (`locale=en-US`, viewport 1280×900). A fresh profile has no `rassvet-lang` cookie, so the UI starts in English. Language resolves from the URL, then the `rassvet-lang` cookie, then `Accept-Language`. Choosing EN, UK, or RU writes `lang` into the URL on Ukraine today, Constellation, and Method (`uk` or `ru`; English omits it) and sets the cookie. `localStorage` key `rassvet-lang` only copies into that cookie for a later load; it does not change the page after paint. Hide decayed and Launch group are page state only. They are not in the URL and not in `localStorage`. Every browser command except the steps inside one `browser sequence` loads the last URL in a new document, so those two controls reset. A hydration warning fails the command.
 
 Every browser command waits until React has hydrated before it clicks, selects, or asserts. Changing a control on the server HTML alone does not update the clock. Wait for text or for the URL after that. Do not sleep a fixed time and declare success. Vite's dev socket never goes idle.
 
@@ -78,25 +78,30 @@ Stable handles, English UI:
 
 | User control | Handle |
 | --- | --- |
+| Skip link | link `Skip to content` (first tab stop; Enter moves to `#main`) |
 | Product title | heading `Rassvet over Ukraine` |
-| Language | button `EN`, `UK`, or `RU` (`aria-pressed`) |
-| Primary nav | navigation `Primary`; links `Ukraine today`, `Constellation`, `Method` |
+| Language | button `EN`, `UK`, or `RU` (`aria-pressed`). `documentElement.lang` matches the active language |
+| Primary nav | navigation `Primary` in English (`Основне` in UK, `Основное` in RU). The current link has `aria-current="page"`. Links `Ukraine today`, `Constellation`, `Method` |
 | Catalog freshness | status whose text starts with `Not live`, `Stale GP`, or `Older GP` |
 | Location | label `Location` (options include `Lviv`, `Vinnytsia`, `Custom lat/lon`) |
 | Min elevation | label `Min elevation` (options `10°`, `25°`, `40°`) |
 | Population | label `Population` |
 | Timezone | label `Timezone` |
-| Custom coordinates | labels `Latitude`, `Longitude`; button `Apply` (only after Custom lat/lon) |
-| Copy link | button `Copy link` (becomes `Copied`) |
-| Clock slider | slider `Offset from real now` (`aria-valuemin` −48, `aria-valuemax` 48) |
+| Custom coordinates | labels `Latitude`, `Longitude`; button `Apply` (only after Custom lat/lon). A bad value shows `Enter a latitude and a longitude as numbers.` and focuses Latitude |
+| Copy link | button `Copy link` (becomes `Copied`). The polite live region repeats `Copied` or the copy-failure sentence |
+| Clock slider | slider `Offset from real now` (`aria-valuemin` −48, `aria-valuemax` 48). Keyboard focus draws a solid outline |
 | Return to live | button `Live / now` (`aria-pressed` while live) |
 | Held-clock banner | status text `Not live` |
 | Clamp banner | status text `Outside ±48 hours` |
 | Pass windows | button `[data-scrub-band]` with `data-aos` and an accessible name starting `Geometric line-of-sight` |
 | Date and time | label `Date and time` (`datetime-local`) |
 | City strip | section containing `Same mask and population, other cities` |
-| Pass list | heading `Next 36 hours` or, while held, `36 hours from this clock` |
+| Pass list | heading `Next 36 hours` or, while held, `36 hours from this clock`. One row has `tabindex="0"`; the rest are `-1`. `aria-selected="true"` is the chosen satellite |
+| Coverage map | region `Coverage map`. Satellite dots are buttons named `Name, NORAD` and are not in the tab order |
 | Method title | heading `Method` |
+| Constellation title | heading `Constellation` (under the product heading) |
+| Constellation chart | group `Altitude against days since launch. Arrow keys select a satellite.` |
+| Constellation table | one row with `tabindex="0"`; `aria-selected="true"` is the chosen satellite |
 | Constellation filters | checkbox name `Hide decayed`; label `Launch group` |
 
 Every command prints one JSON object. `ok: false` or a non-zero exit means that step failed. `pageErrors` and `hydrationWarnings` fail the command. Other `consoleErrors` are reported and do not, by themselves, fail it (a blocked font request is not a broken clock).
@@ -164,8 +169,9 @@ The helper is executable. From the repo root:
 | `browser click --selector <css>` | Click a stable node. `[data-scrub-band]` is `pointer-events: none` under the range, so this click aims at the band's center and the range holds acquisition. |
 | `browser select --label <label> --option <text>` | Choose a native `<select>` option by its visible label. |
 | `browser fill --label <label> --value <value>` | Fill a labelled input, including `Date and time`. |
-| `browser focus --role <role> --name <name>` | Focus a control before `press`. `--selector` works too. `press` in a later command loads a new document, so the key never reaches this focus. Keep focus and press in one `browser sequence`. |
+| `browser focus --role <role> --name <name>` | Focus a control before `press`. `--selector` works too. `press` in a later command loads a new document, so the key never reaches this focus. Keep focus and press in one `browser sequence`. Programmatic focus does not draw `:focus-visible`; Tab does. |
 | `browser press --key <key>` | Send a key to the focused element (`ArrowRight`, `Enter`). |
+| `browser dom` | Print `htmlLang` and the focused element's role, name, `aria-selected`, tabindex, and outline. |
 | `browser range --name <name> --value <number>` | Set `Offset from real now` and commit with Enter. |
 | `browser screenshot --path <file> [--full-page] [--feature <id>]` | PNG under `evidence/`. Does not hide the text caret. |
 | `browser snapshot --aria --path <file> [--feature <id>]` | ARIA snapshot, first line is the URL. |
@@ -173,6 +179,6 @@ The helper is executable. From the repo root:
 | `browser text` | Print `body` inner text. |
 | `browser section --contains <text>` | Print the nearest section that contains that text. |
 | `browser count --selector <css>` | Count matching nodes. |
-| `browser expect --text <t> [--any <t> ...] [--absent <t>] [--url-includes <t>] [--section <t>] [--selector <css>] [--attr <name=value>] [--role <r> --name <n>]` | Assert, exit 1 on failure. Repeated `--any` passes when one string is present. With `--section` or `--selector`, `--text` and `--absent` apply to that region only. `--attr` reads an attribute of `--selector` (`aria-expanded=true`). |
+| `browser expect --text <t> [--any <t> ...] [--absent <t>] [--url-includes <t>] [--url-absent <t>] [--html-lang <code>] [--section <t>] [--selector <css>] [--count <n>] [--attr <name=value>] [--role <r> --name <n>] [--focused-role <r>] [--focused-name <t>] [--focused-attr <name=value>] [--focus-ring]` | Assert, exit 1 on failure. Repeated `--any` passes when one string is present. With `--section` or `--selector`, `--text` and `--absent` apply to that region only. `--attr` reads an attribute of `--selector` (`aria-expanded=true`). `--count` is how many nodes match `--selector`. `--html-lang` reads `document.documentElement.lang`. `--focused-*` and `--focus-ring` read the focused element (`aria-selected=true`, a solid outline). `--url-absent` fails when the URL contains that string. |
 
 `--wait-text` on `click`, `select`, `fill`, and `range` waits until that string is visible before the command returns. Relative `--path` values resolve from the current working directory and must land under `evidence/`, `/opt/cursor/artifacts`, or `/tmp`.
