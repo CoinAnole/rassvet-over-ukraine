@@ -56,6 +56,8 @@ export type ObjectsConfig = {
   altitudeHistoryUrl: string;
   /** Raw URL of reentries.json on the data branch. Missing file means no SATCAT decay dates. */
   reentriesUrl: string;
+  /** Raw URL of gp-latest.json on the data branch. Used when a live GP fetch fails. */
+  gpLatestUrl: string;
   celestrak: { queries: string[] };
   groups: GroupDef[];
   objects: ConfigObject[];
@@ -109,7 +111,7 @@ export type LiveObject = {
 
 export type CatalogPayload = {
   fetchedAt: string;
-  source: "live" | "seed";
+  source: "live" | "saved" | "seed";
   warning: string | null;
   missingKnownIds: number[];
   objects: LiveObject[];

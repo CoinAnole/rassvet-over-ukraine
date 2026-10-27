@@ -4,20 +4,10 @@ import { AppShell } from "@/components/app-shell";
 import { persistLang, isLang, getDict, LANG_KEY } from "@/lib/i18n";
 import { resolveLang } from "@/lib/i18n/resolve-lang";
 import type { ProfileLang } from "@/lib/i18n/profile-lang";
-import { dataFreshness } from "@/lib/catalog/freshness";
+import { dataFreshness, newestPropagatedEpoch } from "@/lib/catalog/freshness";
 import { summarizeStale } from "@/lib/catalog/stale-summary";
 import type { Lang, CatalogPayload } from "@/lib/catalog/types";
 import { viewFromSearch, type ViewSearch } from "@/lib/view-state";
-
-function newestEpoch(catalog: CatalogPayload | undefined): string | null {
-  if (!catalog) return null;
-  let best: string | null = null;
-  for (const o of catalog.objects) {
-    if (!o.epoch) continue;
-    if (!best || o.epoch > best) best = o.epoch;
-  }
-  return best ? best.replace("T", " ").slice(0, 16) : null;
-}
 
 function fetchedLabel(catalog: CatalogPayload | undefined): string | null {
   if (!catalog?.fetchedAt) return null;
@@ -88,7 +78,7 @@ export function LangFrame({
       lang={lang}
       onLang={onLang}
       fetchedAt={fetchedLabel(catalog)}
-      newestEpoch={newestEpoch(catalog)}
+      newestEpoch={newestPropagatedEpoch(catalog)}
       source={catalog.source}
       freshness={dataFreshness(catalog)}
       stale={summarizeStale(catalog, {
@@ -96,7 +86,7 @@ export function LangFrame({
         set: coverage?.set ?? null,
       })}
       cityLabel={cityLabel}
-      warning={catalog.source === "seed" ? null : catalog.warning}
+      warning={catalog.source === "live" ? catalog.warning : null}
       current={current}
     >
       {children(lang)}

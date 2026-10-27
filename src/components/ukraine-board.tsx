@@ -85,7 +85,7 @@ export function UkraineBoard({
   const inSet = catalog.objects.filter((o) => inPopulation(o, view.set)).length;
   const populationStale = catalog.objects.some((o) => o.stale && inPopulation(o, view.set));
   const todayNote =
-    freshness.kind === "seed"
+    freshness.kind === "seed" || freshness.kind === "saved"
       ? t.freshness.todaySeed
       : populationStale
         ? t.freshness.todayStale

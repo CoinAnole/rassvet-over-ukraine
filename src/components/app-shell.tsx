@@ -29,7 +29,7 @@ export function AppShell({
   onLang: (lang: Lang) => void;
   fetchedAt: string | null;
   newestEpoch: string | null;
-  source: "live" | "seed" | null;
+  source: "live" | "saved" | "seed" | null;
   freshness: DataFreshness;
   stale: StaleSummary;
   cityLabel: string | null;
@@ -75,7 +75,13 @@ export function AppShell({
                   {t.header.fetchedAt}{" "}
                   <span className="text-fg">{fetchedAt ? `${fetchedAt} UTC` : "—"}</span>
                   {source
-                    ? ` · ${source === "live" ? t.header.sourceLive : t.header.sourceSeed}`
+                    ? ` · ${
+                        source === "live"
+                          ? t.header.sourceLive
+                          : source === "saved"
+                            ? t.header.sourceSaved
+                            : t.header.sourceSeed
+                      }`
                     : null}
                 </div>
               </div>

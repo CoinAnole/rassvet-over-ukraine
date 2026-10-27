@@ -11,6 +11,7 @@
     "catalogEpoch": "Newest element-set epoch",
     "fetchedAt": "Last successful fetch",
     "sourceLive": "CelesTrak GP",
+    "sourceSaved": "saved snapshot",
     "sourceSeed": "checked-in snapshot",
     "utc": "UTC"
   },
@@ -188,6 +189,8 @@
     "hide": "Hide",
     "seed": "Live GP fetch failed. Showing the checked-in snapshot from {date}, not a current element set.",
     "seedStale": "Live GP fetch failed. The checked-in snapshot from {date} is older than 72 hours. Positions are still propagated.",
+    "saved": "Live GP fetch failed. Showing the saved snapshot from {date}.",
+    "savedStale": "Live GP fetch failed. The saved snapshot from {date} is older than 72 hours. Positions are still propagated.",
     "todaySeed": "Snapshot — live fetch failed",
     "todayStale": "Includes element sets older than 72 h",
     "what": "An element set is the public general-perturbations record for one object: the numbers this site propagates. It is not a measured position.",

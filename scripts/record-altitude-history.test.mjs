@@ -192,10 +192,14 @@ describe("CelesTrak retry", () => {
       warn() {},
     });
     assert.equal(result.exitCode, 0);
-    assert.equal(result.changed, false);
+    assert.equal(result.changed, true);
     assert.match(lines.join("\n"), /No new GP epochs/);
     const saved = JSON.parse(readFileSync(file, "utf8"));
     assert.equal(saved.updated, "2026-10-24T19:29:06.569Z");
+    const snap = JSON.parse(readFileSync(join(root, "gp-latest.json"), "utf8"));
+    assert.equal(snap.fetchedAt, "2026-10-25T19:36:00.000Z");
+    assert.equal(snap.objects.length, 1);
+    assert.equal(snap.objects[0].NORAD_CAT_ID, 68360);
   });
 
   it("keeps a good GP fetch when the one SATCAT candidate fails", async () => {
@@ -275,12 +279,23 @@ describe("CelesTrak retry", () => {
       ["https://celestrak.org/satcat/records.php?CATNR=100089&FORMAT=JSON"],
     );
     assert.match(lines.join("\n"), /SATCAT candidates: 1/);
+    const snap = JSON.parse(readFileSync(join(root, "gp-latest.json"), "utf8"));
+    assert.equal(snap.fetchedAt, "2026-10-26T12:00:00.000Z");
+    assert.deepEqual(
+      snap.objects.map((row) => [row.NORAD_CAT_ID, row.OBJECT_NAME]).sort((a, b) => a[0] - b[0]),
+      [
+        [57179, "OBJECT P"],
+        [68360, "RASSVET-3 1"],
+        [100089, "RASSVET-3 23"],
+      ],
+    );
   });
 
   it("warns when an experimental launch query fails and still saves the RASSVET rows", async () => {
     const root = dir();
     const file = join(root, "altitude-history.json");
     const warnings = [];
+    writeFileSync(join(root, "gp-latest.json"), "{\"fetchedAt\":\"keep\"}\n");
     const { fetchImpl } = scriptedFetch([
       { status: 200, body: [gpRow(68360, "2026-10-26T06:50:43.131552", "RASSVET-3 1")] },
       { status: 500, body: "intdes down" },
@@ -302,6 +317,7 @@ describe("CelesTrak retry", () => {
       [68360],
     );
     assert.match(warnings.join("\n"), /INTDES=2023-091 unavailable/);
+    assert.equal(readFileSync(join(root, "gp-latest.json"), "utf8"), "{\"fetchedAt\":\"keep\"}\n");
   });
 });
 
