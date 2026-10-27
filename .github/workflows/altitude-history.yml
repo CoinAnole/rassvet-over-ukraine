@@ -1,6 +1,8 @@
 # Append one CelesTrak GP snapshot to altitude-history.json on the data branch.
 # The file is never committed to main. A GP fetch that fails after retries
 # fails this job. A feed with no new epochs succeeds and does not commit.
+# This Action stays until the Cursor schedule has run cleanly. It writes
+# files only. It does not use Blob and must not be given BLOB_READ_WRITE_TOKEN.
 
 name: Altitude history
 

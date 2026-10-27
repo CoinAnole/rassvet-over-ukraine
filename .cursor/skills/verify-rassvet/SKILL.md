@@ -46,7 +46,7 @@ Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid
 
 `catalog` in that JSON is the read to trust:
 
-- `source`: `live` (a GP response was parsed), `saved` (live fetch failed; `gp-latest.json` on the data branch is in use), or `seed` (that file was missing too; `src/data/catalog-seed.json` is in use).
+- `source`: `live` (a GP response was parsed), `saved` (live fetch failed; `gp-latest.json` from Blob is in use, or the GitHub `data` branch copy when Blob is unconfigured, missing, or unreachable), or `seed` (that file was missing too; `src/data/catalog-seed.json` is in use). The banner still says `saved snapshot` for either saved copy.
 - `fetchedAt`: element-set fetch time. The seed snapshot is dated `2026-09-20T12:32:36Z`.
 - `objectCount`, `staleOnOrbit` (raised, climbing, not climbing, and rate pending), `warning`.
 - Top-level `gpFixture`: `stale-in-set`, `stale-outside-set`, or null. A fixture launch still reports `source: live`, because the app parsed GP JSON. Say so in the proof notes. It is not a CelesTrak round trip.
@@ -62,7 +62,7 @@ Do not add a test-only catalog endpoint. Do not block CelesTrak to force the see
 
 A fixture run is opt-in. A plain `launch` still calls CelesTrak and falls back to the snapshot if that fails.
 
-A `--gp-fixture` launch also writes `.run/altitude-history.json` and the same hook serves it for any `altitude-history.json` request. The body is a 48-hour line for RASSVET-3 11 (NORAD 68370) at +2.6 km/day, so Constellation can show that rate. It is not the `data` branch and not a CelesTrak history. A plain launch still requests the raw `data` branch URL and shows no rates when that file is missing.
+A `--gp-fixture` launch also writes `.run/altitude-history.json` and the same hook serves it for any `altitude-history.json` request. The body is a 48-hour line for RASSVET-3 11 (NORAD 68370) at +2.6 km/day, so Constellation can show that rate. It is not the Blob store, not the `data` branch, and not a CelesTrak history. A plain launch has no `BLOB_READ_WRITE_TOKEN`, so it still requests the raw `data` branch URL and shows no rates when that file is missing.
 
 ## Drive
 

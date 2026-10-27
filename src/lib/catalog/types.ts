@@ -52,11 +52,11 @@ export type ObjectsConfig = {
   muKm3s2: number;
   decayPerigeeKm: number;
   userAgent: string;
-  /** Raw URL of altitude-history.json on the data branch. Missing file means no rates. */
+  /** GitHub raw fallback for altitude-history.json. Blob is read first. */
   altitudeHistoryUrl: string;
-  /** Raw URL of reentries.json on the data branch. Missing file means no SATCAT decay dates. */
+  /** GitHub raw fallback for reentries.json. Blob is read first. */
   reentriesUrl: string;
-  /** Raw URL of gp-latest.json on the data branch. Used when a live GP fetch fails. */
+  /** GitHub raw fallback for gp-latest.json. Blob is read first. */
   gpLatestUrl: string;
   celestrak: { queries: string[] };
   groups: GroupDef[];

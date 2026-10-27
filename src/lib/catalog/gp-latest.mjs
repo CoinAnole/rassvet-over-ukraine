@@ -1,6 +1,7 @@
 /**
  * Latest raw GP records from a successful altitude-history run.
- * The file lives on the data branch and is the app's fallback when CelesTrak is down.
+ * The app reads the public Blob copy first, then this file on the data branch,
+ * when a live CelesTrak fetch fails.
  */
 
 /**

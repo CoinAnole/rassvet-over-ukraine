@@ -2,8 +2,10 @@ import seed from "../../data/catalog-seed.json" with { type: "json" };
 import { applyClimbRates } from "./apply-climb.ts";
 import { applyReentries } from "./reentry.ts";
 import { parseHistoryDocument } from "./altitude-history.mjs";
+import { BLOB_PATH } from "./blob-data.mjs";
 import { parseReentryDocument } from "./reentries.mjs";
 import { parseGpLatest } from "./gp-latest.mjs";
+import { loadRemoteJson } from "./remote-json.mjs";
 import { chooseCatalogElements } from "./gp-source.ts";
 import { getObjectsConfig, buildCatalog, indexOmms } from "./build.ts";
 import type { CatalogPayload } from "./types.ts";
@@ -12,7 +14,6 @@ type Cache = { at: number; payload: CatalogPayload };
 let cache: Cache | null = null;
 const CACHE_MS = 10 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8000;
-const HISTORY_TIMEOUT_MS = 8000;
 
 const seedOmms = indexOmms((seed as { objects: unknown[] }).objects);
 const seedFetchedAt = (seed as { fetched_at: string }).fetched_at;
@@ -38,26 +39,6 @@ async function fetchJson(url: string, userAgent: string): Promise<unknown[] | nu
   }
 }
 
-async function fetchHistory(url: string, userAgent: string): Promise<unknown | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), HISTORY_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        "User-Agent": userAgent,
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
   if (cache && now.getTime() - cache.at < CACHE_MS) return cache.payload;
   const cfg = getObjectsConfig();
@@ -65,11 +46,21 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
 
   const [results, historyDoc, reentryDoc, gpLatestDoc] = await Promise.all([
     Promise.all(cfg.celestrak.queries.map((url) => fetchJson(url, cfg.userAgent))),
-    cfg.altitudeHistoryUrl
-      ? fetchHistory(cfg.altitudeHistoryUrl, cfg.userAgent)
-      : Promise.resolve(null),
-    cfg.reentriesUrl ? fetchHistory(cfg.reentriesUrl, cfg.userAgent) : Promise.resolve(null),
-    cfg.gpLatestUrl ? fetchHistory(cfg.gpLatestUrl, cfg.userAgent) : Promise.resolve(null),
+    loadRemoteJson({
+      pathname: BLOB_PATH.altitudeHistory,
+      githubUrl: cfg.altitudeHistoryUrl,
+      userAgent: cfg.userAgent,
+    }),
+    loadRemoteJson({
+      pathname: BLOB_PATH.reentries,
+      githubUrl: cfg.reentriesUrl,
+      userAgent: cfg.userAgent,
+    }),
+    loadRemoteJson({
+      pathname: BLOB_PATH.gpLatest,
+      githubUrl: cfg.gpLatestUrl,
+      userAgent: cfg.userAgent,
+    }),
   ]);
   const chosen = chooseCatalogElements({
     wanted,

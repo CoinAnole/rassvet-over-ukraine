@@ -1,5 +1,6 @@
 /**
- * Confirmed reentries, from CelesTrak SATCAT, stored on the data branch.
+ * Confirmed reentries, from CelesTrak SATCAT. The recorder writes the public
+ * Blob path `data/reentries.json`. The GitHub data branch is the fallback.
  * Records are never pruned. A missing decay date is not a record: the app
  * decides presumed reentry from a stale low orbit at read time.
  */

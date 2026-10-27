@@ -27,7 +27,7 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 | Key | Meaning |
 | --- | --- |
 | `raisedAltitudeKm` | 450 — Raised population gate. |
-| `reentriesUrl` | SATCAT decay records on the `data` branch. RASSVET-3 4 (`68363`) decayed 2026-06-06. |
+| `reentriesUrl` | GitHub fallback for SATCAT decay records. Blob `data/reentries.json` is read first. RASSVET-3 4 (`68363`) decayed 2026-06-06. |
 | `staleHours` | 72 — mark and still propagate |
 | `stepSeconds` | 30 — elevation sampling |
 | `minPassSeconds` | 60 — ignore shorter passes |
@@ -37,14 +37,16 @@ Do not hardcode on-orbit counts in the UI. Counts are derived from the catalog p
 ## Data
 
 - Source: CelesTrak public GP JSON.
-- Fallback: `src/data/catalog-seed.json` (snapshot dated in-file) if the live fetch fails.
+- If that fetch fails: public Blob `data/gp-latest.json`, then the GitHub `data` branch URL, then `src/data/catalog-seed.json` (snapshot dated in-file).
 - User-Agent: `RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)`.
 
 ## Altitude history
 
-`.github/workflows/altitude-history.yml` runs at 05:17 and 17:17 UTC, and when someone starts it by hand. Each run fetches the Rassvet GP JSON from CelesTrak once, appends `{norad, name, epoch, alt_km}` to `altitude-history.json` on the `data` branch, and drops epochs older than 60 days. That file is not on `main`. The run asks CelesTrak for the RASSVET name query and for each experimental launch query already listed in `celestrak.queries`. Rows are kept only for NORADs in the catalog, under the display name. It asks SATCAT only about a tracked object that is missing from those responses or whose epoch is more than 72 hours behind the newest one. A failed GP fetch retries, then fails the job. A feed with no new epochs succeeds and leaves the file as it was.
+`npm run record:altitudes` is the Blob writer (`node scripts/record-altitude-history.mjs --blob`). It needs `BLOB_READ_WRITE_TOKEN` and no other environment variable. It reads the prior history and reentries from the public Blob pathnames, merges, and writes them back. `data/gp-latest.json` is written only when every GP query succeeded. A CelesTrak fetch that still fails after retries exits 1 and does not update the files. A feed with no new epochs exits 0. Objects named RASSVET that are not in `objects.json` are a warning, and the count is printed as `unlisted_rassvet`. Run `npm run seed:blob` once before the first record so the log is the current `data` branch, not an empty file.
 
-The site reads `https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/altitude-history.json` and `reentries.json` with the catalog, on the same ten-minute cache. A missing history file, a window that is too short, or a newest epoch more than three days behind the newest epoch in the catalog leaves that rate unknown. Under 450 km the status is then rate pending, which is not counted as climbing, unless the object is reentering: no decay date, that same stale epoch, and a last altitude under 250 km or a decaying rate. `reentries.json` holds SATCAT-confirmed decays and is not pruned.
+`.github/workflows/altitude-history.yml` still runs at 05:17 and 17:17 UTC, and when someone starts it by hand. It writes the same three files on the `data` branch and does not use Blob. Each run fetches the Rassvet GP JSON from CelesTrak once, appends `{norad, name, epoch, alt_km}` to `altitude-history.json`, and drops epochs older than 60 days. Those files are not on `main`. The run asks CelesTrak for the RASSVET name query and for each experimental launch query already listed in `celestrak.queries`. Rows are kept only for NORADs in the catalog, under the display name. It asks SATCAT only about a tracked object that is missing from those responses or whose epoch is more than 72 hours behind the newest one. A failed GP fetch retries, then fails the job. A feed with no new epochs succeeds and leaves the file as it was.
+
+The site reads Blob first (`data/altitude-history.json`, `data/reentries.json`, `data/gp-latest.json`), then the raw `data` branch URLs, on the same ten-minute cache. A missing history file, a window that is too short, or a newest epoch more than three days behind the newest epoch in the catalog leaves that rate unknown. Under 450 km the status is then rate pending, which is not counted as climbing, unless the object is reentering: no decay date, that same stale epoch, and a last altitude under 250 km or a decaying rate. `reentries.json` holds SATCAT-confirmed decays and is not pruned.
 
 ## Pass list vs Today tile
 

@@ -8,6 +8,7 @@ import {
   rassvetGpUrl,
   rowsForCatalog,
   rowsFromGp,
+  unlistedRassvetObjects,
 } from "../src/lib/catalog/altitude-history.mjs";
 
 const NOW = new Date("2026-10-15T17:17:00Z");
@@ -140,5 +141,22 @@ describe("altitude history file", () => {
     assert.equal(rows?.[0].alt_km, 340.125);
     assert.equal(parseHistoryDocument({ objects: [] }), null);
     assert.equal(parseHistoryDocument(null), null);
+  });
+
+  it("lists RASSVET names that are not in the catalog, once per NORAD", () => {
+    const found = unlistedRassvetObjects(
+      [
+        { OBJECT_NAME: "RASSVET-3 1", NORAD_CAT_ID: 68360 },
+        { OBJECT_NAME: "RASSVET-3 27", NORAD_CAT_ID: 70001 },
+        { OBJECT_NAME: "RASSVET-3 27", NORAD_CAT_ID: 70001 },
+        { OBJECT_NAME: "OBJECT Z", NORAD_CAT_ID: 99999 },
+        { OBJECT_NAME: "Rassvet-1 No. 9", NORAD_CAT_ID: 57100 },
+      ],
+      [{ norad: 68360 }],
+    );
+    assert.deepEqual(found, [
+      { norad: 57100, name: "Rassvet-1 No. 9" },
+      { norad: 70001, name: "RASSVET-3 27" },
+    ]);
   });
 });
