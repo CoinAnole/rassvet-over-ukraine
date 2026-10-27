@@ -285,8 +285,8 @@ async function readCatalog(base) {
   if (status !== 200 || !payload || !Array.isArray(payload.objects)) {
     throw new Error(`GET /api/catalog HTTP ${status} missing objects`);
   }
-  if (payload.source !== "live" && payload.source !== "seed") {
-    throw new Error(`catalog source ${String(payload.source)} is not live or seed`);
+  if (payload.source !== "live" && payload.source !== "saved" && payload.source !== "seed") {
+    throw new Error(`catalog source ${String(payload.source)} is not live, saved, or seed`);
   }
   return {
     source: payload.source,

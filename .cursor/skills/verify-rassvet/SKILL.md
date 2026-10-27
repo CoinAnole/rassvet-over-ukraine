@@ -42,11 +42,11 @@ Teardown is `cleanup` below. Do not start this server with `npm run dev`; that b
 .cursor/skills/verify-rassvet/scripts/verify-rassvet.mjs doctor
 ```
 
-Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid is alive, its command line is the `vite dev --port <port>` process this harness spawned, `GET /` is HTTP 200 and contains `Rassvet over Ukraine`, and `GET /api/catalog` is JSON with `source` of `live` or `seed`.
+Run this first whenever the page looks wrong. Exit 0 JSON means the recorded pid is alive, its command line is the `vite dev --port <port>` process this harness spawned, `GET /` is HTTP 200 and contains `Rassvet over Ukraine`, and `GET /api/catalog` is JSON with `source` of `live`, `saved`, or `seed`.
 
 `catalog` in that JSON is the read to trust:
 
-- `source`: `live` (a GP response was parsed) or `seed` (live fetch failed; `src/data/catalog-seed.json` is in use).
+- `source`: `live` (a GP response was parsed), `saved` (live fetch failed; `gp-latest.json` on the data branch is in use), or `seed` (that file was missing too; `src/data/catalog-seed.json` is in use).
 - `fetchedAt`: element-set fetch time. The seed snapshot is dated `2026-09-20T12:32:36Z`.
 - `objectCount`, `staleOnOrbit` (raised, climbing, not climbing, and rate pending), `warning`.
 - Top-level `gpFixture`: `stale-in-set`, `stale-outside-set`, or null. A fixture launch still reports `source: live`, because the app parsed GP JSON. Say so in the proof notes. It is not a CelesTrak round trip.

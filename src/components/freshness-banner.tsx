@@ -4,6 +4,7 @@ import type { DataFreshness } from "@/lib/catalog/freshness";
 import type { StaleSummary } from "@/lib/catalog/stale-summary";
 import type { Lang } from "@/lib/catalog/types";
 import { getDict, groupLabel } from "@/lib/i18n";
+import { fallbackBannerText } from "@/lib/i18n/fallback-banner";
 import { staleBannerLine } from "@/lib/i18n/stale";
 import { cn } from "@/lib/cn";
 
@@ -31,11 +32,8 @@ export function FreshnessBanner({
   const t = getDict(lang);
   const [open, setOpen] = useState(false);
 
-  if (freshness.kind === "seed") {
-    const text = (freshness.staleCount > 0 ? t.freshness.seedStale : t.freshness.seed).replaceAll(
-      "{date}",
-      freshness.snapshotDate,
-    );
+  if (freshness.kind === "seed" || freshness.kind === "saved") {
+    const text = fallbackBannerText(lang, freshness);
     return (
       <p
         role="status"

@@ -10,6 +10,7 @@
   "userAgent": "RassvetOverUkraine/0.1 (unofficial geometric coverage tracker)",
   "altitudeHistoryUrl": "https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/altitude-history.json",
   "reentriesUrl": "https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/reentries.json",
+  "gpLatestUrl": "https://raw.githubusercontent.com/CoinAnole/rassvet-over-ukraine/data/gp-latest.json",
   "celestrak": {
     "queries": [
       "https://celestrak.org/NORAD/elements/gp.php?NAME=RASSVET&FORMAT=json",

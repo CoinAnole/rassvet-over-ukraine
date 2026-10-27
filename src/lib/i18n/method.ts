@@ -17,7 +17,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Data source and refresh",
       paragraphs: [
-        "Orbital data are public general-perturbations (GP) element sets from CelesTrak (JSON GP). Element sets are what catalogs often call TLEs (two-line elements). The server fetches them about every ten minutes and caches the result. If the live fetch fails, a dated checked-in snapshot is used and labelled as such. This site does not invent ephemeris and does not fit custom orbits.",
+        "Orbital data are public general-perturbations (GP) element sets from CelesTrak (JSON GP). Element sets are what catalogs often call TLEs (two-line elements). The server fetches them about every ten minutes and caches the result. If the live fetch fails, the GP snapshot saved by the altitude-history job is used. If that file is missing, a dated checked-in snapshot is used. Either fallback is labelled with its fetch time. This site does not invent ephemeris and does not fit custom orbits.",
         "The user-agent on catalog requests identifies this app as an unofficial geometric coverage tracker. No Space-Track credentials are shipped to the browser.",
       ],
     },
@@ -96,7 +96,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Джерело даних і оновлення",
       paragraphs: [
-        "Орбітальні дані — публічні набори елементів загальних збурень (GP) з CelesTrak (JSON GP). Набори елементів — це те, що в каталогах часто називають TLE (дворядкові елементи). Сервер запитує їх приблизно кожні десять хвилин і кешує результат. Якщо живе завантаження не вдається, використовується датований збережений знімок і це позначено. Сайт не вигадує ефемериди і не підганяє власні орбіти.",
+        "Орбітальні дані — публічні набори елементів загальних збурень (GP) з CelesTrak (JSON GP). Набори елементів — це те, що в каталогах часто називають TLE (дворядкові елементи). Сервер запитує їх приблизно кожні десять хвилин і кешує результат. Якщо живе завантаження не вдається, використовується знімок GP, збережений завданням історії висоти. Якщо того файла немає, використовується датований вбудований знімок. Запасний варіант позначено часом його завантаження. Сайт не вигадує ефемериди і не підганяє власні орбіти.",
         "User-agent запитів до каталогу називає цей застосунок неофіційним трекером геометричного покриття. Облікові дані Space-Track у браузер не потрапляють.",
       ],
     },
@@ -175,7 +175,7 @@ const CONTENT: Record<Lang, MethodSection[]> = {
     {
       heading: "Источник данных и обновление",
       paragraphs: [
-        "Орбитальные данные — публичные наборы элементов общих возмущений (GP) с CelesTrak (JSON GP). Наборы элементов — это то, что в каталогах часто называют TLE (двухстрочные элементы). Сервер запрашивает их примерно каждые десять минут и кэширует результат. Если живая загрузка не удаётся, используется датированный сохранённый снимок, и это обозначено. Сайт не выдумывает эфемериды и не подгоняет собственные орбиты.",
+        "Орбитальные данные — публичные наборы элементов общих возмущений (GP) с CelesTrak (JSON GP). Наборы элементов — это то, что в каталогах часто называют TLE (двухстрочные элементы). Сервер запрашивает их примерно каждые десять минут и кэширует результат. Если живая загрузка не удаётся, используется снимок GP, сохранённый задачей истории высоты. Если того файла нет, используется датированный встроенный снимок. Запасной вариант обозначен временем его загрузки. Сайт не выдумывает эфемериды и не подгоняет собственные орбиты.",
         "User-agent запросов к каталогу называет это приложение неофициальным трекером геометрического покрытия. Учётные данные Space-Track в браузер не попадают.",
       ],
     },

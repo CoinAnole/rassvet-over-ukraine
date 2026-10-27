@@ -33,6 +33,7 @@ import {
   reentryDocument,
   satcatUrl,
 } from "../src/lib/catalog/reentries.mjs";
+import { gpLatestDocument } from "../src/lib/catalog/gp-latest.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -183,6 +184,33 @@ export async function recordAltitudes(opts) {
   }
 
   const trackedIds = new Set(tracked.map((obj) => Number(obj.norad)));
+  if (successfulQueries === queries.length) {
+    const byNorad = new Map();
+    for (const row of gpRows) {
+      const norad = Number(row?.NORAD_CAT_ID);
+      if (!trackedIds.has(norad) || !row?.EPOCH || row.MEAN_MOTION == null) continue;
+      byNorad.set(norad, row);
+    }
+    if (byNorad.size > 0) {
+      const gpFile = file.replace(/altitude-history\.json$/, "gp-latest.json");
+      const next = `${JSON.stringify(gpLatestDocument([...byNorad.values()], now.toISOString()))}\n`;
+      let prev = null;
+      try {
+        prev = readFileSync(gpFile, "utf8");
+      } catch {
+        prev = null;
+      }
+      if (prev !== next) {
+        mkdirSync(dirname(gpFile), { recursive: true });
+        writeFileSync(gpFile, next);
+        log(`Wrote gp-latest.json (${byNorad.size} objects).`);
+        summary.push(`GP snapshot: ${byNorad.size} objects at ${now.toISOString()}.`);
+        changed = true;
+      }
+    }
+  } else {
+    log("Left gp-latest.json unchanged because a CelesTrak query failed.");
+  }
   const gpByNorad = new Map();
   for (const row of gpRows) {
     const norad = Number(row?.NORAD_CAT_ID);

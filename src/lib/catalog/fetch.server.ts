@@ -3,8 +3,10 @@ import { applyClimbRates } from "./apply-climb.ts";
 import { applyReentries } from "./reentry.ts";
 import { parseHistoryDocument } from "./altitude-history.mjs";
 import { parseReentryDocument } from "./reentries.mjs";
+import { parseGpLatest } from "./gp-latest.mjs";
+import { chooseCatalogElements } from "./gp-source.ts";
 import { getObjectsConfig, buildCatalog, indexOmms } from "./build.ts";
-import type { CatalogOmm, CatalogPayload } from "./types.ts";
+import type { CatalogPayload } from "./types.ts";
 
 type Cache = { at: number; payload: CatalogPayload };
 let cache: Cache | null = null;
@@ -60,37 +62,36 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
   if (cache && now.getTime() - cache.at < CACHE_MS) return cache.payload;
   const cfg = getObjectsConfig();
   const wanted = new Set(cfg.objects.map((o) => o.norad));
-  const merged = new Map<number, CatalogOmm>(seedOmms);
 
-  const [results, historyDoc, reentryDoc] = await Promise.all([
+  const [results, historyDoc, reentryDoc, gpLatestDoc] = await Promise.all([
     Promise.all(cfg.celestrak.queries.map((url) => fetchJson(url, cfg.userAgent))),
     cfg.altitudeHistoryUrl
       ? fetchHistory(cfg.altitudeHistoryUrl, cfg.userAgent)
       : Promise.resolve(null),
     cfg.reentriesUrl ? fetchHistory(cfg.reentriesUrl, cfg.userAgent) : Promise.resolve(null),
+    cfg.gpLatestUrl ? fetchHistory(cfg.gpLatestUrl, cfg.userAgent) : Promise.resolve(null),
   ]);
-  let liveHits = 0;
-  for (const list of results) {
-    if (!list) continue;
-    const idx = indexOmms(list);
-    for (const [id, omm] of idx) {
-      if (!wanted.has(id)) continue;
-      merged.set(id, omm);
-      liveHits += 1;
-    }
-  }
-
-  const liveOk = liveHits > 0;
+  const chosen = chooseCatalogElements({
+    wanted,
+    seedOmms,
+    seedFetchedAt,
+    liveLists: results,
+    saved: parseGpLatest(gpLatestDoc),
+    now,
+  });
   const historyRows = parseHistoryDocument(historyDoc);
   const payload = applyReentries(
     applyClimbRates(
       buildCatalog({
-        omms: merged,
-        fetchedAt: liveOk ? now.toISOString() : seedFetchedAt,
-        source: liveOk ? "live" : "seed",
-        warning: liveOk
-          ? null
-          : "Live catalog fetch failed; using a checked-in public GP snapshot from 2026-09-20.",
+        omms: chosen.omms,
+        fetchedAt: chosen.fetchedAt,
+        source: chosen.source,
+        warning:
+          chosen.source === "live"
+            ? null
+            : chosen.source === "saved"
+              ? "Live catalog fetch failed; using the saved GP snapshot."
+              : "Live catalog fetch failed; using a checked-in public GP snapshot from 2026-09-20.",
         now,
       }),
       historyRows,
@@ -99,7 +100,7 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
     historyRows,
   );
 
-  if (liveOk && payload.missingKnownIds.length > 0) {
+  if (chosen.source === "live" && payload.missingKnownIds.length > 0) {
     payload.warning = `Known NORAD IDs missing from the public catalog: ${payload.missingKnownIds.join(", ")}.`;
   }
 

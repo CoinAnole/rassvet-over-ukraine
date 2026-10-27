@@ -80,7 +80,7 @@ export function indexOmms(list: unknown[]): Map<number, CatalogOmm> {
 export function buildCatalog(opts: {
   omms: Map<number, CatalogOmm>;
   fetchedAt: string;
-  source: "live" | "seed";
+  source: "live" | "saved" | "seed";
   warning: string | null;
   now?: Date;
 }): CatalogPayload {
