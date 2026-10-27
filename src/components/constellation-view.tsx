@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -17,6 +17,7 @@ import { cn } from "@/lib/cn";
 import { getObjectsConfig } from "@/lib/catalog/build";
 import { sortConstellationRows, type ConstellationSort } from "@/lib/catalog/table-sort";
 import { SortHeader } from "@/components/sort-header";
+import { rowKeyAction } from "@/lib/a11y/row-keys";
 
 const GROUP_COLORS: Record<string, string> = {
   "exp-2023": "var(--color-muted)",
@@ -34,6 +35,9 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
   const [sort, setSort] = useState<ConstellationSort | null>(null);
   const select = useSelection((s) => s.select);
   const selected = useSelection((s) => s.norad);
+  const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
+  const [roving, setRoving] = useState(0);
+  const moveFocus = useRef(false);
 
   const onOrbit = catalog.objects.filter(
     (o) => o.status !== "decayed" && o.status !== "missing" && o.status !== "reentering",
@@ -72,8 +76,41 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
       });
   }, [rows]);
 
+  const rowIndex = Math.min(roving, Math.max(0, rows.length - 1));
+
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    rowRefs.current[rowIndex]?.focus();
+  }, [rowIndex]);
+
+  const onRowKey = (index: number, key: string, norad: number) => {
+    const action = rowKeyAction(key, index, rows.length);
+    if (action.type === "move") {
+      moveFocus.current = true;
+      setRoving(action.index);
+      return true;
+    }
+    if (action.type === "select") {
+      select(norad);
+      return true;
+    }
+    return false;
+  };
+
+  const onChartKey = (key: string) => {
+    const current = points.findIndex((p) => p.norad === selected);
+    const action = rowKeyAction(key, current < 0 ? 0 : current, points.length);
+    if (action.type !== "move" && action.type !== "select") return false;
+    const index = action.type === "move" ? action.index : Math.max(0, current);
+    const hit = points[index];
+    if (hit) select(hit.norad);
+    return true;
+  };
+
   return (
     <div className="flex flex-col gap-6">
+      <h2 className="text-sm font-medium">{t.constellation.title}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat label={t.constellation.onOrbit} value={onOrbit.length} />
         <Stat label={t.constellation.raised} value={raised.length} />
@@ -92,6 +129,7 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
         <label className="flex items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
+            name="hide-decayed"
             checked={hideDecayed}
             onChange={(e) => setHideDecayed(e.target.checked)}
           />
@@ -101,6 +139,8 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
           {t.constellation.filterGroup}
           <select
             className="control-select w-auto min-w-48"
+            name="launch-group"
+            autoComplete="off"
             value={group}
             onChange={(e) => setGroup(e.target.value)}
           >
@@ -117,7 +157,15 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
       </div>
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-3">
-        <div className="h-[320px] w-full">
+        <div
+          className="h-[320px] w-full"
+          tabIndex={0}
+          role="group"
+          aria-label={t.constellation.chart}
+          onKeyDown={(e) => {
+            if (onChartKey(e.key)) e.preventDefault();
+          }}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 12, right: 12, bottom: 28, left: 8 }}>
               <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
@@ -261,10 +309,22 @@ export function ConstellationView({ lang, catalog }: { lang: Lang; catalog: Cata
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <tr
                 key={row.norad}
-                onClick={() => select(row.norad)}
+                ref={(node) => {
+                  rowRefs.current[index] = node;
+                }}
+                tabIndex={index === rowIndex ? 0 : -1}
+                aria-selected={selected === row.norad}
+                onClick={() => {
+                  moveFocus.current = true;
+                  setRoving(index);
+                  select(row.norad);
+                }}
+                onKeyDown={(e) => {
+                  if (onRowKey(index, e.key, row.norad)) e.preventDefault();
+                }}
                 className={cn(
                   "cursor-pointer border-t border-border hover:bg-elevated",
                   selected === row.norad && "bg-elevated",

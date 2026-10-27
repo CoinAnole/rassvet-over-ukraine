@@ -39,6 +39,7 @@ export function ShareLink({
 }) {
   const t = getDict(lang);
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [canShare, setCanShare] = useState(false);
   const timer = useRef<number | null>(null);
 
@@ -55,11 +56,13 @@ export function ShareLink({
     syncUrl();
     try {
       await writeClipboard(href());
+      setFailed(false);
       setCopied(true);
       if (timer.current != null) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setFailed(true);
     }
   };
 
@@ -93,6 +96,14 @@ export function ShareLink({
       <p id="share-link-hint" className="text-xs leading-snug text-subtle">
         {t.share.hint}
       </p>
+      <p aria-live="polite" className="sr-only">
+        {copied ? t.share.copied : failed ? t.share.failed : ""}
+      </p>
+      {failed ? (
+        <p role="alert" className="text-xs leading-snug text-status-decay">
+          {t.share.failed}
+        </p>
+      ) : null}
     </div>
   );
 }

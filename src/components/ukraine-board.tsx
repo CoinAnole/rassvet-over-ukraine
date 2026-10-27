@@ -28,6 +28,7 @@ import { useSelection } from "@/lib/selection";
 import type { ViewSearch, ViewState } from "@/lib/view-state";
 import { Button } from "@/components/ui/button";
 import { ShareLink } from "@/components/share-link";
+import { rowKeyAction } from "@/lib/a11y/row-keys";
 
 export type ClockControl = {
   /** Instant the current coverage result was computed for. */
@@ -92,7 +93,7 @@ export function UkraineBoard({
         : null;
   const zone = tzName(view.tz);
   const placeLabel = view.place === "custom" ? t.places.custom : t.places[view.place as PlaceId];
-  const heldDay = clock.live ? undefined : formatCivilDay(clock.coverageAt, zone);
+  const heldDay = clock.live ? undefined : formatCivilDay(clock.coverageAt, zone, lang);
   const sentence = result
     ? coverageSentence(lang, {
         el: view.el,
@@ -104,7 +105,7 @@ export function UkraineBoard({
     : "…";
   const offsetLabel = formatClockOffset(clock.offsetMs, t.units.hour, t.units.min);
   const banner = t.clock.banner
-    .replaceAll("{when}", `${formatDayClock(clock.displayAt, zone)} ${t.tz[view.tz]}`)
+    .replaceAll("{when}", `${formatDayClock(clock.displayAt, zone, lang)} ${t.tz[view.tz]}`)
     .replaceAll("{offset}", offsetLabel);
 
   const nowNames = result?.nowVisible ?? [];
@@ -173,8 +174,8 @@ export function UkraineBoard({
           {result?.longestToday ? (
             <>
               <p className="font-mono text-2xl font-medium tabular">
-                {formatClock(new Date(result.longestToday.start), zone)}–
-                {formatClock(new Date(result.longestToday.end), zone)}
+                {formatClock(new Date(result.longestToday.start), zone, lang)}–
+                {formatClock(new Date(result.longestToday.end), zone, lang)}
               </p>
               <p className="mt-1 text-xs text-muted">
                 {result.longestToday.durationMin} {t.units.min} ·{" "}
@@ -196,7 +197,7 @@ export function UkraineBoard({
                 {formatCountdown(result.next.remainingMs)}
               </p>
               <p className="mt-1 text-xs text-muted">
-                LOS {formatClock(new Date(result.next.los), zone)}
+                LOS {formatClock(new Date(result.next.los), zone, lang)}
               </p>
             </>
           ) : result?.next.state === "later" ? (
@@ -205,7 +206,7 @@ export function UkraineBoard({
                 {formatCountdown(result.next.inMs)}
               </p>
               <p className="mt-1 text-xs text-muted">
-                AOS {formatDayClock(new Date(result.next.aos), zone)}
+                AOS {formatDayClock(new Date(result.next.aos), zone, lang)}
               </p>
             </>
           ) : (
@@ -272,6 +273,8 @@ function ControlRow({
   const t = getDict(lang);
   const [latDraft, setLatDraft] = useState(String(view.lat));
   const [lonDraft, setLonDraft] = useState(String(view.lon));
+  const [coordError, setCoordError] = useState(false);
+  const latRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3">
@@ -280,6 +283,8 @@ function ControlRow({
         <Field label={t.controls.location}>
           <select
             className="control-select"
+            name="place"
+            autoComplete="off"
             value={view.place}
             onChange={(e) => {
               const id = e.target.value as PlaceId | "custom";
@@ -304,6 +309,8 @@ function ControlRow({
         <Field label={t.controls.minEl}>
           <select
             className="control-select"
+            name="elevation"
+            autoComplete="off"
             value={view.el}
             onChange={(e) => onChange({ el: Number(e.target.value) as 10 | 25 | 40 })}
           >
@@ -318,6 +325,8 @@ function ControlRow({
           <Field label={t.controls.population}>
             <select
               className="control-select"
+              name="population"
+              autoComplete="off"
               value={view.set}
               onChange={(e) => onChange({ set: e.target.value as PopulationFilter })}
             >
@@ -336,6 +345,8 @@ function ControlRow({
         <Field label={t.controls.timezone}>
           <select
             className="control-select"
+            name="timezone"
+            autoComplete="off"
             value={view.tz}
             onChange={(e) => onChange({ tz: e.target.value as TimezoneId })}
           >
@@ -350,8 +361,14 @@ function ControlRow({
         <div className="flex flex-wrap items-end gap-2">
           <Field label={t.controls.lat}>
             <input
+              ref={latRef}
               className="control-select w-36"
+              name="lat"
               inputMode="decimal"
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={coordError}
+              aria-describedby={coordError ? "coord-error" : undefined}
               value={latDraft}
               onChange={(e) => setLatDraft(e.target.value)}
             />
@@ -359,7 +376,12 @@ function ControlRow({
           <Field label={t.controls.lon}>
             <input
               className="control-select w-36"
+              name="lon"
               inputMode="decimal"
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={coordError}
+              aria-describedby={coordError ? "coord-error" : undefined}
               value={lonDraft}
               onChange={(e) => setLonDraft(e.target.value)}
             />
@@ -367,9 +389,14 @@ function ControlRow({
           <Button
             variant="primary"
             onClick={() => {
-              const lat = Number(latDraft);
-              const lon = Number(lonDraft);
-              if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+              const lat = parseCoord(latDraft);
+              const lon = parseCoord(lonDraft);
+              if (lat == null || lon == null) {
+                setCoordError(true);
+                latRef.current?.focus();
+                return;
+              }
+              setCoordError(false);
               onChange({
                 place: "custom",
                 lat: Math.max(-90, Math.min(90, lat)),
@@ -379,6 +406,11 @@ function ControlRow({
           >
             {t.controls.apply}
           </Button>
+          {coordError ? (
+            <p id="coord-error" role="alert" className="basis-full text-xs text-status-decay">
+              {t.controls.coordError}
+            </p>
+          ) : null}
         </div>
       ) : null}
       <ClockScrub lang={lang} tz={view.tz} clock={clock} />
@@ -416,7 +448,7 @@ function ClockScrub({ lang, tz, clock }: { lang: Lang; tz: TimezoneId; clock: Cl
               {clock.live ? t.clock.live : t.clock.notLive}
             </span>
             <span className="font-mono text-sm text-fg tabular">
-              {formatCivilDay(clock.displayAt, zone)} {formatClock(clock.displayAt, zone)}
+              {formatCivilDay(clock.displayAt, zone, lang)} {formatClock(clock.displayAt, zone, lang)}
             </span>
             <span className="text-xs text-muted">{t.tz[tz]}</span>
             {clock.live ? null : (
@@ -441,7 +473,7 @@ function ClockScrub({ lang, tz, clock }: { lang: Lang; tz: TimezoneId; clock: Cl
           hours={hours}
           offsetLabel={offsetLabel}
           scrubLabel={t.clock.scrub}
-          bandLabel={(band) => scrubBandText(t.clock.band, band, zone)}
+          bandLabel={(band) => scrubBandText(t.clock.band, band, zone, lang)}
         />
         <div className="flex justify-between font-mono text-[10px] text-subtle tabular">
           <span>−48 {t.units.hour}</span>
@@ -475,12 +507,19 @@ const SCRUB_THUMB_PX = 16;
 const SCRUB_BAND_MIN_PX = 4;
 const SCRUB_HIT_PX = 10;
 
-function scrubBandText(template: string, band: ScrubBand, zone: string): string {
+function scrubBandText(template: string, band: ScrubBand, zone: string, lang: Lang): string {
   const minutes = Math.max(1, Math.round((band.visibleEnd - band.visibleStart) / 60_000));
   return template
-    .replaceAll("{start}", formatDayClock(new Date(band.visibleStart), zone))
-    .replaceAll("{end}", formatDayClock(new Date(band.visibleEnd), zone))
+    .replaceAll("{start}", formatDayClock(new Date(band.visibleStart), zone, lang))
+    .replaceAll("{end}", formatDayClock(new Date(band.visibleEnd), zone, lang))
     .replaceAll("{minutes}", String(minutes));
+}
+
+function parseCoord(raw: string): number | null {
+  const text = raw.trim().replace(",", ".");
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(text)) return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
 }
 
 function hoursFromClientX(clientX: number, rect: DOMRect): number {
@@ -608,6 +647,7 @@ function ScrubTrack({
         max={48}
         step="any"
         value={Number.isFinite(hours) ? Math.max(-48, Math.min(48, hours)) : 0}
+        name="offset"
         aria-label={scrubLabel}
         aria-valuemin={-48}
         aria-valuemax={48}
@@ -685,6 +725,8 @@ function CivilTimeField({
       <input
         type="datetime-local"
         className="control-select max-w-xs"
+        name="when"
+        autoComplete="off"
         value={shown}
         min={min}
         max={max}
@@ -763,11 +805,35 @@ export function PassTable({
   const selected = useSelection((s) => s.norad);
   const select = useSelection((s) => s.select);
   const [sort, setSort] = useState<PassSort | null>(null);
+  const [roving, setRoving] = useState(0);
+  const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
+  const moveFocus = useRef(false);
   const incoming = result?.passes36h ?? [];
   const rows = useMemo(
     () => sortPassRows(incoming, sort, (id) => groupLabel(lang, id, id), lang),
     [incoming, sort, lang],
   );
+
+  const rowIndex = Math.min(roving, Math.max(0, rows.length - 1));
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    rowRefs.current[rowIndex]?.focus();
+  }, [rowIndex]);
+
+  const onRowKey = (index: number, key: string, norad: number) => {
+    const action = rowKeyAction(key, index, rows.length);
+    if (action.type === "move") {
+      moveFocus.current = true;
+      setRoving(action.index);
+      return true;
+    }
+    if (action.type === "select") {
+      select(norad);
+      return true;
+    }
+    return false;
+  };
 
   const nextId = useMemo(() => {
     const open = rows.find((r) => r.aos <= nowMs && r.los > nowMs);
@@ -783,7 +849,7 @@ export function PassTable({
         {held ? t.passList.hintHeld : t.passList.hint}
       </p>
       <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-        <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+        <table className="virtual-rows w-full min-w-[860px] border-collapse text-left text-sm">
           <thead className="bg-elevated text-[11px] uppercase tracking-[0.12em] text-muted">
             <tr>
               <SortHeader label={t.passList.aos} column="aos" sort={sort} onSort={setSort} />
@@ -814,23 +880,35 @@ export function PassTable({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => {
+              rows.map((row, index) => {
                 const key = row.norad + ":" + row.aos;
                 const isSel = selected === row.norad || nextId === key;
                 return (
                   <tr
                     key={key}
-                    onClick={() => select(row.norad)}
+                    ref={(node) => {
+                      rowRefs.current[index] = node;
+                    }}
+                    tabIndex={index === rowIndex ? 0 : -1}
+                    aria-selected={selected === row.norad}
+                    onClick={() => {
+                      moveFocus.current = true;
+                      setRoving(index);
+                      select(row.norad);
+                    }}
+                    onKeyDown={(e) => {
+                      if (onRowKey(index, e.key, row.norad)) e.preventDefault();
+                    }}
                     className={cn(
                       "cursor-pointer border-t border-border hover:bg-elevated",
                       isSel && "bg-elevated",
                     )}
                   >
                     <td className="px-3 py-2 font-mono text-xs tabular">
-                      {formatDayClock(new Date(row.aos), zone)}
+                      {formatDayClock(new Date(row.aos), zone, lang)}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs tabular">
-                      {formatDayClock(new Date(row.los), zone)}
+                      {formatDayClock(new Date(row.los), zone, lang)}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs tabular">
                       {Math.round((row.los - row.aos) / 60_000)} {t.units.min}

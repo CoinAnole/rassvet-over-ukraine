@@ -1,7 +1,9 @@
 {
   "productTitle": "Rassvet over Ukraine",
   "productSubtitle": "Unofficial geometric coverage estimate from public orbit catalogs",
+  "skip": "Skip to content",
   "nav": {
+    "primary": "Primary",
     "ukraine": "Ukraine today",
     "constellation": "Constellation",
     "method": "Method"
@@ -53,12 +55,14 @@
     "custom": "Custom lat/lon",
     "lat": "Latitude",
     "lon": "Longitude",
-    "apply": "Apply"
+    "apply": "Apply",
+    "coordError": "Enter a latitude and a longitude as numbers."
   },
   "share": {
     "copy": "Copy link",
     "copied": "Copied",
     "share": "Share",
+    "failed": "Couldn't copy the link. Copy the address from the browser bar.",
     "hint": "Link to this ground point, minimum elevation, and held clock."
   },
   "clock": {
@@ -138,7 +142,8 @@
     "raised": "Raised ≥450 km",
     "climbing": "Climbing <450 km",
     "stuck": "Not climbing",
-    "pending": "Rate pending"
+    "pending": "Rate pending",
+    "label": "Coverage map"
   },
   "cityStrip": {
     "label": "Same mask and population, other cities",
@@ -147,6 +152,7 @@
   },
   "constellation": {
     "title": "Constellation",
+    "chart": "Altitude against days since launch. Arrow keys select a satellite.",
     "caption": "Raised is at least 450 km. Below that, climbing means a recent altitude history steeper than 0.8 km/day. A flat or falling history is not climbing. When the rate is unknown, the status is rate pending and is not counted as climbing. The rate column is that slope in kilometres per day. Each point is a public catalog element set. Objects take weeks to months to climb; a launch is not coverage that week.",
     "xAxis": "Days since launch",
     "yAxis": "Approx. altitude (a − Re), km",
@@ -179,6 +185,11 @@
   "method": {
     "title": "Method",
     "lede": "This page is the contract. Numbers on the other screens are only as good as the definitions below."
+  },
+  "error": {
+    "title": "Something went wrong",
+    "body": "An unexpected error occurred. Try reloading the page.",
+    "reload": "Reload"
   },
   "warning": "Warning",
   "freshness": {

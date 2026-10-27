@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { resolveLang } from "./resolve-lang.ts";
+import { langFromMatch, resolveLang } from "./resolve-lang.ts";
 
 describe("resolveLang", () => {
   it("lets an explicit address language win over the profile and the header", () => {
@@ -15,6 +15,31 @@ describe("resolveLang", () => {
     assert.equal(resolveLang({ urlLang: undefined, cookie: "uk", acceptLanguage: "en-US" }), "uk");
     assert.equal(resolveLang({ urlLang: null, cookie: "ru", acceptLanguage: "uk-UA" }), "ru");
     assert.equal(resolveLang({ cookie: "en", acceptLanguage: "uk" }), "en");
+  });
+
+  it("uses the route language as the document language, then the cookie", () => {
+    assert.equal(
+      langFromMatch({
+        search: { lang: "uk" },
+        loaderData: { profile: { cookie: "en", acceptLanguage: "ru" } },
+      }),
+      "uk",
+    );
+    assert.equal(
+      langFromMatch({
+        search: {},
+        loaderData: { profile: { cookie: "ru", acceptLanguage: "en" } },
+      }),
+      "ru",
+    );
+    assert.equal(
+      langFromMatch({
+        search: { lang: "en" },
+        loaderData: { profile: { cookie: "uk", acceptLanguage: "ru" } },
+      }),
+      "en",
+    );
+    assert.equal(langFromMatch(undefined), "en");
   });
 
   it("uses Accept-Language only when the address and the profile are unset", () => {

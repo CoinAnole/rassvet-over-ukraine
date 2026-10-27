@@ -1,5 +1,11 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/400-italic.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
 @theme {
   --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -37,6 +43,15 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: dark;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (pointer: fine) {
+    html {
+      overscroll-behavior: none;
+    }
   }
 
   html,
@@ -51,6 +66,9 @@
     margin: 0;
     font-family: var(--font-sans);
     line-height: 1.5;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   button:not(:disabled),
@@ -107,6 +125,10 @@
   pointer-events: none;
 }
 
+.scrub-bands:focus-within {
+  z-index: 4;
+}
+
 .scrub-band {
   position: absolute;
   top: 0;
@@ -133,6 +155,11 @@
 .scrub-band:hover .scrub-band-fill,
 .scrub-band:focus-visible .scrub-band-fill {
   background: color-mix(in oklab, var(--color-status-raised) 78%, transparent);
+}
+
+.scrub-band:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .clock-range {
@@ -182,6 +209,12 @@
   background: var(--color-fg);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-fg) 28%, transparent);
   cursor: grab;
+}
+
+.clock-range:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
 }
 
 .control-select {
@@ -244,6 +277,11 @@
 
 .leaflet-tooltip.rassvet-tip::before {
   border-top-color: var(--color-elevated);
+}
+
+.virtual-rows > tbody > tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 41px;
 }
 
 @media (prefers-reduced-motion: reduce) {

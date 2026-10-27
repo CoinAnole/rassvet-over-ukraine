@@ -1,11 +1,19 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, useMatches } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import appCss from "../styles.css?url";
+import sansLatin from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2?url";
+import sansCyrillic from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-cyrillic-400-normal.woff2?url";
+import monoLatin from "@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2?url";
 import site from "@/lib/og/site.json";
+import { DocumentLangProvider, useDocumentLang } from "@/components/document-lang";
+import { LANG_KEY } from "@/lib/i18n";
+import { langFromMatch } from "@/lib/i18n/resolve-lang";
 import { useState, type ReactNode } from "react";
 
 const SHARE_ORIGIN = site.url.replace(/\/+$/, "");
 const SHARE_IMAGE = `${SHARE_ORIGIN}/og.jpg`;
+
+const LANG_BOOT = `(function(){try{var k=${JSON.stringify(LANG_KEY)};var ls=localStorage.getItem(k);if(ls!=="en"&&ls!=="uk"&&ls!=="ru")return;var m=document.cookie.match(new RegExp("(?:^|; )"+k+"=([^;]*)"));var cookie=m?decodeURIComponent(m[1]):"";if(cookie===ls)return;var secure=location.protocol==="https:"?"; Secure":"";document.cookie=k+"="+ls+"; Path=/; Max-Age=31536000; SameSite=Lax"+secure;}catch(e){}})();`;
 
 function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -15,6 +23,16 @@ function Providers({ children }: { children: ReactNode }) {
       }),
   );
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+function fontPreload(href: string) {
+  return {
+    rel: "preload" as const,
+    href,
+    as: "font" as const,
+    type: "font/woff2",
+    crossOrigin: "anonymous" as const,
+  };
 }
 
 export const Route = createRootRoute({
@@ -40,18 +58,32 @@ export const Route = createRootRoute({
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap",
-      },
+      fontPreload(sansLatin),
+      fontPreload(sansCyrillic),
+      fontPreload(monoLatin),
     ],
   }),
-  component: () => (
-    <html lang="en" className="antialiased" suppressHydrationWarning>
+  component: Root,
+});
+
+function Root() {
+  const matches = useMatches();
+  const serverLang = langFromMatch(matches[matches.length - 1]);
+  return (
+    <DocumentLangProvider serverLang={serverLang}>
+      <RootHtml />
+    </DocumentLangProvider>
+  );
+}
+
+function RootHtml() {
+  const doc = useDocumentLang();
+  const lang = doc?.lang ?? "en";
+  return (
+    <html lang={lang} className="antialiased">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: LANG_BOOT }} />
       </head>
       <body>
         <Providers>
@@ -60,5 +92,5 @@ export const Route = createRootRoute({
         <Scripts />
       </body>
     </html>
-  ),
-});
+  );
+}

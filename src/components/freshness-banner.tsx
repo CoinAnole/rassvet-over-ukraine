@@ -69,7 +69,7 @@ export function FreshnessBanner({
         aria-expanded={open}
         aria-controls="stale-gp-details"
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 w-full flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-left"
+        className="flex min-h-11 w-full flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-bg/40"
       >
         <span role="status" className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
           <span
@@ -130,7 +130,8 @@ export function FreshnessBanner({
             <Link
               to="/method"
               hash="stale-element-sets"
-              className="text-accent underline decoration-border-strong underline-offset-2"
+              search={{ lang: lang === "en" ? undefined : lang }}
+              className="text-accent underline decoration-border-strong underline-offset-2 hover:text-fg"
             >
               {t.freshness.methodLink}
             </Link>

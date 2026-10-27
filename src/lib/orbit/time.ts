@@ -1,4 +1,11 @@
+import type { Lang } from "../catalog/types.ts";
 import { TIMEZONES, type TimezoneId } from "./constants.ts";
+
+const DATE_LOCALE: Record<Lang, string> = {
+  en: "en-GB",
+  uk: "uk-UA",
+  ru: "ru-RU",
+};
 
 export function tzName(id: TimezoneId): string {
   return TIMEZONES[id];
@@ -75,35 +82,51 @@ export function formatInZone(
     minute: "2-digit",
     hourCycle: "h23",
   },
+  lang: Lang = "en",
 ): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone, ...opts }).format(date);
+  return new Intl.DateTimeFormat(DATE_LOCALE[lang], { timeZone, ...opts }).format(date);
 }
 
-export function formatClock(date: Date, timeZone: string): string {
-  return formatInZone(date, timeZone, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  });
+export function formatClock(date: Date, timeZone: string, lang: Lang = "en"): string {
+  return formatInZone(
+    date,
+    timeZone,
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    },
+    lang,
+  );
 }
 
-export function formatDayClock(date: Date, timeZone: string): string {
-  return formatInZone(date, timeZone, {
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  });
+export function formatDayClock(date: Date, timeZone: string, lang: Lang = "en"): string {
+  return formatInZone(
+    date,
+    timeZone,
+    {
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    },
+    lang,
+  );
 }
 
-export function formatCivilDay(date: Date, timeZone: string): string {
-  return formatInZone(date, timeZone, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+export function formatCivilDay(date: Date, timeZone: string, lang: Lang = "en"): string {
+  return formatInZone(
+    date,
+    timeZone,
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    },
+    lang,
+  );
 }
 
 /** `datetime-local` value for the civil time of `date` in `timeZone` (`YYYY-MM-DDTHH:mm`). */
