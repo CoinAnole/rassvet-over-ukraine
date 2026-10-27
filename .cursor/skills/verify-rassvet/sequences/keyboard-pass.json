@@ -1,0 +1,28 @@
+[
+  { "action": "open", "path": "/" },
+  { "action": "focus", "role": "button", "name": "Live / now" },
+  { "action": "press", "key": "Tab" },
+  { "action": "press", "key": "Tab" },
+  { "action": "expect", "focusedName": "Offset from real now" },
+  { "action": "expect", "focusRing": true },
+  { "action": "expect", "selector": "table.virtual-rows tbody tr[tabindex='0']", "count": 1 },
+  { "action": "focus", "role": "button", "name": "Status" },
+  { "action": "press", "key": "Tab" },
+  { "action": "expect", "focusedRole": "row" },
+  { "action": "press", "key": "ArrowDown" },
+  { "action": "press", "key": "Enter" },
+  { "action": "expect", "focusedRole": "row" },
+  { "action": "expect", "focusedAttr": "aria-selected=true" },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/keyboard/pass.png",
+    "fullPage": true,
+    "feature": "keyboard"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/keyboard/pass.aria.txt",
+    "feature": "keyboard"
+  }
+]

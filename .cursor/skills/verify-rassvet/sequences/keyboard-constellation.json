@@ -1,0 +1,32 @@
+[
+  { "action": "open", "path": "/constellation" },
+  { "action": "expect", "role": "heading", "name": "Constellation" },
+  { "action": "expect", "selector": "table tbody tr[tabindex='0']", "count": 1 },
+  { "action": "focus", "role": "button", "name": "Element-set epoch" },
+  { "action": "press", "key": "Tab" },
+  { "action": "expect", "focusedRole": "row" },
+  { "action": "press", "key": "ArrowDown" },
+  { "action": "press", "key": "Enter" },
+  { "action": "expect", "focusedRole": "row" },
+  { "action": "expect", "focusedAttr": "aria-selected=true" },
+  {
+    "action": "focus",
+    "role": "group",
+    "name": "Altitude against days since launch. Arrow keys select a satellite."
+  },
+  { "action": "press", "key": "ArrowDown" },
+  { "action": "expect", "focusedRole": "group" },
+  { "action": "expect", "selector": "tr[aria-selected='true']", "count": 1 },
+  {
+    "action": "screenshot",
+    "path": ".cursor/skills/verify-rassvet/evidence/keyboard/constellation.png",
+    "fullPage": true,
+    "feature": "keyboard"
+  },
+  {
+    "action": "snapshot",
+    "aria": true,
+    "path": ".cursor/skills/verify-rassvet/evidence/keyboard/constellation.aria.txt",
+    "feature": "keyboard"
+  }
+]

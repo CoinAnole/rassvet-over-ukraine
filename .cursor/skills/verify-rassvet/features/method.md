@@ -32,5 +32,5 @@ Preconditions:
 
 - Method has no place, elevation, or clock controls. Do not expect `at` or `el` on this URL.
 - The page is long. Use `--full-page` so the mask and stale headings are in the screenshot, and use the heading expects for the ones below the fold.
-- Language on Method comes from the profile, not from `?lang=` on `/method`. See the language map.
+- `lang=uk` or `lang=ru` on `/method` selects that language. English omits `lang`. See the language map.
 - The nav link and the page title are both named `Method`. The page title expect uses `--role heading`.

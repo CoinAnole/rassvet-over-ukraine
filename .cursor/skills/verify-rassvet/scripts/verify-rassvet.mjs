@@ -75,6 +75,7 @@ function usage() {
   verify-rassvet.mjs browser focus --role <role> --name <name>
   verify-rassvet.mjs browser focus --selector <css>
   verify-rassvet.mjs browser press --key <key>
+  verify-rassvet.mjs browser dom
   verify-rassvet.mjs browser range --name <name> --value <number>
   verify-rassvet.mjs browser snapshot --aria --path <file> [--feature <id>]
   verify-rassvet.mjs browser screenshot --path <file> [--full-page] [--feature <id>]
@@ -82,7 +83,7 @@ function usage() {
   verify-rassvet.mjs browser text
   verify-rassvet.mjs browser section --contains <text>
   verify-rassvet.mjs browser count --selector <css>
-  verify-rassvet.mjs browser expect [--text <text>] [--any <text> ...] [--absent <text>] [--url-includes <text>] [--section <text>] [--selector <css>] [--attr <name=value>] [--role <role> --name <name>]`;
+  verify-rassvet.mjs browser expect [--text <text>] [--any <text> ...] [--absent <text>] [--url-includes <text>] [--url-absent <text>] [--html-lang <code>] [--section <text>] [--selector <css>] [--count <n>] [--attr <name=value>] [--role <role> --name <name>] [--focused-role <role>] [--focused-name <text>] [--focused-attr <name=value>] [--focus-ring]`;
 }
 
 function addFlag(flags, key, value) {
@@ -716,6 +717,10 @@ async function perform(page, action, positional, flags, navigate = true) {
         return { ok: true, action, key: flags.key };
       }
 
+      if (action === "dom") {
+        return { ok: true, action, ...(await focusProbe(page)) };
+      }
+
       if (action === "range") {
         if (!flags.name || flags.value == null) throw new Error("range requires --name and --value");
         const slider = page.getByRole("slider", { name: String(flags.name), exact: true });
@@ -841,25 +846,75 @@ async function perform(page, action, positional, flags, navigate = true) {
         if (flags["url-includes"] && !page.url().includes(String(flags["url-includes"]))) {
           problems.push(`url ${page.url()} missing ${JSON.stringify(flags["url-includes"])}`);
         }
+        if (flags["url-absent"] && page.url().includes(String(flags["url-absent"]))) {
+          problems.push(`url ${page.url()} unexpectedly included ${JSON.stringify(flags["url-absent"])}`);
+        }
+        const probe =
+          flags["html-lang"] || flags["focused-role"] || flags["focused-name"] || flags["focused-attr"] || flags["focus-ring"]
+            ? await focusProbe(page)
+            : null;
+        if (flags["html-lang"] && probe.htmlLang !== String(flags["html-lang"])) {
+          problems.push(`html lang was ${JSON.stringify(probe.htmlLang)}, expected ${JSON.stringify(String(flags["html-lang"]))}`);
+        }
+        if (flags["focused-role"] && probe.role !== String(flags["focused-role"])) {
+          problems.push(`focused role was ${JSON.stringify(probe.role)}, expected ${JSON.stringify(String(flags["focused-role"]))}`);
+        }
+        if (flags["focused-name"] && !probe.name.includes(String(flags["focused-name"]))) {
+          problems.push(`focused name ${JSON.stringify(probe.name)} missing ${JSON.stringify(String(flags["focused-name"]))}`);
+        }
+        if (flags["focused-attr"]) {
+          const raw = String(flags["focused-attr"]);
+          const eq = raw.indexOf("=");
+          if (eq <= 0) throw new Error("--focused-attr must be name=value");
+          const attrName = raw.slice(0, eq);
+          const expected = raw.slice(eq + 1);
+          const value =
+            attrName === "aria-selected"
+              ? probe.ariaSelected
+              : attrName === "tabindex"
+                ? probe.tabIndex
+                : await page.evaluate((name) => document.activeElement?.getAttribute(name) ?? null, attrName);
+          if (value !== expected) {
+            problems.push(`focused ${attrName} was ${JSON.stringify(value)}, expected ${JSON.stringify(expected)}`);
+          }
+        }
+        if (flags["focus-ring"]) {
+          const width = Number.parseFloat(probe.outlineWidth || "0");
+          if (probe.outlineStyle === "none" || !(width > 0)) {
+            problems.push(`focused outline was ${probe.outlineStyle} ${probe.outlineWidth}`);
+          }
+        }
+        if (flags.count != null) {
+          if (!flags.selector) throw new Error("--count requires --selector");
+          const n = await page.locator(String(flags.selector)).count();
+          if (n !== Number(flags.count)) problems.push(`count was ${n}, expected ${flags.count}`);
+        }
         if (
           !flags.text &&
           !flags.absent &&
           !flags["url-includes"] &&
+          !flags["url-absent"] &&
+          !flags["html-lang"] &&
+          !flags["focused-role"] &&
+          !flags["focused-name"] &&
+          !flags["focused-attr"] &&
+          !flags["focus-ring"] &&
+          flags.count == null &&
           !anys.length &&
           !flags.section &&
           !flags.attr &&
           !(flags.role && flags.name)
         ) {
           throw new Error(
-            "expect needs --text, --any, --absent, --url-includes, --section, --attr, or --role/--name",
+            "expect needs --text, --any, --absent, --url-includes, --url-absent, --html-lang, --section, --attr, --role/--name, --focused-role, --focused-name, --focused-attr, or --focus-ring",
           );
         }
         if (flags.section && problems.length) {
-          return { ok: false, action, problems, section: await sectionText(page, String(flags.section)) };
+          return { ok: false, action, problems, focus: probe, section: await sectionText(page, String(flags.section)) };
         }
         return problems.length
-          ? { ok: false, action, problems }
-          : { ok: true, action };
+          ? { ok: false, action, problems, focus: probe }
+          : { ok: true, action, ...(probe ? { focus: probe } : {}) };
       }
 
   throw new Error(`unknown browser action ${action}\n${usage()}`);
@@ -870,8 +925,58 @@ function stepFlags(step) {
   delete flags.action;
   if (flags.waitText != null) flags["wait-text"] = flags.waitText;
   if (flags.urlIncludes != null) flags["url-includes"] = flags.urlIncludes;
+  if (flags.urlAbsent != null) flags["url-absent"] = flags.urlAbsent;
+  if (flags.htmlLang != null) flags["html-lang"] = flags.htmlLang;
+  if (flags.focusedRole != null) flags["focused-role"] = flags.focusedRole;
+  if (flags.focusedName != null) flags["focused-name"] = flags.focusedName;
+  if (flags.focusedAttr != null) flags["focused-attr"] = flags.focusedAttr;
+  if (flags.focusRing != null) flags["focus-ring"] = flags.focusRing;
   if (flags.fullPage != null) flags["full-page"] = flags.fullPage;
   return flags;
+}
+
+async function focusProbe(page) {
+  return page.evaluate(() => {
+    const el = document.activeElement;
+    const blank = !el || el === document.body || el === document.documentElement;
+    const tag = blank ? "" : el.tagName.toLowerCase();
+    const implicit = {
+      tr: "row",
+      a: "link",
+      button: "button",
+      main: "main",
+      select: "combobox",
+      textarea: "textbox",
+    };
+    let role = blank ? null : el.getAttribute("role");
+    if (!role && tag === "input") {
+      role = el.getAttribute("type") === "range" ? "slider" : "textbox";
+    }
+    if (!role && tag) role = implicit[tag] || tag;
+    const style = blank ? null : getComputedStyle(el);
+    let name = "";
+    if (!blank) {
+      const explicit = el.getAttribute("aria-label");
+      const wrap = el.closest("label");
+      if (explicit) name = explicit;
+      else if (wrap) {
+        const clone = wrap.cloneNode(true);
+        clone.querySelectorAll("input, select, textarea").forEach((node) => node.remove());
+        name = clone.innerText;
+      } else name = el.innerText || el.getAttribute("aria-valuetext") || "";
+      name = name.trim().replace(/\s+/g, " ").slice(0, 160);
+    }
+    return {
+      htmlLang: document.documentElement.lang,
+      role,
+      name,
+      ariaSelected: blank ? null : el.getAttribute("aria-selected"),
+      tabIndex: blank ? null : el.getAttribute("tabindex"),
+      outlineStyle: style?.outlineStyle ?? null,
+      outlineWidth: style?.outlineWidth ?? null,
+      outlineOffset: style?.outlineOffset ?? null,
+    };
+  });
 }
 
 async function browser(positional, flags) {

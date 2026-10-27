@@ -1,0 +1,9 @@
+[
+  { "action": "open", "path": "/" },
+  { "action": "select", "label": "Location", "option": "Custom lat/lon" },
+  { "action": "fill", "label": "Latitude", "value": "nope" },
+  { "action": "fill", "label": "Longitude", "value": "nope" },
+  { "action": "click", "role": "button", "name": "Apply" },
+  { "action": "expect", "text": "Enter a latitude and a longitude as numbers." },
+  { "action": "expect", "focusedName": "Latitude" }
+]
