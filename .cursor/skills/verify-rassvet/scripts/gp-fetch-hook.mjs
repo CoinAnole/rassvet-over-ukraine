@@ -1,6 +1,6 @@
 /**
  * Installed with `node --import` on the verification dev server only.
- * `loadCatalog` fetches CelesTrak and the altitude-history raw URL from that
+ * `loadCatalog` fetches CelesTrak, then Blob when a token is set, then the altitude-history raw URL from that
  * process, which Playwright's page route cannot see. When the fixture files
  * are set, those responses are the harness fixtures. Every other fetch is unchanged.
  */

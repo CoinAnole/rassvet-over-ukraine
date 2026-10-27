@@ -87,7 +87,7 @@ export function auditCatalog(opts) {
   }
   if (config.decayed != null) {
     failures.push(
-      "`decayed` was the manual reentry list. Remove it. Confirmed reentries come from reentries.json on the data branch.",
+      "`decayed` was the manual reentry list. Remove it. Confirmed reentries come from reentries.json in Blob, with the data branch as fallback.",
     );
   }
   if (config.stuck != null) {

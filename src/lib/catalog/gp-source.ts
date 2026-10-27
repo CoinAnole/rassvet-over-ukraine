@@ -4,8 +4,8 @@ import type { CatalogOmm } from "./types.ts";
 export type GpSource = "live" | "saved" | "seed";
 
 /**
- * Live CelesTrak wins. If every live query failed, use the data-branch
- * snapshot over the checked-in seed. A saved file still fills gaps from the seed.
+ * Live CelesTrak wins. If every live query failed, use the saved GP snapshot
+ * over the checked-in seed. A saved file still fills gaps from the seed.
  */
 export function chooseCatalogElements(args: {
   wanted: Set<number>;

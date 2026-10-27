@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { historyDocument, rowsForCatalog } from "../src/lib/catalog/altitude-history.mjs";
 import { backoffMs, satcatCandidates } from "../src/lib/catalog/celestrak-fetch.mjs";
-import { recordAltitudes } from "./record-altitude-history.mjs";
+import { blobDataStore, recordAltitudes } from "./record-altitude-history.mjs";
 
 const GP_URL = "https://celestrak.org/NORAD/elements/gp.php?NAME=RASSVET&FORMAT=json";
 
@@ -25,7 +25,13 @@ const INTDES_2023 = "https://celestrak.org/NORAD/elements/gp.php?INTDES=2023-091
 function experimentalConfig() {
   return {
     userAgent: "RassvetOverUkraine/0.1 (test)",
-    celestrak: { queries: [GP_URL, INTDES_2023, "https://celestrak.org/NORAD/elements/gp.php?INTDES=2026-061&FORMAT=json"] },
+    celestrak: {
+      queries: [
+        GP_URL,
+        INTDES_2023,
+        "https://celestrak.org/NORAD/elements/gp.php?INTDES=2026-061&FORMAT=json",
+      ],
+    },
     groups: [
       { id: "exp-2023", kind: "experimental" },
       { id: "prod-2026-03", kind: "production" },
@@ -152,7 +158,10 @@ describe("CelesTrak retry", () => {
     assert.equal(result.exitCode, 1);
     assert.equal(result.changed, false);
     assert.equal(calls.length, 3);
-    assert.equal(calls.every((call) => call.url === GP_URL), true);
+    assert.equal(
+      calls.every((call) => call.url === GP_URL),
+      true,
+    );
     assert.equal(readFileSync(file, "utf8").includes("2026-10-24T19:29:06.569Z"), true);
   });
 
@@ -179,7 +188,10 @@ describe("CelesTrak retry", () => {
     const epoch = "2026-10-24T07:24:27.060192";
     const catalog = config();
     const rows = rowsForCatalog([gpRow(68360, epoch)], catalog.objects);
-    writeFileSync(file, `${JSON.stringify(historyDocument(rows, new Date("2026-10-24T19:29:06.569Z")))}\n`);
+    writeFileSync(
+      file,
+      `${JSON.stringify(historyDocument(rows, new Date("2026-10-24T19:29:06.569Z")))}\n`,
+    );
     const lines = [];
     const { fetchImpl } = scriptedFetch([{ status: 200, body: [gpRow(68360, epoch)] }]);
     const result = await recordAltitudes({
@@ -244,10 +256,7 @@ describe("CelesTrak retry", () => {
       },
       {
         status: 200,
-        body: [
-          gpRow(57179, fresh, "OBJECT P"),
-          gpRow(99999, fresh, "NOT RASSVET"),
-        ],
+        body: [gpRow(57179, fresh, "OBJECT P"), gpRow(99999, fresh, "NOT RASSVET")],
       },
       { status: 200, body: [{ DECAY_DATE: "", OPS_STATUS_CODE: "+" }] },
     ]);
@@ -271,8 +280,14 @@ describe("CelesTrak retry", () => {
         [100089, "RASSVET-3 23"],
       ],
     );
-    assert.equal(saved.some((row) => row.name === "OBJECT P" || row.norad === 99999), false);
-    assert.equal(calls.some((call) => call.url.includes("INTDES=2026-061")), false);
+    assert.equal(
+      saved.some((row) => row.name === "OBJECT P" || row.norad === 99999),
+      false,
+    );
+    assert.equal(
+      calls.some((call) => call.url.includes("INTDES=2026-061")),
+      false,
+    );
     const satcat = calls.filter((call) => call.url.includes("satcat"));
     assert.deepEqual(
       satcat.map((call) => call.url),
@@ -295,7 +310,7 @@ describe("CelesTrak retry", () => {
     const root = dir();
     const file = join(root, "altitude-history.json");
     const warnings = [];
-    writeFileSync(join(root, "gp-latest.json"), "{\"fetchedAt\":\"keep\"}\n");
+    writeFileSync(join(root, "gp-latest.json"), '{"fetchedAt":"keep"}\n');
     const { fetchImpl } = scriptedFetch([
       { status: 200, body: [gpRow(68360, "2026-10-26T06:50:43.131552", "RASSVET-3 1")] },
       { status: 500, body: "intdes down" },
@@ -317,7 +332,120 @@ describe("CelesTrak retry", () => {
       [68360],
     );
     assert.match(warnings.join("\n"), /INTDES=2023-091 unavailable/);
-    assert.equal(readFileSync(join(root, "gp-latest.json"), "utf8"), "{\"fetchedAt\":\"keep\"}\n");
+    assert.equal(readFileSync(join(root, "gp-latest.json"), "utf8"), '{"fetchedAt":"keep"}\n');
+  });
+
+  it("counts RASSVET names that are not in objects.json", async () => {
+    const root = dir();
+    const warnings = [];
+    const { fetchImpl } = scriptedFetch([
+      {
+        status: 200,
+        body: [
+          gpRow(68360, "2026-10-26T06:50:43.131552", "RASSVET-3 1"),
+          gpRow(70001, "2026-10-26T06:50:43.131552", "RASSVET-3 27"),
+          gpRow(70001, "2026-10-26T07:50:43.131552", "RASSVET-3 27"),
+          gpRow(99999, "2026-10-26T06:50:43.131552", "OBJECT Z"),
+        ],
+      },
+    ]);
+    const result = await recordAltitudes({
+      file: join(root, "altitude-history.json"),
+      config: config(),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-10-26T12:00:00Z"),
+      log() {},
+      warn: (msg) => warnings.push(msg),
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.unlistedRassvet, 1);
+    assert.match(
+      warnings.join("\n"),
+      /1 object named RASSVET that is not in objects.json: 70001 RASSVET-3 27/,
+    );
+    assert.equal(warnings.join("\n").includes("OBJECT Z"), false);
+  });
+
+  it("does not write when Blob history cannot be read", async () => {
+    const writes = [];
+    const store = blobDataStore({
+      readBlobJson: async (pathname) => {
+        if (pathname.endsWith("altitude-history.json")) {
+          return { ok: false, reason: "unreachable", error: "HTTP 500" };
+        }
+        return { ok: false, reason: "missing" };
+      },
+      writeBlobJson: async (pathname) => {
+        writes.push(pathname);
+        return { url: `https://example.public.blob.vercel-storage.com/${pathname}` };
+      },
+    });
+    const { fetchImpl } = scriptedFetch([
+      { status: 200, body: [gpRow(68360, "2026-10-26T06:50:43.131552")] },
+    ]);
+    const result = await recordAltitudes({
+      store,
+      config: config(),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-10-26T12:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.changed, false);
+    assert.deepEqual(writes, []);
+  });
+
+  it("merges the prior Blob history and writes the public pathnames", async () => {
+    /** @type {Record<string, unknown>} */
+    const saved = {};
+    const store = blobDataStore({
+      readBlobJson: async (pathname) => {
+        if (pathname.endsWith("altitude-history.json")) {
+          return {
+            ok: true,
+            data: {
+              rows: [
+                {
+                  norad: 68360,
+                  name: "RASSVET-3 1",
+                  epoch: "2026-10-25T06:50:43.131552",
+                  alt_km: 500,
+                },
+              ],
+            },
+          };
+        }
+        if (pathname.endsWith("reentries.json")) return { ok: true, data: { records: [] } };
+        return { ok: false, reason: "missing" };
+      },
+      writeBlobJson: async (pathname, body) => {
+        saved[pathname] = typeof body === "string" ? JSON.parse(body) : body;
+        return { url: `https://example.public.blob.vercel-storage.com/${pathname}` };
+      },
+    });
+    const { fetchImpl } = scriptedFetch([
+      { status: 200, body: [gpRow(68360, "2026-10-26T06:50:43.131552")] },
+    ]);
+    const result = await recordAltitudes({
+      store,
+      config: config(),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-10-26T12:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.unlistedRassvet, 0);
+    assert.deepEqual(
+      saved["data/altitude-history.json"].rows.map((row) => row.epoch),
+      ["2026-10-25T06:50:43.131552", "2026-10-26T06:50:43.131552"],
+    );
+    assert.equal(saved["data/gp-latest.json"].fetchedAt, "2026-10-26T12:00:00.000Z");
+    assert.equal(saved["data/reentries.json"], undefined);
   });
 });
 

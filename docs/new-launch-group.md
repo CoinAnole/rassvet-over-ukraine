@@ -1,6 +1,6 @@
 # New launch group
 
-Checklist for adding a Rassvet batch to the curated catalog. Follow it in order. The catalog model does not change: `src/config/objects.json` remains the list of groups, objects, and the CelesTrak GP query URLs. Confirmed reentries live in `reentries.json` on the `data` branch.
+Checklist for adding a Rassvet batch to the curated catalog. Follow it in order. The catalog model does not change: `src/config/objects.json` remains the list of groups, objects, and the CelesTrak GP query URLs. Confirmed reentries live in Blob `data/reentries.json`, with the GitHub `data` branch as the fallback.
 
 Do not hardcode on-orbit counts in the UI. Counts come from this list plus the status rules below.
 
@@ -14,16 +14,16 @@ These match Method copy and `src/lib/catalog/build.ts`.
 | Climbing | In `objects`, has a GP row, perigee ≥ `decayPerigeeKm` (150), altitude under 450 km, and a current rate above 0.8 km/day. |
 | Not climbing | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and a current rate of 0.8 km/day or less (holding, or a sustained loss). Excluded from the climbing population. Still included in all-catalogued and in its launch group. |
 | Rate pending | In `objects`, has a GP row, perigee ≥ 150 km, altitude under 450 km, and no current rate. That covers too few points, a span under 36 hours, no history, a failed history fetch, or a newest epoch more than 72 hours behind the newest epoch in the catalog. Not counted as climbing. Still included in all-catalogued and in its launch group. |
-| Decayed | A confirmed reentry in `reentries.json` on the `data` branch (SATCAT `DECAY_DATE` or ops code `D`), or the latest GP perigee is under 150 km. Excluded from coverage. A confirmed reentry drops the element set. |
+| Decayed | A confirmed reentry in `reentries.json` (SATCAT `DECAY_DATE` or ops code `D`), or the latest GP perigee is under 150 km. Excluded from coverage. A confirmed reentry drops the element set. |
 | Reentering | No decay date, newest epoch more than 72 hours behind the catalog, and last altitude under 250 km or a decaying rate. Not on orbit. No pass predictions. |
 | Missing | In `objects`, no GP row, and not on `decayed`. Omitted from Now / Today / footprints. |
 | Stale | Newest GP epoch older than `staleHours` (72). Still propagated. |
 
 The default coverage population is raised production (`kind: "production"` and status raised). Experimental groups stay out of that default. `set=raised` and `set=operational` in a shared link still mean every raised object, including experimentals.
 
-Climb rate is a least-squares slope of Brouwer altitude over the most recent three days of epochs, from `altitude-history.json` on the `data` branch. It needs at least three points spanning at least 36 hours. If that window is shorter, the fit reaches back by whole epochs up to five days from the object’s newest epoch. One interior point that misses the track between its neighbors by at least 5 km is dropped. The newest epoch stays. More than 0.8 km/day is climbing. A sustained loss steeper than 0.8 km/day downward is not climbing, and the shown rate is negative. Between those is holding, also not climbing. When the history is missing, the window is too short, or the object’s newest epoch is more than 72 hours behind the newest epoch in the catalog, the rate is unknown and the status under 450 km is rate pending. `npm run verify:catalog` warns on a stale history and on a below-450 object with an unknown rate. It does not fail the run. There is no manual not-climbing list. Do not add `stuck` back. `MEAN_MOTION_DOT` on a single element set is a short-arc fit. Do not add a rate column from that field.
+Climb rate is a least-squares slope of Brouwer altitude over the most recent three days of epochs, from `altitude-history.json` in Blob, then the `data` branch. It needs at least three points spanning at least 36 hours. If that window is shorter, the fit reaches back by whole epochs up to five days from the object’s newest epoch. One interior point that misses the track between its neighbors by at least 5 km is dropped. The newest epoch stays. More than 0.8 km/day is climbing. A sustained loss steeper than 0.8 km/day downward is not climbing, and the shown rate is negative. Between those is holding, also not climbing. When the history is missing, the window is too short, or the object’s newest epoch is more than 72 hours behind the newest epoch in the catalog, the rate is unknown and the status under 450 km is rate pending. `npm run verify:catalog` warns on a stale history and on a below-450 object with an unknown rate. It does not fail the run. There is no manual not-climbing list. Do not add `stuck` back. `MEAN_MOTION_DOT` on a single element set is a short-arc fit. Do not add a rate column from that field.
 
-`NAME=RASSVET` does not see experimental objects that CelesTrak still calls `OBJECT <letter>`. Those need their launch `INTDES` query. The altitude-history Action fetches the experimental `INTDES` URLs from `celestrak.queries`, keeps only NORADs in `objects`, and stores the display name. A rideshare `INTDES` also returns objects that are not Rassvet. Do not add those.
+`NAME=RASSVET` does not see experimental objects that CelesTrak still calls `OBJECT <letter>`. Those need their launch `INTDES` query. The altitude-history run fetches the experimental `INTDES` URLs from `celestrak.queries`, keeps only NORADs in `objects`, and stores the display name. A rideshare `INTDES` also returns objects that are not Rassvet. Do not add those. The same run warns, and prints `unlisted_rassvet`, when the name query lists a RASSVET object that is not in `objects`. Add that object here before treating the warning as noise.
 
 COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 
@@ -56,13 +56,13 @@ COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 ### Decayed and missing
 
 - [ ] Keep the object in `objects`. Dropping it removes it from the constellation list.
-- [ ] Do not add a `decayed` array. The altitude-history Action asks CelesTrak SATCAT for each tracked NORAD and writes confirmed decays (`DECAY_DATE` or ops code `D`) to `reentries.json` on the `data` branch. Those records are not pruned.
+- [ ] Do not add a `decayed` array. The altitude-history run asks CelesTrak SATCAT for each tracked NORAD and writes confirmed decays (`DECAY_DATE` or ops code `D`) to `reentries.json`. Those records are not pruned. The GitHub Action still writes the `data` branch copy. `npm run record:altitudes` writes the Blob copy.
 - [ ] A perigee under 150 km is already excluded by the runtime.
 - [ ] An object that is still in GP, with no decay date, a newest epoch more than 72 hours behind the catalog, and a last altitude under 250 km or a decaying rate, shows as reentering. The clock does not predict passes for it.
 
 ### Climb rate
 
-There is no manual list. Status under 450 km comes from `altitude-history.json` on the `data` branch.
+There is no manual list. Status under 450 km comes from `altitude-history.json` in Blob, then the `data` branch.
 
 - [ ] Read the `npm run verify:catalog` notes. A stale history, or an object under 450 km with an unknown rate, is a warning. The site shows rate pending and does not count it as climbing. The warning is not a failure.
 - [ ] Do not add a `stuck` array or a `stuckNote`. The catalog check fails if `stuck` is present.

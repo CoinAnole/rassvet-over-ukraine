@@ -1,6 +1,7 @@
 /**
  * Compact altitude history shared by the scheduled recorder and the app.
- * One row is one published GP epoch. The file lives on the `data` branch.
+ * One row is one published GP epoch. The recorder writes the public Blob
+ * path `data/altitude-history.json`. The GitHub `data` branch is the fallback.
  */
 import { orbitFromGp } from "../orbit/brouwer-altitude.mjs";
 import { epochToMs } from "../orbit/climb-rate.mjs";
@@ -80,6 +81,39 @@ export function rowsFromGp(list) {
     });
   }
   return rows;
+}
+
+/**
+ * GP rows named RASSVET whose NORAD is not in the curated catalog.
+ * Experimental `OBJECT <letter>` rows are ignored. One entry per NORAD.
+ * @param {unknown} list
+ * @param {Array<{ norad?: number }> | null | undefined} objects
+ * @returns {{ norad: number, name: string }[]}
+ */
+export function unlistedRassvetObjects(list, objects) {
+  /** @type {Set<number>} */
+  const known = new Set();
+  for (const obj of objects ?? []) {
+    const norad = Number(obj?.norad);
+    if (Number.isFinite(norad)) known.add(norad);
+  }
+  /** @type {Set<number>} */
+  const seen = new Set();
+  /** @type {{ norad: number, name: string }[]} */
+  const found = [];
+  if (!Array.isArray(list)) return found;
+  for (const raw of list) {
+    if (!raw || typeof raw !== "object") continue;
+    const rec = /** @type {Record<string, unknown>} */ (raw);
+    const name = typeof rec.OBJECT_NAME === "string" ? rec.OBJECT_NAME : "";
+    if (!/RASSVET/i.test(name)) continue;
+    const norad = Number(rec.NORAD_CAT_ID);
+    if (!Number.isFinite(norad) || known.has(norad) || seen.has(norad)) continue;
+    seen.add(norad);
+    found.push({ norad, name });
+  }
+  found.sort((a, b) => a.norad - b.norad);
+  return found;
 }
 
 /**
