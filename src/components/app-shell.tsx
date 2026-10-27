@@ -38,8 +38,15 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const t = getDict(lang);
+  const routeLang = lang === "en" ? undefined : lang;
   return (
     <div className="min-h-dvh bg-bg text-fg">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-[var(--radius-sm)] focus:bg-elevated focus:px-3 focus:py-2 focus:text-fg"
+      >
+        {t.skip}
+      </a>
       <header className="border-b border-border bg-bg">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-2 md:px-6">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -88,11 +95,17 @@ export function AppShell({
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <nav className="flex flex-wrap gap-1" aria-label="Primary">
+            <nav className="flex flex-wrap gap-1" aria-label={t.nav.primary}>
               {NAV.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
+                  search={
+                    current === item.to
+                      ? (prev) => ({ ...prev, lang: routeLang })
+                      : { lang: routeLang }
+                  }
+                  aria-current={current === item.to ? "page" : undefined}
                   className={cn(
                     "min-h-9 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm",
                     current === item.to
@@ -113,7 +126,9 @@ export function AppShell({
           <FreshnessBanner lang={lang} freshness={freshness} summary={stale} cityLabel={cityLabel} />
         </div>
       </header>
-      <main className="mx-auto max-w-[1400px] px-4 py-3 md:px-6">{children}</main>
+      <main id="main" tabIndex={-1} className="mx-auto max-w-[1400px] px-4 py-3 md:px-6">
+        {children}
+      </main>
     </div>
   );
 }

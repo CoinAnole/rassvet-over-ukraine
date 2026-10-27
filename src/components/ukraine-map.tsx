@@ -139,6 +139,17 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
         );
         marker.on("click", () => select(sat.norad));
         marker.addTo(layers);
+        const dot = marker.getElement();
+        if (dot) {
+          dot.setAttribute("role", "button");
+          dot.tabIndex = -1;
+          dot.setAttribute("aria-label", `${sat.name}, ${sat.norad}`);
+          dot.addEventListener("keydown", (ev) => {
+            if (ev.key !== "Enter" && ev.key !== " ") return;
+            ev.preventDefault();
+            select(sat.norad);
+          });
+        }
       }
     })();
     return () => {
@@ -159,23 +170,26 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
   ]);
 
   return (
-    <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface">
+    <section
+      aria-label={t.map.label}
+      className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface"
+    >
       <div ref={mapEl} className="h-[340px] w-full md:h-[420px]" />
       <div className="pointer-events-none absolute bottom-3 left-3 z-[400] flex flex-wrap gap-x-3 gap-y-1 rounded-[var(--radius-sm)] border border-border bg-bg/90 px-2.5 py-1.5 text-[11px] text-fg">
         <span className="flex items-center gap-1.5">
-          <i className="sat-dot sat-dot-raised inline-block size-2.5" />
+          <i aria-hidden="true" className="sat-dot sat-dot-raised inline-block size-2.5" />
           {t.map.raised}
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="sat-dot sat-dot-climbing inline-block size-2.5" />
+          <i aria-hidden="true" className="sat-dot sat-dot-climbing inline-block size-2.5" />
           {t.map.climbing}
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="sat-dot sat-dot-stuck inline-block size-2.5" />
+          <i aria-hidden="true" className="sat-dot sat-dot-stuck inline-block size-2.5" />
           {t.map.stuck}
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="sat-dot sat-dot-pending inline-block size-2.5" />
+          <i aria-hidden="true" className="sat-dot sat-dot-pending inline-block size-2.5" />
           {t.map.pending}
         </span>
       </div>
@@ -184,7 +198,7 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
           {t.map.reset}
         </Button>
       </div>
-    </div>
+    </section>
   );
 }
 

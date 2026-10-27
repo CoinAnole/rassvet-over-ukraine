@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
+import { useDocumentLang } from "@/components/document-lang";
 import { persistLang, isLang, getDict, LANG_KEY } from "@/lib/i18n";
 import { resolveLang } from "@/lib/i18n/resolve-lang";
 import type { ProfileLang } from "@/lib/i18n/profile-lang";
@@ -12,6 +13,10 @@ import { viewFromSearch, type ViewSearch } from "@/lib/view-state";
 function fetchedLabel(catalog: CatalogPayload | undefined): string | null {
   if (!catalog?.fetchedAt) return null;
   return catalog.fetchedAt.replace("T", " ").replace("Z", "").slice(0, 16);
+}
+
+function langQuery(next: Lang): Lang | undefined {
+  return next === "en" ? undefined : next;
 }
 
 export function LangFrame({
@@ -30,39 +35,40 @@ export function LangFrame({
   children: (lang: Lang) => React.ReactNode;
 }) {
   const navigate = useNavigate();
+  const documentLang = useDocumentLang();
   const [picked, setPicked] = useState<Lang | null>(null);
   const lang = resolveLang({
-    urlLang: current === "/" ? langParam : null,
+    urlLang: langParam,
     cookie: picked ?? profile.cookie,
     acceptLanguage: profile.acceptLanguage,
   });
 
+  useLayoutEffect(() => {
+    documentLang?.setLang(lang);
+  }, [documentLang, lang]);
+
   useEffect(() => {
-    if (profile.cookie) return;
+    if (profile.cookie || isLang(langParam)) return;
     const stored = window.localStorage.getItem(LANG_KEY);
-    if (!isLang(stored)) return;
+    if (!isLang(stored) || stored === lang) return;
     persistLang(stored);
-    if (current === "/" && isLang(langParam)) return;
-    setPicked(stored);
-  }, [current, langParam, profile.cookie]);
+  }, [lang, langParam, profile.cookie]);
 
   const onLang = useCallback(
     (next: Lang) => {
       setPicked(next);
       persistLang(next);
+      const searchUpdate = (prev: { lang?: Lang }) => ({ ...prev, lang: langQuery(next) });
+      const opts = { replace: true, resetScroll: false } as const;
       if (current === "/") {
-        void navigate({
-          to: "/",
-          search: (prev: Record<string, unknown>) => ({
-            ...prev,
-            lang: next === "en" ? undefined : next,
-          }),
-          replace: true,
-          resetScroll: false,
-        });
+        void navigate({ to: "/", search: searchUpdate, ...opts });
+      } else if (current === "/constellation") {
+        void navigate({ to: "/constellation", search: searchUpdate, ...opts });
+      } else {
+        void navigate({ to: "/method", search: searchUpdate, ...opts });
       }
     },
-    [navigate, current],
+    [current, navigate],
   );
 
   const t = getDict(lang);
