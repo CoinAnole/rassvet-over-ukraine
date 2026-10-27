@@ -209,3 +209,91 @@ export function shareUrl(origin: string, pathname: string, search: ViewSearch): 
   const path = pathname.startsWith("/") ? pathname : `/${pathname || ""}`;
   return `${root}${path}${shareSearchString(search)}`;
 }
+
+/** Same rules as the Ukraine route's search validator. */
+export function parseViewSearch(raw: Record<string, unknown>): ViewSearch {
+  const num = (v: unknown) => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v !== "" && Number.isFinite(Number(v))) return Number(v);
+    return undefined;
+  };
+  return {
+    lat: num(raw.lat),
+    lon: num(raw.lon),
+    el: num(raw.el),
+    lang: raw.lang === "en" || raw.lang === "uk" || raw.lang === "ru" ? raw.lang : undefined,
+    set: typeof raw.set === "string" ? (raw.set as ViewSearch["set"]) : undefined,
+    tz: raw.tz === "kyiv" || raw.tz === "utc" || raw.tz === "moscow" ? raw.tz : undefined,
+    place: typeof raw.place === "string" ? (raw.place as ViewSearch["place"]) : undefined,
+    at: parseClockInstant(raw.at),
+  };
+}
+
+const HOME_QUERY_KEY = "rassvet-home";
+
+/** Last Ukraine-today query, without a held clock. */
+export function homeQueryWithoutClock(search: ViewSearch): ViewSearch {
+  const view = viewFromSearch(search, search.lang ?? "en");
+  const lang: Lang = search.lang === "uk" || search.lang === "ru" ? search.lang : "en";
+  return searchFromView({ ...view, lang }, null);
+}
+
+export function parseHomeQueryString(qs: string): ViewSearch {
+  const params = new URLSearchParams(qs.startsWith("?") ? qs.slice(1) : qs);
+  const raw: Record<string, unknown> = {};
+  for (const key of SEARCH_KEYS) {
+    if (key === "at") continue;
+    const value = params.get(key);
+    if (value != null) raw[key] = value;
+  }
+  return homeQueryWithoutClock(parseViewSearch(raw));
+}
+
+export function rememberHomeSearch(search: ViewSearch, storage?: Storage): void {
+  const store = storage ?? (typeof sessionStorage === "undefined" ? null : sessionStorage);
+  if (!store) return;
+  store.setItem(HOME_QUERY_KEY, shareSearchString(homeQueryWithoutClock(search)));
+}
+
+export function readRememberedHome(storage?: Storage): ViewSearch | null {
+  const store = storage ?? (typeof sessionStorage === "undefined" ? null : sessionStorage);
+  if (!store) return null;
+  const raw = store.getItem(HOME_QUERY_KEY);
+  if (raw == null) return null;
+  return parseHomeQueryString(raw);
+}
+
+/** Ukraine-today href when leaving Constellation or Method. Current language wins. `at` stays off. */
+export function ukraineReturnSearch(remembered: ViewSearch | null, lang: Lang): ViewSearch {
+  const next: ViewSearch = { ...(remembered ?? {}) };
+  delete next.at;
+  if (lang === "en") delete next.lang;
+  else next.lang = lang;
+  return next;
+}
+
+export type AppRoute = "/" | "/constellation" | "/method";
+
+/**
+ * Search object for a primary nav link.
+ * On Ukraine today the current query wins, including a held clock.
+ * Elsewhere the Ukraine link uses the remembered query and the page's language.
+ */
+export function resolveNavSearch(args: {
+  to: AppRoute;
+  current: AppRoute;
+  currentSearch: ViewSearch;
+  remembered: ViewSearch | null;
+  lang: Lang;
+}): ViewSearch {
+  if (args.to !== "/") {
+    return args.lang === "en" ? {} : { lang: args.lang };
+  }
+  if (args.current === "/") {
+    const next: ViewSearch = { ...args.currentSearch };
+    if (args.lang === "en") delete next.lang;
+    else next.lang = args.lang;
+    return next;
+  }
+  return ukraineReturnSearch(args.remembered, args.lang);
+}

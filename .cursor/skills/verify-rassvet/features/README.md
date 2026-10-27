@@ -47,6 +47,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Time scrub](./time-scrub.md) covers the ±48 hour slider, line-of-sight bands, and tap-to-acquisition.
 - [Deep link](./deep-link.md) covers a shareable URL, a held `at` instant, and the out-of-range clamp banner.
 - [Language](./language.md) covers EN / UK / RU, `html lang`, and `lang` on Ukraine today, Constellation, and Method.
+- [Home return](./home-return.md) covers restoring Ukraine today settings from the nav, without the held clock.
 - [Keyboard](./keyboard.md) covers the skip link, pass and constellation rows, the scatter chart, the range focus ring, and the lat/lon error.
 - [Method](./method.md) covers the Method page contract.
 - [Catalog freshness](./catalog-freshness.md) covers the live, seed, and stale-element banners.

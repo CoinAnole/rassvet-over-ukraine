@@ -81,7 +81,7 @@ Stable handles, English UI:
 | Skip link | link `Skip to content` (first tab stop; Enter moves to `#main`) |
 | Product title | heading `Rassvet over Ukraine` |
 | Language | button `EN`, `UK`, or `RU` (`aria-pressed`). `documentElement.lang` matches the active language |
-| Primary nav | navigation `Primary` in English (`Основне` in UK, `Основное` in RU). The current link has `aria-current="page"`. Links `Ukraine today`, `Constellation`, `Method` |
+| Primary nav | navigation `Primary` in English (`Основне` in UK, `Основное` in RU). The current link has `aria-current="page"`. Links `Ukraine today`, `Constellation`, `Method`. From the other pages, `Ukraine today` points at the last home query minus any held clock |
 | Catalog freshness | status whose text starts with `Not live`, `Stale GP`, or `Older GP` |
 | Location | label `Location` (options include `Lviv`, `Vinnytsia`, `Custom lat/lon`) |
 | Min elevation | label `Min elevation` (options `10°`, `25°`, `40°`) |
