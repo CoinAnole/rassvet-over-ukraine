@@ -9,6 +9,35 @@ import type { Lang } from "@/lib/catalog/types";
 import region from "../data/region.json" with { type: "json" };
 import { Button } from "@/components/ui/button";
 
+const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const LIGHT_TILE_ATTR =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+type MapScheme = "light" | "dark";
+
+function mapScheme(): MapScheme {
+  const explicit = document.documentElement.dataset.theme;
+  if (explicit === "light" || explicit === "dark") return explicit;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+function regionPaint(scheme: MapScheme, isUa: boolean) {
+  if (scheme === "light") {
+    return {
+      color: isUa ? "rgba(28,30,36,0.72)" : "rgba(28,30,36,0.28)",
+      weight: isUa ? 1.2 : 0.8,
+      fillColor: isUa ? "rgba(26,77,102,0.08)" : "transparent",
+      fillOpacity: 1,
+    };
+  }
+  return {
+    color: isUa ? "rgba(232,234,238,0.55)" : "rgba(232,234,238,0.18)",
+    weight: isUa ? 1.2 : 0.8,
+    fillColor: isUa ? "rgba(158,182,196,0.06)" : "transparent",
+    fillOpacity: 1,
+  };
+}
+
 type Props = {
   lang: Lang;
   result: CoverageResult | null;
@@ -40,6 +69,8 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const tilesRef = useRef<import("leaflet").TileLayer | null>(null);
+  const regionsRef = useRef<import("leaflet").GeoJSON | null>(null);
   const select = useSelection((s) => s.select);
   const selected = useSelection((s) => s.norad);
 
@@ -55,24 +86,44 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
         maxZoom: 9,
       }).setView(MAP_CENTER, MAP_DEFAULT_ZOOM);
       map.fitBounds(MAP_BOUNDS);
-      L.geoJSON(region as GeoJSON.GeoJsonObject, {
+      tilesRef.current = L.tileLayer(LIGHT_TILES, {
+        attribution: LIGHT_TILE_ATTR,
+        subdomains: "abcd",
+        maxZoom: 9,
+      });
+      const regions = L.geoJSON(region as GeoJSON.GeoJsonObject, {
         style: (feat) => {
           const name = (feat?.properties as { name?: string } | undefined)?.name;
-          const isUa = name === "Ukraine";
-          return {
-            color: isUa ? "rgba(232,234,238,0.55)" : "rgba(232,234,238,0.18)",
-            weight: isUa ? 1.2 : 0.8,
-            fillColor: isUa ? "rgba(158,182,196,0.06)" : "transparent",
-            fillOpacity: 1,
-          };
+          return regionPaint(mapScheme(), name === "Ukraine");
         },
       }).addTo(map);
+      regionsRef.current = regions;
       const layers = L.layerGroup().addTo(map);
       layerRef.current = layers;
+      const chrome = map as MapChrome;
+      chrome.__rassvetTiles = tilesRef.current ?? undefined;
+      chrome.__rassvetRegions = regions;
       mapRef.current = map;
+      applyMapScheme(map);
     })();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const apply = () => {
+      const map = mapRef.current;
+      if (map) applyMapScheme(map);
+    };
+    apply();
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    media.addEventListener("change", apply);
+    const obs = new MutationObserver(apply);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => {
+      media.removeEventListener("change", apply);
+      obs.disconnect();
     };
   }, []);
 
@@ -200,6 +251,31 @@ export function UkraineMap({ lang, result, lat, lon, el, placeLabel }: Props) {
       </div>
     </section>
   );
+}
+
+type MapChrome = import("leaflet").Map & {
+  __rassvetTiles?: import("leaflet").TileLayer;
+  __rassvetRegions?: import("leaflet").GeoJSON;
+};
+
+function applyMapScheme(map: import("leaflet").Map) {
+  const scheme = mapScheme();
+  const chrome = map as MapChrome;
+  const tiles = chrome.__rassvetTiles;
+  const regions = chrome.__rassvetRegions;
+  if (tiles) {
+    const onMap = map.hasLayer(tiles);
+    if (scheme === "light" && !onMap) {
+      tiles.addTo(map);
+      regions?.bringToFront();
+    }
+    if (scheme === "dark" && onMap) map.removeLayer(tiles);
+  }
+  regions?.setStyle((feat) => {
+    const name = (feat?.properties as { name?: string } | undefined)?.name;
+    return regionPaint(scheme, name === "Ukraine");
+  });
+  regions?.bringToFront();
 }
 
 function splitTrack(track: [number, number][]): [number, number][][] {

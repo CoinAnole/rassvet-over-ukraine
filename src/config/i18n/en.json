@@ -9,6 +9,12 @@
     "method": "Method"
   },
   "lang": { "en": "EN", "uk": "UK", "ru": "RU" },
+  "theme": {
+    "label": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "header": {
     "catalogEpoch": "Newest element-set epoch",
     "fetchedAt": "Last successful fetch",

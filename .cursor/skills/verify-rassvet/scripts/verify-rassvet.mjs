@@ -76,6 +76,7 @@ function usage() {
   verify-rassvet.mjs browser focus --selector <css>
   verify-rassvet.mjs browser press --key <key>
   verify-rassvet.mjs browser dom
+  verify-rassvet.mjs browser media --color-scheme light|dark
   verify-rassvet.mjs browser range --name <name> --value <number>
   verify-rassvet.mjs browser snapshot --aria --path <file> [--feature <id>]
   verify-rassvet.mjs browser screenshot --path <file> [--full-page] [--feature <id>]
@@ -83,7 +84,7 @@ function usage() {
   verify-rassvet.mjs browser text
   verify-rassvet.mjs browser section --contains <text>
   verify-rassvet.mjs browser count --selector <css>
-  verify-rassvet.mjs browser expect [--text <text>] [--any <text> ...] [--absent <text>] [--url-includes <text>] [--url-absent <text>] [--html-lang <code>] [--section <text>] [--selector <css>] [--count <n>] [--attr <name=value>] [--role <role> --name <name>] [--focused-role <role>] [--focused-name <text>] [--focused-attr <name=value>] [--focus-ring]`;
+  verify-rassvet.mjs browser expect [--text <text>] [--any <text> ...] [--absent <text>] [--url-includes <text>] [--url-absent <text>] [--html-lang <code>] [--section <text>] [--selector <css>] [--count <n>] [--attr <name=value>] [--computed <prop=value>] [--role <role> --name <name>] [--focused-role <role>] [--focused-name <text>] [--focused-attr <name=value>] [--focus-ring]`;
 }
 
 function addFlag(flags, key, value) {
@@ -721,6 +722,13 @@ async function perform(page, action, positional, flags, navigate = true) {
         return { ok: true, action, ...(await focusProbe(page)) };
       }
 
+      if (action === "media") {
+        const scheme = flags["color-scheme"] === "light" ? "light" : "dark";
+        await page.emulateMedia({ colorScheme: scheme });
+        await settle(page);
+        return { ok: true, action, colorScheme: scheme };
+      }
+
       if (action === "range") {
         if (!flags.name || flags.value == null) throw new Error("range requires --name and --value");
         const slider = page.getByRole("slider", { name: String(flags.name), exact: true });
@@ -884,6 +892,20 @@ async function perform(page, action, positional, flags, navigate = true) {
             problems.push(`focused outline was ${probe.outlineStyle} ${probe.outlineWidth}`);
           }
         }
+        if (flags.computed) {
+          if (!flags.selector) throw new Error("--computed requires --selector");
+          const raw = String(flags.computed);
+          const eq = raw.indexOf("=");
+          if (eq <= 0) throw new Error("--computed must be property=value");
+          const prop = raw.slice(0, eq);
+          const expected = raw.slice(eq + 1).replace(/\s+/g, "");
+          const actual = await page.locator(String(flags.selector)).first().evaluate((el, name) => {
+            return getComputedStyle(el).getPropertyValue(name).replace(/\s+/g, "");
+          }, prop);
+          if (actual !== expected) {
+            problems.push(`computed ${prop} was ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
+          }
+        }
         if (flags.count != null) {
           if (!flags.selector) throw new Error("--count requires --selector");
           const n = await page.locator(String(flags.selector)).count();
@@ -900,6 +922,7 @@ async function perform(page, action, positional, flags, navigate = true) {
           !flags["focused-attr"] &&
           !flags["focus-ring"] &&
           flags.count == null &&
+          !flags.computed &&
           !anys.length &&
           !flags.section &&
           !flags.attr &&
@@ -931,6 +954,7 @@ function stepFlags(step) {
   if (flags.focusedName != null) flags["focused-name"] = flags.focusedName;
   if (flags.focusedAttr != null) flags["focused-attr"] = flags.focusedAttr;
   if (flags.focusRing != null) flags["focus-ring"] = flags.focusRing;
+  if (flags.colorScheme != null) flags["color-scheme"] = flags.colorScheme;
   if (flags.fullPage != null) flags["full-page"] = flags.fullPage;
   return flags;
 }
