@@ -2,7 +2,7 @@ import seed from "../../data/catalog-seed.json" with { type: "json" };
 import { applyClimbRates } from "./apply-climb.ts";
 import { applyReentries } from "./reentry.ts";
 import { parseHistoryDocument } from "./altitude-history.mjs";
-import { BLOB_PATH } from "./blob-data.mjs";
+import { BLOB_PATH, readBlobJson } from "./blob-data.mjs";
 import { parseReentryDocument } from "./reentries.mjs";
 import { parseGpLatest } from "./gp-latest.mjs";
 import { loadRemoteJson } from "./remote-json.mjs";
@@ -39,38 +39,41 @@ async function fetchJson(url: string, userAgent: string): Promise<unknown[] | nu
   }
 }
 
-export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
-  if (cache && now.getTime() - cache.at < CACHE_MS) return cache.payload;
+type CatalogDeps = {
+  readBlob?: typeof readBlobJson;
+  fetchImpl?: typeof fetch;
+  fetchGp?: (url: string, userAgent: string) => Promise<unknown[] | null>;
+};
+
+export async function loadCatalog(now = new Date(), deps?: CatalogDeps): Promise<CatalogPayload> {
+  if (!deps && cache && now.getTime() - cache.at < CACHE_MS) return cache.payload;
   const cfg = getObjectsConfig();
   const wanted = new Set(cfg.objects.map((o) => o.norad));
+  const fetchGp = deps?.fetchGp ?? fetchJson;
+  const remote = (pathname: string, githubUrl: string) =>
+    loadRemoteJson({
+      pathname,
+      githubUrl,
+      userAgent: cfg.userAgent,
+      readBlob: deps?.readBlob,
+      fetchImpl: deps?.fetchImpl,
+    });
 
-  const [results, historyDoc, reentryDoc, gpLatestDoc] = await Promise.all([
-    Promise.all(cfg.celestrak.queries.map((url) => fetchJson(url, cfg.userAgent))),
-    loadRemoteJson({
-      pathname: BLOB_PATH.altitudeHistory,
-      githubUrl: cfg.altitudeHistoryUrl,
-      userAgent: cfg.userAgent,
-    }),
-    loadRemoteJson({
-      pathname: BLOB_PATH.reentries,
-      githubUrl: cfg.reentriesUrl,
-      userAgent: cfg.userAgent,
-    }),
-    loadRemoteJson({
-      pathname: BLOB_PATH.gpLatest,
-      githubUrl: cfg.gpLatestUrl,
-      userAgent: cfg.userAgent,
-    }),
+  const [results, history, reentries, gpLatest] = await Promise.all([
+    Promise.all(cfg.celestrak.queries.map((url) => fetchGp(url, cfg.userAgent))),
+    remote(BLOB_PATH.altitudeHistory, cfg.altitudeHistoryUrl),
+    remote(BLOB_PATH.reentries, cfg.reentriesUrl),
+    remote(BLOB_PATH.gpLatest, cfg.gpLatestUrl),
   ]);
   const chosen = chooseCatalogElements({
     wanted,
     seedOmms,
     seedFetchedAt,
     liveLists: results,
-    saved: parseGpLatest(gpLatestDoc),
+    saved: parseGpLatest(gpLatest.data),
     now,
   });
-  const historyRows = parseHistoryDocument(historyDoc);
+  const historyRows = parseHistoryDocument(history.data);
   const payload = applyReentries(
     applyClimbRates(
       buildCatalog({
@@ -87,7 +90,7 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
       }),
       historyRows,
     ),
-    parseReentryDocument(reentryDoc),
+    parseReentryDocument(reentries.data),
     historyRows,
   );
 
@@ -95,7 +98,14 @@ export async function loadCatalog(now = new Date()): Promise<CatalogPayload> {
     payload.warning = `Known NORAD IDs missing from the public catalog: ${payload.missingKnownIds.join(", ")}.`;
   }
 
-  cache = { at: now.getTime(), payload };
+  payload.historySource = history.source;
+  payload.sources = {
+    history: history.source,
+    reentries: reentries.source,
+    gpLatest: gpLatest.source,
+  };
+
+  if (!deps) cache = { at: now.getTime(), payload };
   return payload;
 }
 

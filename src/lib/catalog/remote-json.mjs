@@ -34,6 +34,10 @@ async function fetchGithubJson(url, userAgent, fetchImpl = fetch) {
 }
 
 /**
+ * @typedef {"blob" | "github" | "snapshot"} RemoteFileSource
+ */
+
+/**
  * @param {{
  *   pathname: string,
  *   githubUrl: string,
@@ -41,12 +45,14 @@ async function fetchGithubJson(url, userAgent, fetchImpl = fetch) {
  *   readBlob?: typeof readBlobJson,
  *   fetchImpl?: typeof fetch,
  * }} args
- * @returns {Promise<unknown | null>}
+ * @returns {Promise<{ data: unknown | null, source: RemoteFileSource }>}
  */
 export async function loadRemoteJson(args) {
   const readBlob = args.readBlob ?? readBlobJson;
   const blob = await readBlob(args.pathname);
-  if (blob.ok) return blob.data;
-  if (!args.githubUrl) return null;
-  return fetchGithubJson(args.githubUrl, args.userAgent, args.fetchImpl);
+  if (blob.ok) return { data: blob.data, source: "blob" };
+  if (!args.githubUrl) return { data: null, source: "snapshot" };
+  const github = await fetchGithubJson(args.githubUrl, args.userAgent, args.fetchImpl);
+  if (github != null) return { data: github, source: "github" };
+  return { data: null, source: "snapshot" };
 }
