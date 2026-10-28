@@ -153,6 +153,8 @@ export function buildCatalog(opts: {
   return {
     fetchedAt: opts.fetchedAt,
     source: opts.source,
+    historySource: "snapshot",
+    sources: { history: "snapshot", reentries: "snapshot", gpLatest: "snapshot" },
     warning: opts.warning,
     missingKnownIds,
     objects,

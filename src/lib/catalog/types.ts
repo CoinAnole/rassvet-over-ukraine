@@ -109,9 +109,20 @@ export type LiveObject = {
   decayDate: string | null;
 };
 
+/** Which copy supplied one catalog file. `snapshot` means neither remote copy did. */
+export type RemoteFileSource = "blob" | "github" | "snapshot";
+
 export type CatalogPayload = {
   fetchedAt: string;
   source: "live" | "saved" | "seed";
+  /** Altitude-history copy used for this response. */
+  historySource: RemoteFileSource;
+  /** Same chain for the other data-branch files. */
+  sources: {
+    history: RemoteFileSource;
+    reentries: RemoteFileSource;
+    gpLatest: RemoteFileSource;
+  };
   warning: string | null;
   missingKnownIds: number[];
   objects: LiveObject[];
