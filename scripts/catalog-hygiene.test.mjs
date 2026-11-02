@@ -66,7 +66,10 @@ describe("orbit proxy", () => {
       INCLINATION: 82.2883,
     });
     assert.ok(orbit);
-    assert.ok(Math.abs(orbit.approxAltitudeKm - 507.256483) < 1e-4, `alt ${orbit.approxAltitudeKm}`);
+    assert.ok(
+      Math.abs(orbit.approxAltitudeKm - 507.256483) < 1e-4,
+      `alt ${orbit.approxAltitudeKm}`,
+    );
     assert.ok(orbit.perigeeKm > 150);
   });
 
@@ -175,8 +178,75 @@ describe("auditCatalog", () => {
     assert.match(renderAudit(report), /Result: incomplete fetch/);
   });
 
+  it("fails when a confirmed reentry still has a newer GP epoch", () => {
+    const cfg = config({
+      objects: [
+        {
+          norad: 100089,
+          name: "RASSVET-3 23",
+          catalogName: "RASSVET-3 23",
+          cospar: "2026-165G",
+          group: "batch",
+        },
+        {
+          norad: 68363,
+          name: "RASSVET-3 4",
+          catalogName: "RASSVET-3 4",
+          cospar: "2026-061D",
+          group: "batch",
+        },
+      ],
+    });
+    const report = live(
+      cfg,
+      [
+        row({
+          NORAD_CAT_ID: 100089,
+          OBJECT_ID: "2026-165G",
+          OBJECT_NAME: "RASSVET-3 23",
+          EPOCH: "2026-11-01T00:23:00.000000",
+          MEAN_MOTION: 15.65,
+        }),
+      ],
+      {
+        reentries: [
+          { norad: 100089, name: "RASSVET-3 23", decay_date: "2026-10-24" },
+          { norad: 68363, name: "RASSVET-3 4", decay_date: "2026-06-06" },
+        ],
+      },
+    );
+    assert.equal(report.exitCode, 1);
+    assert.match(report.failures.join("\n"), /100089/);
+    assert.match(report.failures.join("\n"), /2026-10-24/);
+    assert.match(report.failures.join("\n"), /2026-11-01/);
+    assert.equal(
+      report.failures.some((line) => line.includes("68363")),
+      false,
+    );
+    assert.match(renderAudit(report), /Result: fail/);
+    const sameDay = live(
+      cfg,
+      [
+        row({
+          NORAD_CAT_ID: 100089,
+          OBJECT_ID: "2026-165G",
+          OBJECT_NAME: "RASSVET-3 23",
+          EPOCH: "2026-10-24T18:00:00.000000",
+          MEAN_MOTION: 15.65,
+        }),
+      ],
+      { reentries: [{ norad: 100089, name: "RASSVET-3 23", decay_date: "2026-10-24" }] },
+    );
+    assert.equal(
+      sameDay.failures.some((line) => line.includes("newer")),
+      false,
+    );
+  });
+
   it("still fails a curated ID with neither GP nor a reentry record", () => {
-    const report = live(config(), [row({ NORAD_CAT_ID: 99, OBJECT_ID: "2026-061B", OBJECT_NAME: "OTHER" })]);
+    const report = live(config(), [
+      row({ NORAD_CAT_ID: 99, OBJECT_ID: "2026-061B", OBJECT_NAME: "OTHER" }),
+    ]);
     assert.equal(report.exitCode, 1);
     assert.match(report.failures.join("\n"), /has no confirmed reentry/);
   });
@@ -242,7 +312,10 @@ describe("climb rate warnings", () => {
       climbing.climbing.map((entry) => entry.obj.norad),
       [1],
     );
-    assert.equal(climbing.notes.some((line) => /unknown rate/.test(line)), false);
+    assert.equal(
+      climbing.notes.some((line) => /unknown rate/.test(line)),
+      false,
+    );
 
     const flat = [48, 24, 0].map((hours) => ({
       norad: 1,

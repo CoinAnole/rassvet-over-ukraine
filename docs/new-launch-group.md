@@ -56,7 +56,7 @@ COSPAR piece letters skip I and O. Sixteen pieces run A–R, not A–P.
 ### Decayed and missing
 
 - [ ] Keep the object in `objects`. Dropping it removes it from the constellation list.
-- [ ] Do not add a `decayed` array. The altitude-history run asks CelesTrak SATCAT for each tracked NORAD and writes confirmed decays (`DECAY_DATE` or ops code `D`) to `reentries.json`. Those records are not pruned. The GitHub Action still writes the `data` branch copy. `npm run record:altitudes` writes the Blob copy.
+- [ ] Do not add a `decayed` array. The altitude-history run asks CelesTrak SATCAT for each tracked NORAD and writes confirmed decays (`DECAY_DATE` or ops code `D`) to `reentries.json`. A later run drops a record when SATCAT withdraws the decay or a GP epoch is newer than the decay date. The GitHub Action still writes the `data` branch copy. `npm run record:altitudes` writes the Blob copy.
 - [ ] A perigee under 150 km is already excluded by the runtime.
 - [ ] An object that is still in GP, with no decay date, a newest epoch more than 72 hours behind the catalog, and a last altitude under 250 km or a decaying rate, shows as reentering. The clock does not predict passes for it.
 

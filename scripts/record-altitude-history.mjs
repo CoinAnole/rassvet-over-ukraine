@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Fetch the Rassvet name query and each experimental launch query, and append
- * altitudes for catalogued NORADs. Then ask SATCAT only about objects that
- * are missing or stale in that combined fetch.
+ * altitudes for catalogued NORADs. Then ask SATCAT about objects that are
+ * missing or stale in that combined fetch, and re-check recorded reentries.
  *
  * A GP fetch that still fails after retries exits 1, so the job goes red.
  * A feed with no new epochs exits 0 and says so. A SATCAT miss is a warning;
@@ -37,6 +37,7 @@ import {
 } from "../src/lib/catalog/celestrak-fetch.mjs";
 import {
   confirmedDecay,
+  gpSupersedesReentry,
   mergeReentryRecords,
   parseReentryDocument,
   reentryDocument,
@@ -367,13 +368,16 @@ export async function recordAltitudes(opts) {
   }
   const confirmed = new Set(recorded.map((record) => record.norad));
   const candidates = satcatCandidates(tracked, gpByNorad, confirmed);
+  const rechecks = tracked.filter((obj) => confirmed.has(Number(obj.norad)));
   log(
-    `SATCAT candidates: ${candidates.length} (missing from this GP fetch, or more than 72 h behind its newest epoch, and not already recorded).`,
+    `SATCAT candidates: ${candidates.length} (missing from this GP fetch, or more than 72 h behind its newest epoch, and not already recorded). Rechecking ${rechecks.length} recorded reentr${rechecks.length === 1 ? "y" : "ies"}.`,
   );
 
   const updates = [];
+  /** @type {number[]} */
+  const withdrawn = [];
   let satcatFailures = 0;
-  for (const obj of candidates) {
+  for (const obj of [...candidates, ...rechecks]) {
     const sat = await fetchCelestrakJson(satcatUrl(obj.norad), {
       userAgent,
       fetchImpl: opts.fetchImpl,
@@ -387,7 +391,10 @@ export async function recordAltitudes(opts) {
       continue;
     }
     const decay = confirmedDecay(sat.data[0]);
-    if (!decay) continue;
+    if (!decay) {
+      if (confirmed.has(Number(obj.norad))) withdrawn.push(Number(obj.norad));
+      continue;
+    }
     const last = newestSample(rows, obj.norad);
     updates.push({
       norad: obj.norad,
@@ -397,17 +404,35 @@ export async function recordAltitudes(opts) {
       last_alt_km: last?.alt_km ?? null,
     });
   }
+  const satcatAsked = candidates.length + rechecks.length;
   if (satcatFailures > 0) {
     summary.push(
-      `SATCAT: ${satcatFailures} of ${candidates.length} candidate queries failed. GP rows were kept.`,
+      `SATCAT: ${satcatFailures} of ${satcatAsked} queries failed. GP rows were kept. A failed recheck leaves that reentry record in place.`,
     );
   } else {
     summary.push(
-      `SATCAT: checked ${candidates.length} candidate${candidates.length === 1 ? "" : "s"}.`,
+      `SATCAT: checked ${candidates.length} candidate${candidates.length === 1 ? "" : "s"} and ${rechecks.length} recorded reentr${rechecks.length === 1 ? "y" : "ies"}.`,
     );
   }
 
-  const records = mergeReentryRecords(recorded, updates, now.toISOString());
+  /** @type {Map<number, string>} */
+  const gpEpochByNorad = new Map();
+  for (const [norad, row] of gpByNorad) {
+    if (row?.EPOCH) gpEpochByNorad.set(norad, String(row.EPOCH));
+  }
+  const superseded = recorded.filter((record) =>
+    gpSupersedesReentry(gpEpochByNorad.get(record.norad), record),
+  );
+  if (withdrawn.length > 0 || superseded.length > 0) {
+    log(
+      `Dropping reentry records: SATCAT withdrew ${withdrawn.join(", ") || "(none)"}; GP epoch is newer than the decay date for ${superseded.map((record) => record.norad).join(", ") || "(none)"}.`,
+    );
+  }
+
+  const records = mergeReentryRecords(recorded, updates, now.toISOString(), {
+    withdrawnNorads: withdrawn,
+    gpEpochByNorad,
+  });
   if (JSON.stringify(recorded) === JSON.stringify(records)) {
     log(`Reentries unchanged (${records.length} records).`);
   } else {

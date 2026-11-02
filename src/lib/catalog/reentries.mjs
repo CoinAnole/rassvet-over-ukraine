@@ -1,8 +1,10 @@
 /**
  * Confirmed reentries, from CelesTrak SATCAT. The recorder writes the public
  * Blob path `data/reentries.json`. The GitHub data branch is the fallback.
- * Records are never pruned. A missing decay date is not a record: the app
- * decides presumed reentry from a stale low orbit at read time.
+ * A record stays only while SATCAT still confirms the decay and no GP epoch
+ * falls on a later UTC day than that decay date. The app also ignores a stale
+ * record when the live element set is newer. A missing decay date is not by
+ * itself a record: presumed reentry is a stale low orbit at read time.
  */
 
 /** Last altitude under this, with a stale epoch, is presumed reentry. */
@@ -60,7 +62,8 @@ export function parseReentryDocument(data) {
     out.push({
       norad,
       name: typeof rec.name === "string" ? rec.name : "",
-      decay_date: typeof rec.decay_date === "string" && rec.decay_date.trim() ? rec.decay_date.trim() : null,
+      decay_date:
+        typeof rec.decay_date === "string" && rec.decay_date.trim() ? rec.decay_date.trim() : null,
       last_epoch: typeof rec.last_epoch === "string" && rec.last_epoch ? rec.last_epoch : null,
       last_alt_km: alt != null && Number.isFinite(alt) ? alt : null,
       first_seen: typeof rec.first_seen === "string" ? rec.first_seen : "",
@@ -70,15 +73,52 @@ export function parseReentryDocument(data) {
 }
 
 /**
- * Add or refresh confirmed reentries. Existing records stay, including ones
- * older than the altitude history window. `first_seen` is the run that
- * first recorded the decay.
+ * UTC day of an epoch or decay date, or "" when it is not a calendar day.
+ * @param {string | null | undefined} value
+ */
+export function utcDay(value) {
+  const day = typeof value === "string" ? value.trim().slice(0, 10) : "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+}
+
+/**
+ * True when the element-set epoch is on a later UTC day than the decay date.
+ * An epoch on the decay date itself does not outrun that date.
+ * @param {string | null | undefined} epoch
+ * @param {string | null | undefined} decayDate
+ */
+export function gpEpochAfterDecay(epoch, decayDate) {
+  const epochDay = utcDay(epoch);
+  const decayDay = utcDay(decayDate);
+  if (!epochDay || !decayDay) return false;
+  return epochDay > decayDay;
+}
+
+/**
+ * A stored reentry is stale when a GP epoch is newer than its decay date,
+ * or, when the record has no decay date, newer than the epoch stored with it.
+ * @param {string | null | undefined} epoch
+ * @param {Pick<ReentryRecord, "decay_date" | "last_epoch"> | null | undefined} record
+ */
+export function gpSupersedesReentry(epoch, record) {
+  if (!record) return false;
+  const mark = record.decay_date || record.last_epoch;
+  return gpEpochAfterDecay(epoch, mark);
+}
+
+/**
+ * Add or refresh confirmed reentries, then drop any record whose evidence is gone.
+ * `withdrawnNorads` are objects SATCAT no longer reports as decayed.
+ * `gpEpochByNorad` drops a record when that epoch is newer than the decay date.
+ * Records with no new evidence stay, including ones older than the altitude history window.
+ * `first_seen` is the run that first recorded the decay.
  * @param {ReentryRecord[]} existing
  * @param {Array<Partial<ReentryRecord> & { norad: number }>} updates
  * @param {string} nowIso
+ * @param {{ withdrawnNorads?: Iterable<number>, gpEpochByNorad?: Map<number, string> }} [evidence]
  * @returns {ReentryRecord[]}
  */
-export function mergeReentryRecords(existing, updates, nowIso) {
+export function mergeReentryRecords(existing, updates, nowIso, evidence = {}) {
   /** @type {Map<number, ReentryRecord>} */
   const by = new Map();
   for (const record of existing) {
@@ -93,7 +133,8 @@ export function mergeReentryRecords(existing, updates, nowIso) {
       typeof update.decay_date === "string" && update.decay_date.trim()
         ? update.decay_date.trim()
         : null;
-    const lastEpoch = typeof update.last_epoch === "string" && update.last_epoch ? update.last_epoch : null;
+    const lastEpoch =
+      typeof update.last_epoch === "string" && update.last_epoch ? update.last_epoch : null;
     const lastAlt = update.last_alt_km == null ? null : Number(update.last_alt_km);
     if (!prev) {
       by.set(norad, {
@@ -112,7 +153,14 @@ export function mergeReentryRecords(existing, updates, nowIso) {
     if (lastAlt != null && Number.isFinite(lastAlt)) prev.last_alt_km = lastAlt;
     if (!prev.first_seen) prev.first_seen = nowIso;
   }
-  return [...by.values()].sort((a, b) => a.norad - b.norad);
+  const withdrawn = new Set(evidence.withdrawnNorads ?? []);
+  const gpEpochByNorad = evidence.gpEpochByNorad ?? new Map();
+  return [...by.values()]
+    .filter((record) => {
+      if (withdrawn.has(record.norad)) return false;
+      return !gpSupersedesReentry(gpEpochByNorad.get(record.norad), record);
+    })
+    .sort((a, b) => a.norad - b.norad);
 }
 
 /**
