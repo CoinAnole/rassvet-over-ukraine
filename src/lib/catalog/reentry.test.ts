@@ -92,6 +92,54 @@ describe("reentries", () => {
     assert.ok(high?.omm);
   });
 
+  it("keeps a fresh element set when it is newer than a recorded decay", () => {
+    const fresh = "2026-11-01T00:23:00.000000";
+    const falseDecay: ReentryRecord = {
+      norad: 100089,
+      name: "RASSVET-3 23",
+      decay_date: "2026-10-24",
+      last_epoch: "2026-10-21T05:45:09.129600",
+      last_alt_km: 221,
+      first_seen: "2026-10-29T00:00:00.000Z",
+    };
+    const realDecay: ReentryRecord = {
+      norad: 100083,
+      name: "RASSVET-3 17",
+      decay_date: "2026-10-29",
+      last_epoch: "2026-10-28T00:00:00.000000",
+      last_alt_km: 180,
+      first_seen: "2026-10-29T12:00:00.000Z",
+    };
+    const four: ReentryRecord = {
+      norad: 68363,
+      name: "RASSVET-3 4",
+      decay_date: "2026-06-06",
+      last_epoch: null,
+      last_alt_km: null,
+      first_seen: "2026-06-07T00:00:00.000Z",
+    };
+    const rated = applyReentries(
+      catalogFor([omm(100089, LOW, fresh)]),
+      [falseDecay, realDecay, four],
+      null,
+    );
+    const twentyThree = rated.objects.find((obj) => obj.norad === 100089);
+    const seventeen = rated.objects.find((obj) => obj.norad === 100083);
+    const numberFour = rated.objects.find((obj) => obj.norad === 68363);
+    assert.ok(twentyThree?.omm);
+    assert.notEqual(twentyThree?.status, "decayed");
+    assert.equal(twentyThree?.decayDate, null);
+    assert.equal(twentyThree?.epoch, fresh);
+    assert.equal(seventeen?.status, "decayed");
+    assert.equal(seventeen?.omm, null);
+    assert.equal(seventeen?.decayDate, "2026-10-29");
+    assert.equal(numberFour?.status, "decayed");
+    assert.equal(numberFour?.decayDate, "2026-06-06");
+    assert.equal(rated.decayed.includes(100089), false);
+    assert.equal(rated.decayed.includes(100083), true);
+    assert.equal(rated.decayed.includes(68363), true);
+  });
+
   it("does not call a fresh low decay reentering", () => {
     const rows = (octoberRows as HistoryRow[]).filter((row) => row.norad === 100083);
     const catalog = applyClimbRates(

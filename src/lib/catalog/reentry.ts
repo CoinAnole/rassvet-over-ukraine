@@ -1,12 +1,14 @@
 import { epochToMs, climbRate, rateIsStale } from "../orbit/climb-rate.ts";
-import { REENTRY_ALT_KM, type ReentryRecord } from "./reentries.mjs";
+import { REENTRY_ALT_KM, gpSupersedesReentry, type ReentryRecord } from "./reentries.mjs";
 import type { HistoryRow } from "./altitude-history.mjs";
 import type { CatalogPayload, LiveObject } from "./types.ts";
 
 export { REENTRY_ALT_KM };
 
 /**
- * SATCAT-confirmed reentries become decayed. A tracked object with no decay
+ * SATCAT-confirmed reentries become decayed, unless a GP epoch is newer than
+ * the decay date. That fresh element set wins, so a withdrawn decay cannot
+ * hide a live satellite. A tracked object with no decay
  * date, a newest epoch more than 72 hours behind the catalog, and either a
  * last altitude under 250 km or a decaying rate, is reentering. Both are
  * dropped from propagation.
@@ -33,7 +35,12 @@ export function applyReentries(
   }
 
   const objects = payload.objects.map((obj) =>
-    classify(obj, byRecord.get(obj.norad) ?? null, byHistory.get(obj.norad) ?? [], referenceMs || null),
+    classify(
+      obj,
+      byRecord.get(obj.norad) ?? null,
+      byHistory.get(obj.norad) ?? [],
+      referenceMs || null,
+    ),
   );
   const missingKnownIds = objects.filter((obj) => obj.status === "missing").map((obj) => obj.norad);
   const decayed = objects.filter((obj) => obj.status === "decayed").map((obj) => obj.norad);
@@ -46,7 +53,7 @@ function classify(
   history: HistoryRow[],
   referenceMs: number | null,
 ): LiveObject {
-  if (record) {
+  if (record && !gpSupersedesReentry(obj.epoch, record)) {
     return {
       ...obj,
       status: "decayed",

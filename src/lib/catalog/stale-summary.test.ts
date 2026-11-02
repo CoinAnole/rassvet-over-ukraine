@@ -74,22 +74,10 @@ describe("stale summary", () => {
     );
     assert.equal(summary.count, onOrbitStaleCount(mixed));
     const by = (norad: number) => summary.objects.find((obj) => obj.norad === norad);
-    assert.deepEqual(
-      [by(57179)?.ageDays, by(57179)?.ageHoursPart],
-      [4, 4],
-    );
-    assert.deepEqual(
-      [by(68370)?.ageDays, by(68370)?.ageHoursPart],
-      [3, 18],
-    );
-    assert.deepEqual(
-      [by(68360)?.ageDays, by(68360)?.ageHoursPart],
-      [3, 8],
-    );
-    assert.deepEqual(
-      [by(68373)?.ageDays, by(68373)?.ageHoursPart],
-      [3, 1],
-    );
+    assert.deepEqual([by(57179)?.ageDays, by(57179)?.ageHoursPart], [4, 4]);
+    assert.deepEqual([by(68370)?.ageDays, by(68370)?.ageHoursPart], [3, 18]);
+    assert.deepEqual([by(68360)?.ageDays, by(68360)?.ageHoursPart], [3, 8]);
+    assert.deepEqual([by(68373)?.ageDays, by(68373)?.ageHoursPart], [3, 1]);
     assert.equal(ageParts(72.9).days, 3);
     assert.equal(ageParts(72.9).hours, 0);
   });
@@ -166,7 +154,7 @@ describe("stale summary", () => {
   it("leaves a confirmed reentry out even when its element set is old", () => {
     const withDecayed = applyReentries(
       catalog([
-        omm(68363, "2026-10-01T00:00:00.000000", LOW),
+        omm(68363, "2026-06-05T00:00:00.000000", LOW),
         omm(57179, "2026-10-07T08:00:00.000000", HIGH),
       ]),
       [
@@ -174,7 +162,7 @@ describe("stale summary", () => {
           norad: 68363,
           name: "RASSVET-3 4",
           decay_date: "2026-06-06",
-          last_epoch: "2026-10-01T00:00:00.000000",
+          last_epoch: "2026-06-05T00:00:00.000000",
           last_alt_km: 200,
           first_seen: "2026-06-07T00:00:00.000Z",
         },
@@ -195,7 +183,10 @@ describe("stale summary", () => {
   });
 
   it("labels experimental climbing and not-climbing, and decayed, without a coverage row", () => {
-    assert.equal(staleObjectRole({ status: "climbing", group: "exp-2024" }), "experimental-climbing");
+    assert.equal(
+      staleObjectRole({ status: "climbing", group: "exp-2024" }),
+      "experimental-climbing",
+    );
     assert.equal(
       staleObjectRole({ status: "stuck", group: "exp-2023" }),
       "experimental-not-climbing",

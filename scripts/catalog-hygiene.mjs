@@ -10,6 +10,7 @@
 
 import { orbitFromGp as brouwerOrbit } from "../src/lib/orbit/brouwer-altitude.mjs";
 import { climbRate, epochToMs, rateIsStale } from "../src/lib/orbit/climb-rate.mjs";
+import { gpSupersedesReentry } from "../src/lib/catalog/reentries.mjs";
 
 const RASSVET_NAME = /rassvet|рассвет/i;
 
@@ -172,6 +173,14 @@ export function auditCatalog(opts) {
       if (obj.name !== gpName) {
         displayDiffs.push({ obj, gpName });
       }
+      if (reentrySet.has(obj.norad)) {
+        const record = reentries.find((item) => Number(item?.norad) === obj.norad);
+        if (gpSupersedesReentry(String(row.EPOCH ?? ""), record)) {
+          failures.push(
+            `NORAD ${obj.norad} (${obj.name}) is recorded as a confirmed reentry${record?.decay_date ? ` on ${record.decay_date}` : ""}, but GP epoch ${row.EPOCH} is newer. The reentry record is stale.`,
+          );
+        }
+      }
       if (orbit && orbit.perigeeKm < decayPerigeeKm) {
         lowPerigee.push(entry);
         notes.push(
@@ -271,9 +280,7 @@ export function auditCatalog(opts) {
 }
 
 function listObjects(entries) {
-  return entries
-    .map((entry) => `${entry.obj.norad} (${entry.obj.name})`)
-    .join(", ");
+  return entries.map((entry) => `${entry.obj.norad} (${entry.obj.name})`).join(", ");
 }
 
 /**
@@ -415,7 +422,9 @@ export function renderAudit(report) {
     push("");
     push(`Missing from GP: ${report.missing.length}`);
     for (const obj of report.missing) {
-      const flag = report.decayed.includes(obj.norad) ? "confirmed reentry" : "NOT a confirmed reentry";
+      const flag = report.decayed.includes(obj.norad)
+        ? "confirmed reentry"
+        : "NOT a confirmed reentry";
       push(`  ${obj.norad}  ${obj.cospar}  ${obj.name}  ${flag}`);
     }
 
@@ -444,7 +453,9 @@ export function renderAudit(report) {
     }
 
     push("");
-    push(`Confirmed reentries (${report.decayed.length}): ${report.decayed.join(", ") || "(empty)"}`);
+    push(
+      `Confirmed reentries (${report.decayed.length}): ${report.decayed.join(", ") || "(empty)"}`,
+    );
     push(`Perigee under ${report.decayPerigeeKm} km: ${report.lowPerigee.length}`);
     for (const entry of report.lowPerigee) {
       push(`  ${entry.obj.norad}  ${entry.obj.name}  perigee ${km(entry.orbit?.perigeeKm)}`);

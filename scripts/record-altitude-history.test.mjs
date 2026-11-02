@@ -449,6 +449,105 @@ describe("CelesTrak retry", () => {
   });
 });
 
+describe("withdrawn reentries", () => {
+  it("removes a record SATCAT no longer confirms and keeps a real decay", async () => {
+    const root = dir();
+    const file = join(root, "altitude-history.json");
+    writeFileSync(
+      join(root, "reentries.json"),
+      `${JSON.stringify({
+        v: 1,
+        updated: "2026-10-29T00:00:00.000Z",
+        records: [
+          {
+            norad: 100089,
+            name: "RASSVET-3 23",
+            decay_date: "2026-10-24",
+            last_epoch: "2026-10-21T05:45:09.129600",
+            last_alt_km: 221,
+            first_seen: "2026-10-29T00:00:00.000Z",
+          },
+          {
+            norad: 68363,
+            name: "RASSVET-3 4",
+            decay_date: "2026-06-06",
+            last_epoch: null,
+            last_alt_km: null,
+            first_seen: "2026-06-07T00:00:00.000Z",
+          },
+        ],
+      })}\n`,
+    );
+    const { fetchImpl, calls } = scriptedFetch([
+      { status: 200, body: [gpRow(100089, "2026-11-01T00:23:00.000000", "RASSVET-3 23")] },
+      { status: 200, body: [{ DECAY_DATE: "", OPS_STATUS_CODE: "+" }] },
+      { status: 200, body: [{ DECAY_DATE: "2026-06-06", OPS_STATUS_CODE: "D" }] },
+    ]);
+    const result = await recordAltitudes({
+      file,
+      config: config([
+        { norad: 100089, name: "RASSVET-3 23" },
+        { norad: 68363, name: "RASSVET-3 4" },
+      ]),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-11-02T00:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 0);
+    const records = JSON.parse(readFileSync(join(root, "reentries.json"), "utf8")).records;
+    assert.deepEqual(
+      records.map((record) => record.norad),
+      [68363],
+    );
+    assert.deepEqual(
+      calls.filter((call) => call.url.includes("satcat")).map((call) => call.url),
+      [
+        "https://celestrak.org/satcat/records.php?CATNR=100089&FORMAT=JSON",
+        "https://celestrak.org/satcat/records.php?CATNR=68363&FORMAT=JSON",
+      ],
+    );
+  });
+
+  it("drops a decay SATCAT still lists when the GP epoch is a later day", async () => {
+    const root = dir();
+    const file = join(root, "altitude-history.json");
+    writeFileSync(
+      join(root, "reentries.json"),
+      `${JSON.stringify({
+        v: 1,
+        records: [
+          {
+            norad: 100089,
+            name: "RASSVET-3 23",
+            decay_date: "2026-10-24",
+            last_epoch: "2026-10-21T05:45:09.129600",
+            last_alt_km: 221,
+            first_seen: "2026-10-29T00:00:00.000Z",
+          },
+        ],
+      })}\n`,
+    );
+    const { fetchImpl } = scriptedFetch([
+      { status: 200, body: [gpRow(100089, "2026-11-01T00:23:00.000000", "RASSVET-3 23")] },
+      { status: 200, body: [{ DECAY_DATE: "2026-10-24", OPS_STATUS_CODE: "D" }] },
+    ]);
+    const result = await recordAltitudes({
+      file,
+      config: config([{ norad: 100089, name: "RASSVET-3 23" }]),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-11-02T00:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 0);
+    const records = JSON.parse(readFileSync(join(root, "reentries.json"), "utf8")).records;
+    assert.deepEqual(records, []);
+  });
+});
+
 describe("SATCAT candidates", () => {
   it("asks only about a missing or stale object that is not already recorded", () => {
     const fresh = "2026-10-26T06:50:43.131552";
