@@ -83,8 +83,9 @@ describe("method copy", () => {
     assert.match(enText, /mean-motion derivative/);
     assert.match(enText, /rate pending/);
     assert.match(enText, /more than three days behind/);
-    assert.match(enText, /Blob storage/);
+    assert.match(enText, /recorded on a schedule into Blob storage/);
     assert.match(enText, /GitHub data branch/);
+    assert.equal(enText.includes("twice a day"), false);
     assert.equal(enText.includes("manual not-climbing list"), false);
     assert.equal(enText.includes("findrassvet.ru"), false);
     assert.equal(enText.includes("does not keep altitude history"), false);
@@ -102,8 +103,9 @@ describe("method copy", () => {
     assert.match(ukText, /не піднімається/);
     assert.match(ukText, /темп очікується/);
     assert.match(ukText, /три доби/);
-    assert.match(ukText, /Blob/);
+    assert.match(ukText, /за розкладом у сховище Blob/);
     assert.match(ukText, /data в GitHub/);
+    assert.equal(ukText.includes("двічі на добу"), false);
     assert.equal(ukText.includes("findrassvet.ru"), false);
 
     const ru = methodSections("ru").find((s) => s.heading === "Какие спутники входят в счёт");
@@ -118,8 +120,9 @@ describe("method copy", () => {
     assert.match(ruText, /не поднимается/);
     assert.match(ruText, /темп ожидается/);
     assert.match(ruText, /трое суток/);
-    assert.match(ruText, /Blob/);
+    assert.match(ruText, /по расписанию в хранилище Blob/);
     assert.match(ruText, /data в GitHub/);
+    assert.equal(ruText.includes("дважды в сутки"), false);
     assert.equal(ruText.includes("findrassvet.ru"), false);
   });
 

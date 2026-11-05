@@ -4,17 +4,17 @@
  * altitudes for catalogued NORADs. Then ask SATCAT about objects that are
  * missing or stale in that combined fetch, and re-check recorded reentries.
  *
- * A GP fetch that still fails after retries exits 1, so the job goes red.
+ * A GP fetch that still fails after retries exits 1.
  * A feed with no new epochs exits 0 and says so. A SATCAT miss is a warning;
  * the GP rows already fetched are still saved. `gp-latest.json` is written
  * only when every GP query succeeded.
  *
- * File mode, used by the GitHub Action. It does not read Blob and needs no token:
+ * File mode writes a local directory and does not use Blob. Tests use it:
  *   node scripts/record-altitude-history.mjs --file /tmp/altitude-data/altitude-history.json
  *
- * Blob mode, for a Cursor cloud agent on a schedule. The only environment
- * variable is BLOB_READ_WRITE_TOKEN. Run the one-time `npm run seed:blob`
- * before the first scheduled run, or this command starts a new log.
+ * Blob mode is the scheduled recorder. The only environment variable is
+ * BLOB_READ_WRITE_TOKEN. Run `npm run seed:blob` once before the first
+ * scheduled run, or this command starts a new log.
  *   npm run record:altitudes
  */
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

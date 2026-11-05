@@ -24,7 +24,7 @@ There is no sign-in and no database. A high score or a preference in `localStora
 - Catalog rules: `src/config/objects.json` (raised gate, decayed, stale hours)
 - Propagation and coverage: `src/lib/orbit`, `src/lib/catalog`
 - Seed snapshot: `src/data/catalog-seed.json`, used when a CelesTrak fetch fails
-- Altitude history, reentries, and the GP snapshot live in a public Vercel Blob store at `data/altitude-history.json`, `data/reentries.json`, and `data/gp-latest.json`. The app reads Blob first, then the raw GitHub `data` branch, then `src/data/catalog-seed.json` for element sets. Do not commit the history file to `main`. The GitHub Action still writes the `data` branch and must not receive `BLOB_READ_WRITE_TOKEN`
+- Altitude history, reentries, and the GP snapshot are recorded on a schedule into a public Vercel Blob store at `data/altitude-history.json`, `data/reentries.json`, and `data/gp-latest.json`. The app reads Blob first, then the raw GitHub `data` branch (a frozen fallback that is not updated), then `src/data/catalog-seed.json` for element sets. Do not commit the history file to `main`
 - Record into Blob, with only that token in the environment: `npm run record:altitudes` (`node scripts/record-altitude-history.mjs --blob`). Run `npm run seed:blob` once before the first record, to copy the current `data` branch files into those pathnames. `gp-latest.json` is written only when every GP query succeeds. A failed CelesTrak fetch exits 1
 - Share card: `public/og.jpg`. The document head in `src/routes/__root.tsx` points `og:image` at `https://rassvet-over-ukraine.vercel.app/og.jpg` so a scraper does not request the image from a protected deployment host
 - UI harness: `.cursor/skills/verify-rassvet`

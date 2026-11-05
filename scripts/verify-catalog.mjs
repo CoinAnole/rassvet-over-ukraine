@@ -14,6 +14,8 @@ import { readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseHistoryDocument } from "../src/lib/catalog/altitude-history.mjs";
+import { BLOB_PATH } from "../src/lib/catalog/blob-data.mjs";
+import { loadRemoteJson } from "../src/lib/catalog/remote-json.mjs";
 import { parseReentryDocument } from "../src/lib/catalog/reentries.mjs";
 import { auditCatalog, renderAudit } from "./catalog-hygiene.mjs";
 
@@ -77,50 +79,62 @@ export async function fetchGpQuery(url, userAgent) {
   return { url, ok: false, error: lastError, count: 0, objects: [] };
 }
 
-export async function fetchJsonDoc(url, userAgent) {
-  if (!url) return { ok: false, error: "no url", data: null };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15_000);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: { "User-Agent": userAgent, Accept: "application/json" },
-    });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, data: null };
-    return { ok: true, error: null, data: await res.json() };
-  } catch (err) {
-    const aborted = err && typeof err === "object" && "name" in err && err.name === "AbortError";
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: aborted ? "timeout after 15000ms" : message, data: null };
-  } finally {
-    clearTimeout(timer);
+/**
+ * Blob first, then the frozen GitHub data branch. `source` says which copy answered.
+ * @param {object} config
+ * @param {string} userAgent
+ */
+export async function loadAltitudeHistory(config, userAgent) {
+  const loaded = await loadRemoteJson({
+    pathname: BLOB_PATH.altitudeHistory,
+    githubUrl: config.altitudeHistoryUrl,
+    userAgent,
+  });
+  if (loaded.data == null) {
+    return {
+      ok: false,
+      error:
+        loaded.source === "snapshot"
+          ? "no altitude history from Blob or the data branch"
+          : "empty history document",
+      rows: [],
+      source: loaded.source,
+    };
   }
+  const rows = parseHistoryDocument(loaded.data);
+  if (!rows) {
+    return { ok: false, error: "history JSON has no rows array", rows: [], source: loaded.source };
+  }
+  return { ok: true, error: null, rows, source: loaded.source };
 }
 
-export async function fetchAltitudeHistory(url, userAgent) {
-  if (!url) return { ok: false, error: "no altitudeHistoryUrl", rows: [] };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15_000);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        "User-Agent": userAgent,
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, rows: [] };
-    const data = await res.json();
-    const rows = parseHistoryDocument(data);
-    if (!rows) return { ok: false, error: "history JSON has no rows array", rows: [] };
-    return { ok: true, error: null, rows };
-  } catch (err) {
-    const aborted = err && typeof err === "object" && "name" in err && err.name === "AbortError";
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: aborted ? "timeout after 15000ms" : message, rows: [] };
-  } finally {
-    clearTimeout(timer);
+/**
+ * @param {object} config
+ * @param {string} userAgent
+ */
+export async function loadReentries(config, userAgent) {
+  const loaded = await loadRemoteJson({
+    pathname: BLOB_PATH.reentries,
+    githubUrl: config.reentriesUrl,
+    userAgent,
+  });
+  if (loaded.data == null) {
+    return {
+      ok: false,
+      error:
+        loaded.source === "snapshot"
+          ? "no reentries from Blob or the data branch"
+          : "empty reentry document",
+      records: [],
+      source: loaded.source,
+    };
   }
+  return {
+    ok: true,
+    error: null,
+    records: parseReentryDocument(loaded.data),
+    source: loaded.source,
+  };
 }
 
 export async function verifyCatalog({ seedOnly = false, now = new Date() } = {}) {
@@ -150,11 +164,9 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     records = queries.flatMap((query) => (query.ok ? query.objects : []));
   }
 
-  const history = seedOnly
-    ? null
-    : await fetchAltitudeHistory(config.altitudeHistoryUrl, userAgent);
-  const reentryDoc = seedOnly ? null : await fetchJsonDoc(config.reentriesUrl, userAgent);
-  const reentries = reentryDoc?.ok ? parseReentryDocument(reentryDoc.data) : [];
+  const history = seedOnly ? null : await loadAltitudeHistory(config, userAgent);
+  const reentryDoc = seedOnly ? null : await loadReentries(config, userAgent);
+  const reentries = reentryDoc?.ok ? reentryDoc.records : [];
 
   const report = auditCatalog({
     config,
@@ -165,6 +177,7 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     seed: { fetchedAt: seed.fetchedAt, ids: seed.ids },
     history,
     reentries,
+    reentriesSource: reentryDoc?.source ?? null,
     reentriesError: reentryDoc && !reentryDoc.ok ? reentryDoc.error : null,
   });
   return { report, text: renderAudit(report) };

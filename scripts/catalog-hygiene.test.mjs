@@ -224,6 +224,25 @@ describe("auditCatalog", () => {
       false,
     );
     assert.match(renderAudit(report), /Result: fail/);
+    const frozen = live(
+      config({ objects: [cfg.objects[0]] }),
+      [
+        row({
+          NORAD_CAT_ID: 100089,
+          OBJECT_ID: "2026-165G",
+          OBJECT_NAME: "RASSVET-3 23",
+          EPOCH: "2026-11-01T00:23:00.000000",
+          MEAN_MOTION: 15.65,
+        }),
+      ],
+      {
+        reentries: [{ norad: 100089, name: "RASSVET-3 23", decay_date: "2026-10-24" }],
+        reentriesSource: "github",
+      },
+    );
+    assert.equal(frozen.exitCode, 0, frozen.failures.join("\n"));
+    assert.match(frozen.notes.join("\n"), /frozen GitHub data branch/);
+    assert.match(frozen.notes.join("\n"), /100089/);
     const sameDay = live(
       cfg,
       [

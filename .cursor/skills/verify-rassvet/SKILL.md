@@ -62,7 +62,7 @@ Do not add a test-only catalog endpoint. Do not block CelesTrak to force the see
 
 A fixture run is opt-in. A plain `launch` still calls CelesTrak and falls back to the snapshot if that fails.
 
-A `--gp-fixture` launch also writes `.run/altitude-history.json` and the same hook serves it for any `altitude-history.json` request. The body is a 48-hour line for RASSVET-3 11 (NORAD 68370) at +2.6 km/day, so Constellation can show that rate. It is not the Blob store, not the `data` branch, and not a CelesTrak history. A plain launch has no `BLOB_READ_WRITE_TOKEN`, so it still requests the raw `data` branch URL and shows no rates when that file is missing.
+A `--gp-fixture` launch also writes `.run/altitude-history.json` and the same hook serves it for any `altitude-history.json` request. The body is a 48-hour line for RASSVET-3 11 (NORAD 68370) at +2.6 km/day, so Constellation can show that rate. It is not the Blob store, not the `data` branch, and not a CelesTrak history. A plain launch has no `BLOB_READ_WRITE_TOKEN`, so it still requests the raw `data` branch URL. That branch is a frozen fallback and is not updated, so a plain launch can show old rates or none when the file is missing.
 
 ## Drive
 

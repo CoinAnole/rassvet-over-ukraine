@@ -1,7 +1,7 @@
 /**
  * Synthetic altitude history for a --gp-fixture launch.
  * RASSVET-3 11 gets a 48-hour line at +2.6 km/day so the constellation
- * table can show a rate without the data branch.
+ * table can show a rate without Blob or the frozen data branch.
  */
 import { orbitFromGp } from "../../../../src/lib/orbit/brouwer-altitude.mjs";
 
