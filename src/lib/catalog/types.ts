@@ -52,12 +52,6 @@ export type ObjectsConfig = {
   muKm3s2: number;
   decayPerigeeKm: number;
   userAgent: string;
-  /** GitHub raw fallback for altitude-history.json. Blob is read first. */
-  altitudeHistoryUrl: string;
-  /** GitHub raw fallback for reentries.json. Blob is read first. */
-  reentriesUrl: string;
-  /** GitHub raw fallback for gp-latest.json. Blob is read first. */
-  gpLatestUrl: string;
   celestrak: { queries: string[] };
   groups: GroupDef[];
   objects: ConfigObject[];
@@ -109,15 +103,15 @@ export type LiveObject = {
   decayDate: string | null;
 };
 
-/** Which copy supplied one catalog file. `snapshot` means neither remote copy did. */
-export type RemoteFileSource = "blob" | "github" | "snapshot";
+/** Which copy supplied one catalog file. `snapshot` means Blob did not. */
+export type RemoteFileSource = "blob" | "snapshot";
 
 export type CatalogPayload = {
   fetchedAt: string;
   source: "live" | "saved" | "seed";
   /** Altitude-history copy used for this response. */
   historySource: RemoteFileSource;
-  /** Same chain for the other data-branch files. */
+  /** Same chain for reentries and the saved GP file. */
   sources: {
     history: RemoteFileSource;
     reentries: RemoteFileSource;

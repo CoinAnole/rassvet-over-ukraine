@@ -79,24 +79,15 @@ export async function fetchGpQuery(url, userAgent) {
   return { url, ok: false, error: lastError, count: 0, objects: [] };
 }
 
-/**
- * Blob first, then the frozen GitHub data branch. `source` says which copy answered.
- * @param {object} config
- * @param {string} userAgent
- */
-export async function loadAltitudeHistory(config, userAgent) {
+/** Public Blob only. `source` is `blob` or `snapshot`. */
+export async function loadAltitudeHistory() {
   const loaded = await loadRemoteJson({
     pathname: BLOB_PATH.altitudeHistory,
-    githubUrl: config.altitudeHistoryUrl,
-    userAgent,
   });
   if (loaded.data == null) {
     return {
       ok: false,
-      error:
-        loaded.source === "snapshot"
-          ? "no altitude history from Blob or the data branch"
-          : "empty history document",
+      error: "no altitude history from Blob",
       rows: [],
       source: loaded.source,
     };
@@ -108,23 +99,15 @@ export async function loadAltitudeHistory(config, userAgent) {
   return { ok: true, error: null, rows, source: loaded.source };
 }
 
-/**
- * @param {object} config
- * @param {string} userAgent
- */
-export async function loadReentries(config, userAgent) {
+/** Public Blob only. `source` is `blob` or `snapshot`. */
+export async function loadReentries() {
   const loaded = await loadRemoteJson({
     pathname: BLOB_PATH.reentries,
-    githubUrl: config.reentriesUrl,
-    userAgent,
   });
   if (loaded.data == null) {
     return {
       ok: false,
-      error:
-        loaded.source === "snapshot"
-          ? "no reentries from Blob or the data branch"
-          : "empty reentry document",
+      error: "no reentries from Blob",
       records: [],
       source: loaded.source,
     };
@@ -164,8 +147,8 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     records = queries.flatMap((query) => (query.ok ? query.objects : []));
   }
 
-  const history = seedOnly ? null : await loadAltitudeHistory(config, userAgent);
-  const reentryDoc = seedOnly ? null : await loadReentries(config, userAgent);
+  const history = seedOnly ? null : await loadAltitudeHistory();
+  const reentryDoc = seedOnly ? null : await loadReentries();
   const reentries = reentryDoc?.ok ? reentryDoc.records : [];
 
   const report = auditCatalog({
@@ -177,7 +160,6 @@ export async function verifyCatalog({ seedOnly = false, now = new Date() } = {})
     seed: { fetchedAt: seed.fetchedAt, ids: seed.ids },
     history,
     reentries,
-    reentriesSource: reentryDoc?.source ?? null,
     reentriesError: reentryDoc && !reentryDoc.ok ? reentryDoc.error : null,
   });
   return { report, text: renderAudit(report) };

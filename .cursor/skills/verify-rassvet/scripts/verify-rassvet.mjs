@@ -372,6 +372,9 @@ async function launch(flags) {
     env.VERIFY_RASSVET_GP_FIXTURE = gpFixture;
     env.VERIFY_RASSVET_GP_FIXTURE_FILE = GP_FIXTURE_FILE;
     env.VERIFY_RASSVET_HISTORY_FIXTURE_FILE = HISTORY_FIXTURE_FILE;
+    if (!env.BLOB_PUBLIC_BASE_URL && !env.BLOB_STORE_ID && !env.BLOB_READ_WRITE_TOKEN) {
+      env.BLOB_PUBLIC_BASE_URL = "https://fixture.public.blob.vercel-storage.com";
+    }
     const hookImport = `--import ${GP_FETCH_HOOK}`;
     env.NODE_OPTIONS = env.NODE_OPTIONS ? `${env.NODE_OPTIONS} ${hookImport}` : hookImport;
   }

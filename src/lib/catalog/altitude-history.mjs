@@ -1,7 +1,7 @@
 /**
  * Compact altitude history shared by the scheduled recorder and the app.
  * One row is one published GP epoch. The recorder writes the public Blob
- * path `data/altitude-history.json`. The GitHub `data` branch is the fallback.
+ * path `data/altitude-history.json`.
  */
 import { orbitFromGp } from "../orbit/brouwer-altitude.mjs";
 import { epochToMs } from "../orbit/climb-rate.mjs";

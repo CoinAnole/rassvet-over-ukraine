@@ -1,6 +1,6 @@
 /**
  * Installed with `node --import` on the verification dev server only.
- * `loadCatalog` fetches CelesTrak, then Blob when a token is set, then the altitude-history raw URL from that
+ * `loadCatalog` fetches CelesTrak and the public Blob URL from that
  * process, which Playwright's page route cannot see. When the fixture files
  * are set, those responses are the harness fixtures. Every other fetch is unchanged.
  */
@@ -25,6 +25,9 @@ if (file || historyFile) {
         status: 200,
         headers: { "content-type": "application/json" },
       });
+    }
+    if (url.includes("fixture.public.blob.vercel-storage.com")) {
+      return new Response("", { status: 404 });
     }
     return original(input, init);
   };

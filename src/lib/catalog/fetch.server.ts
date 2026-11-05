@@ -41,7 +41,6 @@ async function fetchJson(url: string, userAgent: string): Promise<unknown[] | nu
 
 type CatalogDeps = {
   readBlob?: typeof readBlobJson;
-  fetchImpl?: typeof fetch;
   fetchGp?: (url: string, userAgent: string) => Promise<unknown[] | null>;
 };
 
@@ -50,20 +49,17 @@ export async function loadCatalog(now = new Date(), deps?: CatalogDeps): Promise
   const cfg = getObjectsConfig();
   const wanted = new Set(cfg.objects.map((o) => o.norad));
   const fetchGp = deps?.fetchGp ?? fetchJson;
-  const remote = (pathname: string, githubUrl: string) =>
+  const remote = (pathname: string) =>
     loadRemoteJson({
       pathname,
-      githubUrl,
-      userAgent: cfg.userAgent,
       readBlob: deps?.readBlob,
-      fetchImpl: deps?.fetchImpl,
     });
 
   const [results, history, reentries, gpLatest] = await Promise.all([
     Promise.all(cfg.celestrak.queries.map((url) => fetchGp(url, cfg.userAgent))),
-    remote(BLOB_PATH.altitudeHistory, cfg.altitudeHistoryUrl),
-    remote(BLOB_PATH.reentries, cfg.reentriesUrl),
-    remote(BLOB_PATH.gpLatest, cfg.gpLatestUrl),
+    remote(BLOB_PATH.altitudeHistory),
+    remote(BLOB_PATH.reentries),
+    remote(BLOB_PATH.gpLatest),
   ]);
   const chosen = chooseCatalogElements({
     wanted,

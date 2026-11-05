@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   BLOB_CACHE_SECONDS,
   BLOB_PATH,
+  blobPublicBase,
+  blobStoreIdFromToken,
   readBlobJson,
   writeBlobJson,
 } from "../src/lib/catalog/blob-data.mjs";
@@ -18,6 +20,30 @@ describe("blob documents", () => {
       reentries: "data/reentries.json",
       gpLatest: "data/gp-latest.json",
     });
+  });
+
+  it("reads a store id from the read-write token", () => {
+    assert.equal(blobStoreIdFromToken("vercel_blob_rw_store123_secret"), "store123");
+    assert.equal(blobStoreIdFromToken("nope"), null);
+    assert.equal(
+      blobPublicBase({ BLOB_STORE_ID: "store123" }),
+      "https://store123.public.blob.vercel-storage.com",
+    );
+  });
+
+  it("fetches the public URL and does not send a token", async () => {
+    const calls = [];
+    const result = await readBlobJson(BLOB_PATH.gpLatest, {
+      token: null,
+      publicBase: "https://store.public.blob.vercel-storage.com",
+      fetchImpl: async (url, init) => {
+        calls.push({ url, authorization: init.headers.authorization ?? init.headers.Authorization ?? null });
+        return { ok: true, status: 200, json: async () => ({ rows: [] }) };
+      },
+    });
+    assert.deepEqual(result, { ok: true, data: { rows: [] } });
+    assert.equal(calls[0].url, "https://store.public.blob.vercel-storage.com/data/gp-latest.json");
+    assert.equal(calls[0].authorization, null);
   });
 
   it("does not call Blob when the token is missing", async () => {
