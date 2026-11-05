@@ -13,8 +13,7 @@
  *   node scripts/record-altitude-history.mjs --file /tmp/altitude-data/altitude-history.json
  *
  * Blob mode is the scheduled recorder. The only environment variable is
- * BLOB_READ_WRITE_TOKEN. Run `npm run seed:blob` once before the first
- * scheduled run, or this command starts a new log.
+ * BLOB_READ_WRITE_TOKEN. A missing Blob object starts a new log.
  *   npm run record:altitudes
  */
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

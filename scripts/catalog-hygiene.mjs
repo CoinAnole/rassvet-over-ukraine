@@ -86,14 +86,9 @@ export function auditCatalog(opts) {
       `Reentry records were not loaded (${opts.reentriesError}). Confirmed decays were not checked.`,
     );
   }
-  if (opts.history?.source === "github" || opts.reentriesSource === "github") {
-    notes.push(
-      "Altitude history or reentries came from the frozen GitHub data branch. That copy is no longer updated. The live log is in Blob.",
-    );
-  }
   if (config.decayed != null) {
     failures.push(
-      "`decayed` was the manual reentry list. Remove it. Confirmed reentries come from reentries.json in Blob, with the frozen data branch as fallback.",
+      "`decayed` was the manual reentry list. Remove it. Confirmed reentries come from reentries.json in Blob.",
     );
   }
   if (config.stuck != null) {
@@ -181,14 +176,9 @@ export function auditCatalog(opts) {
       if (reentrySet.has(obj.norad)) {
         const record = reentries.find((item) => Number(item?.norad) === obj.norad);
         if (gpSupersedesReentry(String(row.EPOCH ?? ""), record)) {
-          const staleReentry = `NORAD ${obj.norad} (${obj.name}) is recorded as a confirmed reentry${record?.decay_date ? ` on ${record.decay_date}` : ""}, but GP epoch ${row.EPOCH} is newer. The reentry record is stale.`;
-          if (opts.reentriesSource === "github") {
-            notes.push(
-              `${staleReentry} The record was read from the frozen GitHub data branch, which is no longer updated, so this is a warning, not a failure.`,
-            );
-          } else {
-            failures.push(staleReentry);
-          }
+          failures.push(
+            `NORAD ${obj.norad} (${obj.name}) is recorded as a confirmed reentry${record?.decay_date ? ` on ${record.decay_date}` : ""}, but GP epoch ${row.EPOCH} is newer. The reentry record is stale.`,
+          );
         }
       }
       if (orbit && orbit.perigeeKm < decayPerigeeKm) {
@@ -367,12 +357,8 @@ function classifyUnderRaised(args) {
     else notClimbing.push(entry);
   }
   if (stale.length > 0) {
-    const frozen =
-      args.history?.source === "github"
-        ? " The copy read was the frozen GitHub data branch, which is no longer updated."
-        : "";
     args.notes.push(
-      `Stale altitude history, more than 72 h behind the newest catalog epoch: ${stale.join(", ")}. That rate is not used.${frozen} This is a warning, not a failure.`,
+      `Stale altitude history, more than 72 h behind the newest catalog epoch: ${stale.join(", ")}. That rate is not used. This is a warning, not a failure.`,
     );
   }
   if (ratePending.length > 0) {

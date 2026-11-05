@@ -1,6 +1,6 @@
 /**
  * Confirmed reentries, from CelesTrak SATCAT. The recorder writes the public
- * Blob path `data/reentries.json`. The GitHub data branch is the fallback.
+ * Blob path `data/reentries.json`.
  * A record stays only while SATCAT still confirms the decay and no GP epoch
  * falls on a later UTC day than that decay date. The app also ignores a stale
  * record when the live element set is newer. A missing decay date is not by

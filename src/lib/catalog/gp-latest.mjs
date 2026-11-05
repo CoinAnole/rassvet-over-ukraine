@@ -1,7 +1,7 @@
 /**
  * Latest raw GP records from a successful altitude-history run.
- * The app reads the public Blob copy first, then this file on the data branch,
- * when a live CelesTrak fetch fails.
+ * The app reads the public Blob copy when a live CelesTrak fetch fails.
+ * If that copy is missing, the checked-in snapshot is used.
  */
 
 /**
