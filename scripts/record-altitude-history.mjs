@@ -4,7 +4,9 @@
  * altitudes for catalogued NORADs. Then ask SATCAT about objects that are
  * missing or stale in that combined fetch, and re-check recorded reentries.
  *
- * A GP fetch that still fails after retries exits 1.
+ * A GP fetch that still fails after retries exits 1 and does not run later
+ * GP queries, SATCAT, or any history write. A 403 is not retried and does
+ * not abort the remaining queries.
  * A feed with no new epochs exits 0 and says so. A SATCAT miss is a warning;
  * the GP rows already fetched are still saved. `gp-latest.json` is written
  * only when every GP query succeeded.
@@ -279,6 +281,13 @@ export async function recordAltitudes(opts) {
     });
     if (!fetched.ok || !Array.isArray(fetched.data)) {
       const why = fetched.ok ? "response was not a JSON array" : fetched.error;
+      if (!fetched.ok && fetched.retryable) {
+        const msg = `${query.label} exhausted CelesTrak retries (${why}). Later GP queries were not run. Altitude history was not updated.`;
+        console.error(`::error::${msg}`);
+        summary.push(`GP: ${msg}`);
+        log(msg);
+        return done(1, false, 0);
+      }
       note(`${query.label} unavailable (${why}).`);
       continue;
     }

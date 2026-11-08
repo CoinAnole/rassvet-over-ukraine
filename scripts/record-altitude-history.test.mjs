@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -87,9 +87,9 @@ function dir() {
 }
 
 describe("CelesTrak retry", () => {
-  it("waits 2s then 4s", () => {
-    assert.equal(backoffMs(0), 2_000);
-    assert.equal(backoffMs(1), 4_000);
+  it("waits 15s then 30s", () => {
+    assert.equal(backoffMs(0), 15_000);
+    assert.equal(backoffMs(1), 30_000);
   });
 
   it("retries HTTP 500 and then saves the GP rows", async () => {
@@ -113,7 +113,7 @@ describe("CelesTrak retry", () => {
     });
     assert.equal(result.exitCode, 0);
     assert.equal(result.changed, true);
-    assert.deepEqual(sleeps, [2_000]);
+    assert.deepEqual(sleeps, [15_000]);
     assert.equal(calls.length, 2);
     assert.equal(calls[0].userAgent, "RassvetOverUkraine/0.1 (test)");
     assert.equal(calls[0].url, GP_URL);
@@ -306,33 +306,113 @@ describe("CelesTrak retry", () => {
     );
   });
 
-  it("warns when an experimental launch query fails and still saves the RASSVET rows", async () => {
+  it("stops after the first GP query exhausts retries and does not write", async () => {
     const root = dir();
     const file = join(root, "altitude-history.json");
-    const warnings = [];
-    writeFileSync(join(root, "gp-latest.json"), '{"fetchedAt":"keep"}\n');
-    const { fetchImpl } = scriptedFetch([
-      { status: 200, body: [gpRow(68360, "2026-10-26T06:50:43.131552", "RASSVET-3 1")] },
-      { status: 500, body: "intdes down" },
-    ]);
+    const historyBefore = '{"v":1,"updated":"2026-10-24T19:29:06.569Z","rows":[]}\n';
+    const reentriesBefore = '{"v":1,"records":[{"norad":68363}]}\n';
+    const gpBefore = '{"fetchedAt":"keep"}\n';
+    writeFileSync(file, historyBefore);
+    writeFileSync(join(root, "reentries.json"), reentriesBefore);
+    writeFileSync(join(root, "gp-latest.json"), gpBefore);
+    const sleeps = [];
+    const { fetchImpl, calls } = scriptedFetch([{ status: 500, body: "upstream broke" }]);
     const result = await recordAltitudes({
       file,
       config: experimentalConfig(),
       fetchImpl,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      attempts: 3,
+      now: new Date("2026-10-26T12:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.changed, false);
+    assert.deepEqual(sleeps, [15_000, 30_000]);
+    assert.equal(calls.length, 3);
+    assert.equal(
+      calls.every((call) => call.url === GP_URL),
+      true,
+    );
+    assert.equal(
+      calls.some((call) => call.url.includes("INTDES=") || call.url.includes("satcat")),
+      false,
+    );
+    assert.equal(readFileSync(file, "utf8"), historyBefore);
+    assert.equal(readFileSync(join(root, "reentries.json"), "utf8"), reentriesBefore);
+    assert.equal(readFileSync(join(root, "gp-latest.json"), "utf8"), gpBefore);
+  });
+
+  it("does not read or write Blob when the first GP query exhausts retries", async () => {
+    let reads = 0;
+    let writes = 0;
+    const store = blobDataStore({
+      readBlobJson: async () => {
+        reads += 1;
+        return { ok: false, reason: "missing" };
+      },
+      writeBlobJson: async () => {
+        writes += 1;
+        return { url: "https://example.invalid/blob" };
+      },
+    });
+    const { fetchImpl, calls } = scriptedFetch([{ status: 500, body: "down" }]);
+    const result = await recordAltitudes({
+      store,
+      config: experimentalConfig(),
+      fetchImpl,
+      sleep: async () => {},
+      attempts: 3,
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.changed, false);
+    assert.equal(reads, 0);
+    assert.equal(writes, 0);
+    assert.equal(calls.length, 3);
+    assert.equal(
+      calls.some((call) => call.url.includes("INTDES=") || call.url.includes("satcat")),
+      false,
+    );
+  });
+
+  it("does not retry a 403 and still runs the next GP query", async () => {
+    const root = dir();
+    const file = join(root, "altitude-history.json");
+    const fresh = "2026-10-26T06:50:43.131552";
+    const { fetchImpl, calls } = scriptedFetch([
+      { status: 403, body: "blocked" },
+      { status: 200, body: [gpRow(57179, fresh, "OBJECT P")] },
+    ]);
+    const result = await recordAltitudes({
+      file,
+      config: {
+        userAgent: "RassvetOverUkraine/0.1 (test)",
+        celestrak: { queries: [GP_URL, INTDES_2023] },
+        groups: [{ id: "exp-2023", kind: "experimental" }],
+        objects: [{ norad: 57179, name: "Rassvet-1 No. 1", cospar: "2023-091P", group: "exp-2023" }],
+      },
+      fetchImpl,
       sleep: async () => {},
       now: new Date("2026-10-26T12:00:00Z"),
       log() {},
-      warn: (msg) => warnings.push(msg),
+      warn() {},
     });
     assert.equal(result.exitCode, 0);
     assert.equal(result.changed, true);
-    const saved = JSON.parse(readFileSync(file, "utf8")).rows;
     assert.deepEqual(
-      saved.map((row) => row.norad),
-      [68360],
+      calls.map((call) => call.url),
+      [GP_URL, INTDES_2023],
     );
-    assert.match(warnings.join("\n"), /INTDES=2023-091 unavailable/);
-    assert.equal(readFileSync(join(root, "gp-latest.json"), "utf8"), '{"fetchedAt":"keep"}\n');
+    assert.deepEqual(
+      JSON.parse(readFileSync(file, "utf8")).rows.map((row) => row.norad),
+      [57179],
+    );
+    assert.equal(existsSync(join(root, "gp-latest.json")), false);
   });
 
   it("counts RASSVET names that are not in objects.json", async () => {
