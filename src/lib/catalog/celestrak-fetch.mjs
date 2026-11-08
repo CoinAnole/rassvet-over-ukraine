@@ -18,11 +18,11 @@ export const CELESTRAK_TIMEOUT_MS = 20_000;
 export const SATCAT_STALE_MS = 72 * 60 * 60 * 1000;
 
 /**
- * Wait after attempt 0 fails, then after attempt 1. Two seconds, then four.
+ * Wait after attempt 0 fails, then after attempt 1. Fifteen seconds, then thirty.
  * @param {number} failedAttempt zero-based index of the attempt that just failed
  */
 export function backoffMs(failedAttempt) {
-  return 2_000 * 2 ** failedAttempt;
+  return 15_000 * 2 ** failedAttempt;
 }
 
 /**
