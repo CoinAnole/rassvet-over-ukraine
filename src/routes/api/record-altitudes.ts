@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { handleRecordAltitudes } from "@/lib/catalog/record-route.mjs";
 
-/** Hobby maximum. Worst-case GP retries are about 105s; see vercel.json. */
+/** Hobby maximum. Worst-case GP retries are about 105s. */
 export const RECORD_ALTITUDES_MAX_DURATION = 300;
 
 export const Route = createFileRoute("/api/record-altitudes")({

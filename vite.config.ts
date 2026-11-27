@@ -26,9 +26,6 @@ export default defineConfig(({ command, isPreview }) => ({
           nitro({
             preset: "vercel",
             vercel: {
-              config: {
-                crons: [{ path: "/api/record-altitudes", schedule: "17 4 * * *" }],
-              },
               functionRules: {
                 "/api/record-altitudes": { maxDuration: 300 },
               },
