@@ -65,7 +65,7 @@ export function blobPublicBase(env = process.env) {
 /**
  * @param {string} url
  * @param {typeof fetch} fetchImpl
- * @returns {Promise<{ ok: true, data: unknown } | { ok: false, reason: BlobReadFailure, error?: string }>}
+ * @returns {Promise<{ ok: true, data: unknown, etag: string | null } | { ok: false, reason: BlobReadFailure, error?: string, etag: null }>}
  */
 async function readPublicBlobUrl(url, fetchImpl) {
   const ctrl = new AbortController();
@@ -75,12 +75,13 @@ async function readPublicBlobUrl(url, fetchImpl) {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
     });
-    if (res.status === 404) return { ok: false, reason: "missing" };
-    if (!res.ok) return { ok: false, reason: "unreachable", error: `HTTP ${res.status}` };
-    return { ok: true, data: await res.json() };
+    if (res.status === 404) return { ok: false, reason: "missing", etag: null };
+    if (!res.ok) return { ok: false, reason: "unreachable", error: `HTTP ${res.status}`, etag: null };
+    const etag = typeof res.headers?.get === "function" ? res.headers.get("etag") : null;
+    return { ok: true, data: await res.json(), etag };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: "unreachable", error: message };
+    return { ok: false, reason: "unreachable", error: message, etag: null };
   } finally {
     clearTimeout(timer);
   }
@@ -95,7 +96,7 @@ async function readPublicBlobUrl(url, fetchImpl) {
  *   fetchImpl?: typeof fetch,
  *   get?: typeof import("@vercel/blob").get,
  * }} [options]
- * @returns {Promise<{ ok: true, data: unknown } | { ok: false, reason: BlobReadFailure, error?: string }>}
+ * @returns {Promise<{ ok: true, data: unknown, etag?: string | null } | { ok: false, reason: BlobReadFailure, error?: string, etag?: string | null }>}
  */
 export async function readBlobJson(pathname, options = {}) {
   const token = options.token === undefined ? blobReadWriteToken() : options.token;
@@ -121,7 +122,7 @@ export async function readBlobJson(pathname, options = {}) {
       return { ok: false, reason: "missing" };
     }
     const text = await new Response(result.stream).text();
-    return { ok: true, data: JSON.parse(text) };
+    return { ok: true, data: JSON.parse(text), etag: result.blob?.etag ?? null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (/credentials|BLOB_READ_WRITE_TOKEN|store ID/i.test(message)) {
@@ -137,6 +138,7 @@ export async function readBlobJson(pathname, options = {}) {
  * @param {{
  *   token?: string | null,
  *   put?: typeof import("@vercel/blob").put,
+ *   ifMatch?: string | null,
  * }} [options]
  */
 export async function writeBlobJson(pathname, value, options = {}) {
@@ -144,12 +146,27 @@ export async function writeBlobJson(pathname, value, options = {}) {
   if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is not set.");
   const put = options.put ?? (await import("@vercel/blob")).put;
   const body = typeof value === "string" ? value : `${JSON.stringify(value)}\n`;
-  return put(pathname, body, {
+  /** @type {import("@vercel/blob").PutCommandOptions} */
+  const putOptions = {
     access: "public",
     token,
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",
     cacheControlMaxAge: BLOB_CACHE_SECONDS,
-  });
+  };
+  if (options.ifMatch) putOptions.ifMatch = options.ifMatch;
+  try {
+    return await put(pathname, body, putOptions);
+  } catch (err) {
+    const name = err instanceof Error ? err.name : "";
+    if (name === "BlobPreconditionFailedError") {
+      const conflict = /** @type {Error & { code: string }} */ (
+        new Error("Blob was updated by another recorder run.")
+      );
+      conflict.code = "BLOB_CONFLICT";
+      throw conflict;
+    }
+    throw err;
+  }
 }

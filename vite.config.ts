@@ -21,7 +21,18 @@ export default defineConfig(({ command, isPreview }) => ({
   plugins: [
     tailwindcss(),
     tanstackStart(),
-    ...(command === "build" || isPreview ? [nitro({ preset: "vercel" })] : []),
+    ...(command === "build" || isPreview
+      ? [
+          nitro({
+            preset: "vercel",
+            vercel: {
+              functionRules: {
+                "/api/record-altitudes": { maxDuration: 300 },
+              },
+            },
+          }),
+        ]
+      : []),
     viteReact(),
   ],
 }));
