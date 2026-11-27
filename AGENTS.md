@@ -25,7 +25,7 @@ There is no sign-in and no database. A high score or a preference in `localStora
 - Propagation and coverage: `src/lib/orbit`, `src/lib/catalog`
 - Seed snapshot: `src/data/catalog-seed.json`, used when a CelesTrak fetch fails
 - Altitude history, reentries, and the GP snapshot are recorded on a schedule into a public Vercel Blob store at `data/altitude-history.json`, `data/reentries.json`, and `data/gp-latest.json`. The app reads those public URLs with no token. If Blob is missing, element sets fall back to `src/data/catalog-seed.json` and altitude history is absent. Do not commit the history file to `main`
-- Record into Blob, with only `BLOB_READ_WRITE_TOKEN` in the environment: `npm run record:altitudes` (`node scripts/record-altitude-history.mjs --blob`). Reads also accept `BLOB_STORE_ID` or `BLOB_PUBLIC_BASE_URL` when the token is absent. `gp-latest.json` is written only when every GP query succeeds. A failed CelesTrak fetch exits 1
+- Record into Blob, with only `BLOB_READ_WRITE_TOKEN` in the environment: `npm run record:altitudes` (`node scripts/record-altitude-history.mjs --blob`). The same run is `GET /api/record-altitudes` with `Authorization: Bearer $CRON_SECRET`. Reads also accept `BLOB_STORE_ID` or `BLOB_PUBLIC_BASE_URL` when the token is absent. `gp-latest.json` is written only when every GP query succeeds. A failed CelesTrak fetch exits 1 and writes `data/recorder-status.json`
 - Share card: `public/og.jpg`. The document head in `src/routes/__root.tsx` points `og:image` at `https://rassvet-over-ukraine.vercel.app/og.jpg` so a scraper does not request the image from a protected deployment host
 - UI harness: `.cursor/skills/verify-rassvet`
 - Cloud agent setup: `.cursor/environment.json` and `.cursor/setup-cloud-agent.sh`

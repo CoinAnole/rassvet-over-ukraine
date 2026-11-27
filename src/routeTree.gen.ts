@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConstellationRouteImport } from './routes/constellation'
 import { Route as MethodRouteImport } from './routes/method'
 import { Route as ApiCatalogRouteImport } from './routes/api/catalog'
+import { Route as ApiRecordAltitudesRouteImport } from './routes/api/record-altitudes'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const ApiCatalogRoute = ApiCatalogRouteImport.update({
   path: '/api/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRecordAltitudesRoute = ApiRecordAltitudesRouteImport.update({
+  id: '/api/record-altitudes',
+  path: '/api/record-altitudes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/constellation': typeof ConstellationRoute
   '/method': typeof MethodRoute
   '/api/catalog': typeof ApiCatalogRoute
+  '/api/record-altitudes': typeof ApiRecordAltitudesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/constellation': typeof ConstellationRoute
   '/method': typeof MethodRoute
   '/api/catalog': typeof ApiCatalogRoute
+  '/api/record-altitudes': typeof ApiRecordAltitudesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,30 @@ export interface FileRoutesById {
   '/constellation': typeof ConstellationRoute
   '/method': typeof MethodRoute
   '/api/catalog': typeof ApiCatalogRoute
+  '/api/record-altitudes': typeof ApiRecordAltitudesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/constellation' | '/method' | '/api/catalog'
+  fullPaths:
+    | '/'
+    | '/constellation'
+    | '/method'
+    | '/api/catalog'
+    | '/api/record-altitudes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/constellation' | '/method' | '/api/catalog'
-  id: '__root__' | '/' | '/constellation' | '/method' | '/api/catalog'
+  to:
+    | '/'
+    | '/constellation'
+    | '/method'
+    | '/api/catalog'
+    | '/api/record-altitudes'
+  id:
+    | '__root__'
+    | '/'
+    | '/constellation'
+    | '/method'
+    | '/api/catalog'
+    | '/api/record-altitudes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +92,7 @@ export interface RootRouteChildren {
   ConstellationRoute: typeof ConstellationRoute
   MethodRoute: typeof MethodRoute
   ApiCatalogRoute: typeof ApiCatalogRoute
+  ApiRecordAltitudesRoute: typeof ApiRecordAltitudesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/record-altitudes': {
+      id: '/api/record-altitudes'
+      path: '/api/record-altitudes'
+      fullPath: '/api/record-altitudes'
+      preLoaderRoute: typeof ApiRecordAltitudesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +140,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConstellationRoute: ConstellationRoute,
   MethodRoute: MethodRoute,
   ApiCatalogRoute: ApiCatalogRoute,
+  ApiRecordAltitudesRoute: ApiRecordAltitudesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

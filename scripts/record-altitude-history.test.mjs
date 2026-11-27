@@ -628,6 +628,63 @@ describe("withdrawn reentries", () => {
   });
 });
 
+describe("overlapping recorder runs", () => {
+  it("keeps both epochs once when a concurrent write conflicts", async () => {
+    const kept = "2026-10-25T00:00:00.000000";
+    const concurrent = "2026-10-26T01:00:00.000000";
+    const incoming = "2026-10-26T06:50:43.131552";
+    let history = [
+      { norad: 68360, name: "RASSVET-3 1", epoch: kept, alt_km: 500 },
+    ];
+    let writes = 0;
+    const store = {
+      async readHistory() {
+        return history.map((row) => ({ ...row }));
+      },
+      async writeHistory(doc) {
+        writes += 1;
+        if (writes === 1) {
+          history = [
+            ...history,
+            { norad: 68360, name: "RASSVET-3 1", epoch: concurrent, alt_km: 501 },
+          ];
+          const err = new Error("conflict");
+          err.code = "BLOB_CONFLICT";
+          throw err;
+        }
+        history = doc.rows;
+      },
+      async readReentries() {
+        return [];
+      },
+      async writeReentries() {},
+      async readGpLatestText() {
+        return null;
+      },
+      async writeGpLatestText() {},
+    };
+    const { fetchImpl } = scriptedFetch([
+      { status: 200, body: [gpRow(68360, incoming, "RASSVET-3 1")] },
+    ]);
+    const result = await recordAltitudes({
+      store,
+      config: config(),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-10-26T12:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(writes, 2);
+    assert.deepEqual(
+      history.map((row) => row.epoch).sort(),
+      [concurrent, incoming, kept].sort(),
+    );
+    assert.equal(new Set(history.map((row) => `${row.norad}|${row.epoch}`)).size, history.length);
+  });
+});
+
 describe("SATCAT candidates", () => {
   it("asks only about a missing or stale object that is not already recorded", () => {
     const fresh = "2026-10-26T06:50:43.131552";

@@ -21,7 +21,21 @@ export default defineConfig(({ command, isPreview }) => ({
   plugins: [
     tailwindcss(),
     tanstackStart(),
-    ...(command === "build" || isPreview ? [nitro({ preset: "vercel" })] : []),
+    ...(command === "build" || isPreview
+      ? [
+          nitro({
+            preset: "vercel",
+            vercel: {
+              config: {
+                crons: [{ path: "/api/record-altitudes", schedule: "17 4 * * *" }],
+              },
+              functionRules: {
+                "/api/record-altitudes": { maxDuration: 300 },
+              },
+            },
+          }),
+        ]
+      : []),
     viteReact(),
   ],
 }));

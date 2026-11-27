@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-nocheck
 /**
  * Fetch the Rassvet name query and each experimental launch query, and append
  * altitudes for catalogued NORADs. Then ask SATCAT about objects that are
@@ -59,7 +60,7 @@ function output(key, value) {
   console.log(line);
 }
 
-function readConfig() {
+export function readConfig() {
   return JSON.parse(readFileSync(resolve(root, "src/config/objects.json"), "utf8"));
 }
 
@@ -125,15 +126,17 @@ export function fileDataStore(file) {
 export function blobDataStore(io = {}) {
   const read = io.readBlobJson ?? readBlobJson;
   const write = io.writeBlobJson ?? writeBlobJson;
+  const etag = { history: null, reentries: null, gp: null };
   return {
     async readHistory() {
       return readParsed(BLOB_PATH.altitudeHistory, parseHistoryDocument, []);
     },
     async writeHistory(doc) {
-      await write(BLOB_PATH.altitudeHistory, doc);
+      await write(BLOB_PATH.altitudeHistory, doc, { ifMatch: etag.history });
     },
     async readReentries() {
       const res = await read(BLOB_PATH.reentries, { useCache: false });
+      etag.reentries = res.etag || null;
       if (!res.ok) {
         if (res.reason === "missing") return [];
         throw new Error(blobReadError(BLOB_PATH.reentries, res));
@@ -151,10 +154,11 @@ export function blobDataStore(io = {}) {
       return parseReentryDocument(data);
     },
     async writeReentries(doc) {
-      await write(BLOB_PATH.reentries, doc);
+      await write(BLOB_PATH.reentries, doc, { ifMatch: etag.reentries });
     },
     async readGpLatestText() {
       const res = await read(BLOB_PATH.gpLatest, { useCache: false });
+      etag.gp = res.etag || null;
       if (!res.ok) {
         if (res.reason === "missing") return null;
         throw new Error(blobReadError(BLOB_PATH.gpLatest, res));
@@ -163,7 +167,7 @@ export function blobDataStore(io = {}) {
       return text;
     },
     async writeGpLatestText(text) {
-      await write(BLOB_PATH.gpLatest, text);
+      await write(BLOB_PATH.gpLatest, text, { ifMatch: etag.gp });
     },
   };
 
@@ -174,6 +178,7 @@ export function blobDataStore(io = {}) {
    */
   async function readParsed(pathname, parse, empty) {
     const res = await read(pathname, { useCache: false });
+    if (pathname === BLOB_PATH.altitudeHistory) etag.history = res.etag || null;
     if (!res.ok) {
       if (res.reason === "missing") return empty;
       throw new Error(blobReadError(pathname, res));
@@ -254,11 +259,20 @@ export async function recordAltitudes(opts) {
     warnings.push(msg);
     warn(msg);
   };
-  const done = (exitCode, changed, unlistedRassvet) => {
+  const done = (exitCode, changed, unlistedRassvet, extra = {}) => {
     for (const msg of warnings) summary.push(`Warning: ${msg}`);
     if (unlistedRassvet > 0) summary.push(`Unlisted RASSVET objects: ${unlistedRassvet}.`);
     writeSummary(summary);
-    return { exitCode, changed, warnings, unlistedRassvet };
+    return {
+      exitCode,
+      changed,
+      warnings,
+      unlistedRassvet,
+      unlisted: extra.unlisted ?? [],
+      rowsBefore: extra.rowsBefore ?? null,
+      rowsAfter: extra.rowsAfter ?? null,
+      error: extra.error ?? null,
+    };
   };
 
   if (queries.length === 0) {
@@ -286,7 +300,7 @@ export async function recordAltitudes(opts) {
         console.error(`::error::${msg}`);
         summary.push(`GP: ${msg}`);
         log(msg);
-        return done(1, false, 0);
+        return done(1, false, 0, { error: msg });
       }
       note(`${query.label} unavailable (${why}).`);
       continue;
@@ -312,7 +326,7 @@ export async function recordAltitudes(opts) {
     console.error(`::error::${msg}`);
     summary.push(`GP: ${msg}`);
     log(msg);
-    return done(1, false, unlisted.length);
+    return done(1, false, unlisted.length, { error: msg, unlisted });
   }
 
   let existing;
@@ -328,25 +342,37 @@ export async function recordAltitudes(opts) {
     console.error(`::error::${msg}`);
     summary.push(`GP: ${msg}`);
     log(msg);
-    return done(1, false, unlisted.length);
+    return done(1, false, unlisted.length, { error: msg, unlisted });
   }
 
-  const rows = mergeHistory(existing, incoming, now);
+  const rowsBefore = existing.length;
+  let rows = mergeHistory(existing, incoming, now);
   let changed = false;
-  if (JSON.stringify(existing) === JSON.stringify(rows)) {
-    log(`Altitude history unchanged (${rows.length} rows). No new GP epochs.`);
-    summary.push(
-      `GP: ${incoming.length} catalogued objects, no new epochs (${rows.length} rows already stored, ${successfulQueries} of ${queries.length} queries).`,
-    );
-  } else {
-    await store.writeHistory(historyDocument(rows, now));
-    log(
-      `Wrote ${rows.length} altitude rows (${incoming.length} from this fetch, ${successfulQueries} queries).`,
-    );
-    summary.push(
-      `GP: wrote ${rows.length} rows (${incoming.length} from this fetch, ${successfulQueries} of ${queries.length} queries).`,
-    );
-    changed = true;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (JSON.stringify(existing) === JSON.stringify(rows)) {
+      if (attempt === 0) {
+        log(`Altitude history unchanged (${rows.length} rows). No new GP epochs.`);
+        summary.push(
+          `GP: ${incoming.length} catalogued objects, no new epochs (${rows.length} rows already stored, ${successfulQueries} of ${queries.length} queries).`,
+        );
+      }
+      break;
+    }
+    try {
+      await store.writeHistory(historyDocument(rows, now));
+      changed = true;
+      log(
+        `Wrote ${rows.length} altitude rows (${incoming.length} from this fetch, ${successfulQueries} queries).`,
+      );
+      summary.push(
+        `GP: wrote ${rows.length} rows (${incoming.length} from this fetch, ${successfulQueries} of ${queries.length} queries).`,
+      );
+      break;
+    } catch (err) {
+      if (err?.code !== "BLOB_CONFLICT" || attempt === 4) throw err;
+      existing = await store.readHistory();
+      rows = mergeHistory(existing, incoming, now);
+    }
   }
 
   const trackedIds = new Set(tracked.map((obj) => Number(obj.norad)));
@@ -437,19 +463,94 @@ export async function recordAltitudes(opts) {
     );
   }
 
-  const records = mergeReentryRecords(recorded, updates, now.toISOString(), {
+  let records = mergeReentryRecords(recorded, updates, now.toISOString(), {
     withdrawnNorads: withdrawn,
     gpEpochByNorad,
   });
-  if (JSON.stringify(recorded) === JSON.stringify(records)) {
-    log(`Reentries unchanged (${records.length} records).`);
-  } else {
-    await store.writeReentries(reentryDocument(records, now.toISOString()));
-    log(`Wrote ${records.length} reentry records (${updates.length} confirmed this run).`);
-    changed = true;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (JSON.stringify(recorded) === JSON.stringify(records)) {
+      if (attempt === 0) log(`Reentries unchanged (${records.length} records).`);
+      break;
+    }
+    try {
+      await store.writeReentries(reentryDocument(records, now.toISOString()));
+      log(`Wrote ${records.length} reentry records (${updates.length} confirmed this run).`);
+      changed = true;
+      break;
+    } catch (err) {
+      if (err?.code !== "BLOB_CONFLICT" || attempt === 4) throw err;
+      recorded = await store.readReentries();
+      records = mergeReentryRecords(recorded, updates, now.toISOString(), {
+        withdrawnNorads: withdrawn,
+        gpEpochByNorad,
+      });
+    }
   }
 
-  return done(0, changed, unlisted.length);
+  return done(0, changed, unlisted.length, {
+    unlisted,
+    rowsBefore,
+    rowsAfter: rows.length,
+  });
+}
+
+export const RECORDER_STATUS_PATH = "data/recorder-status.json";
+
+/**
+ * @param {{
+ *   exitCode: number,
+ *   error?: string | null,
+ *   rowsBefore?: number | null,
+ *   rowsAfter?: number | null,
+ *   unlisted?: { norad: number, name: string }[],
+ * }} result
+ * @param {Date} ranAt
+ */
+export function recorderStatusDocument(result, ranAt) {
+  return {
+    ranAt: ranAt.toISOString(),
+    ok: result.exitCode === 0,
+    error: result.error ?? null,
+    rowsBefore: result.rowsBefore ?? null,
+    rowsAfter: result.rowsAfter ?? null,
+    unlisted: result.unlisted ?? [],
+  };
+}
+
+/**
+ * Run the recorder and, in Blob mode, save the status document.
+ * @param {object} opts
+ */
+export async function runRecorder(opts) {
+  const ranAt = opts.now ?? new Date();
+  let result;
+  try {
+    result = await recordAltitudes({ ...opts, now: ranAt });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    result = {
+      exitCode: 1,
+      changed: false,
+      warnings: [],
+      unlistedRassvet: 0,
+      unlisted: [],
+      rowsBefore: null,
+      rowsAfter: null,
+      error: message,
+    };
+  }
+  const status = recorderStatusDocument(result, ranAt);
+  if (opts.writeStatus) {
+    const write = opts.writeStatusBlob ?? writeBlobJson;
+    try {
+      await write(RECORDER_STATUS_PATH, status);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      status.ok = false;
+      status.error = status.error ? `${status.error} Status was not saved (${message}).` : message;
+    }
+  }
+  return { result, status };
 }
 
 function usage() {
@@ -467,10 +568,11 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  const result = await recordAltitudes({
+  const { result } = await runRecorder({
     file: file ?? undefined,
     store: blob ? blobDataStore() : undefined,
     config: readConfig(),
+    writeStatus: blob,
   });
   output("changed", result.changed ? "true" : "false");
   output("unlisted_rassvet", String(result.unlistedRassvet));

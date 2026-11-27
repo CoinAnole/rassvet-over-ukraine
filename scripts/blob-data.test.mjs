@@ -41,7 +41,7 @@ describe("blob documents", () => {
         return { ok: true, status: 200, json: async () => ({ rows: [] }) };
       },
     });
-    assert.deepEqual(result, { ok: true, data: { rows: [] } });
+    assert.deepEqual(result, { ok: true, data: { rows: [] }, etag: null });
     assert.equal(calls[0].url, "https://store.public.blob.vercel-storage.com/data/gp-latest.json");
     assert.equal(calls[0].authorization, null);
   });
@@ -87,7 +87,7 @@ describe("blob documents", () => {
         return { statusCode: 200, stream: streamOf('{"rows":[]}\n') };
       },
     });
-    assert.deepEqual(result, { ok: true, data: { rows: [] } });
+    assert.deepEqual(result, { ok: true, data: { rows: [] }, etag: null });
   });
 
   it("writes a public blob at a stable pathname", async () => {
