@@ -46,8 +46,7 @@ import {
   satcatUrl,
 } from "../src/lib/catalog/reentries.mjs";
 import { gpLatestDocument } from "../src/lib/catalog/gp-latest.mjs";
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+import objectsConfig from "../src/config/objects.json" with { type: "json" };
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -61,7 +60,7 @@ function output(key, value) {
 }
 
 export function readConfig() {
-  return JSON.parse(readFileSync(resolve(root, "src/config/objects.json"), "utf8"));
+  return structuredClone(objectsConfig);
 }
 
 function readExisting(file) {
