@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import { handleRecordAltitudes } from "../src/lib/catalog/record-route.mjs";
 import { RECORDER_STATUS_PATH } from "./record-altitude-history.mjs";
 
@@ -20,6 +22,51 @@ function config() {
     ],
   };
 }
+
+const FS_PROBE = `
+import { mock } from "node:test";
+const calls = [];
+function note(kind, file) {
+  calls.push(kind + " " + file);
+  throw new Error(kind + " " + file);
+}
+mock.module("node:fs", {
+  namedExports: {
+    readFileSync(...args) { note("read", args[0]); },
+    writeFileSync(...args) { note("write", args[0]); },
+    appendFileSync(...args) { note("append", args[0]); },
+    mkdirSync(...args) { note("mkdir", args[0]); },
+    existsSync() { return false; },
+  },
+});
+const { readConfig } = await import("./scripts/record-altitude-history.mjs");
+const { handleRecordAltitudes } = await import("./src/lib/catalog/record-route.mjs");
+const loaded = readConfig();
+if (!loaded.objects?.length) throw new Error("empty catalog");
+const response = await handleRecordAltitudes(new Request("http://127.0.0.1/api/record-altitudes", {
+  headers: { authorization: "Bearer s3cret" },
+}), {
+  secret: "s3cret",
+  attempts: 1,
+  sleep: async () => {},
+  fetchImpl: async () => ({ ok: false, status: 500, text: async () => "down" }),
+  store: {
+    async readHistory() { return []; },
+    async writeHistory() {},
+    async readReentries() { return []; },
+    async writeReentries() {},
+    async readGpLatestText() { return null; },
+    async writeGpLatestText() {},
+  },
+  writeStatus: false,
+  log() {},
+  warn() {},
+});
+const body = await response.json();
+if (response.status !== 500) throw new Error("status " + response.status + " " + body.error);
+if (!/exhausted CelesTrak retries/.test(body.error || "")) throw new Error(body.error || "missing error");
+if (calls.length) throw new Error("filesystem calls: " + calls.join(", "));
+`;
 
 function request(authorization) {
   return new Request("http://127.0.0.1/api/record-altitudes", {
@@ -100,10 +147,53 @@ describe("record altitudes route", () => {
     assert.equal(status.rowsAfter, null);
     assert.deepEqual(status.unlisted, []);
     assert.equal(calls.length, 3);
-    assert.equal(calls.every((url) => url === GP_URL), true);
+    assert.equal(
+      calls.every((url) => url === GP_URL),
+      true,
+    );
     assert.equal(historyWrites, 0);
     assert.equal(statuses.length, 1);
     assert.equal(statuses[0].pathname, RECORDER_STATUS_PATH);
     assert.equal(statuses[0].body.ok, false);
+  });
+
+  it("loads objects.json from the module, not the filesystem", () => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const probe = spawnSync(
+      process.execPath,
+      ["--experimental-test-module-mocks", "--input-type=module", "-e", FS_PROBE],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.equal(probe.status, 0, `${probe.stdout}\n${probe.stderr}`);
+  });
+
+  it("writes recorder status when the authorized path throws", async () => {
+    const statuses = [];
+    const response = await handleRecordAltitudes(request("Bearer s3cret"), {
+      secret: "s3cret",
+      now: new Date("2026-11-27T22:00:00Z"),
+      readConfig() {
+        throw new Error("ENOENT: src/config/objects.json token s3cret");
+      },
+      writeStatusBlob: async (pathname, body) => {
+        statuses.push({ pathname, body });
+      },
+      log() {},
+      warn() {},
+    });
+    assert.equal(response.status, 500);
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.equal(body.ranAt, "2026-11-27T22:00:00.000Z");
+    assert.match(body.error, /ENOENT/);
+    assert.equal(body.error.includes("s3cret"), false);
+    assert.equal(JSON.stringify(body).includes("s3cret"), false);
+    assert.equal(body.rowsBefore, null);
+    assert.equal(body.rowsAfter, null);
+    assert.deepEqual(body.unlisted, []);
+    assert.equal(statuses.length, 1);
+    assert.equal(statuses[0].pathname, RECORDER_STATUS_PATH);
+    assert.equal(statuses[0].body.ok, false);
+    assert.equal(statuses[0].body.error.includes("s3cret"), false);
   });
 });
