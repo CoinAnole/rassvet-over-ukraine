@@ -3,7 +3,9 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { BlobPreconditionFailedError } from "@vercel/blob";
 import { historyDocument, rowsForCatalog } from "../src/lib/catalog/altitude-history.mjs";
+import { writeBlobJson } from "../src/lib/catalog/blob-data.mjs";
 import { backoffMs, satcatCandidates } from "../src/lib/catalog/celestrak-fetch.mjs";
 import { blobDataStore, recordAltitudes } from "./record-altitude-history.mjs";
 
@@ -394,7 +396,9 @@ describe("CelesTrak retry", () => {
         userAgent: "RassvetOverUkraine/0.1 (test)",
         celestrak: { queries: [GP_URL, INTDES_2023] },
         groups: [{ id: "exp-2023", kind: "experimental" }],
-        objects: [{ norad: 57179, name: "Rassvet-1 No. 1", cospar: "2023-091P", group: "exp-2023" }],
+        objects: [
+          { norad: 57179, name: "Rassvet-1 No. 1", cospar: "2023-091P", group: "exp-2023" },
+        ],
       },
       fetchImpl,
       sleep: async () => {},
@@ -633,9 +637,7 @@ describe("overlapping recorder runs", () => {
     const kept = "2026-10-25T00:00:00.000000";
     const concurrent = "2026-10-26T01:00:00.000000";
     const incoming = "2026-10-26T06:50:43.131552";
-    let history = [
-      { norad: 68360, name: "RASSVET-3 1", epoch: kept, alt_km: 500 },
-    ];
+    let history = [{ norad: 68360, name: "RASSVET-3 1", epoch: kept, alt_km: 500 }];
     let writes = 0;
     const store = {
       async readHistory() {
@@ -677,11 +679,78 @@ describe("overlapping recorder runs", () => {
     });
     assert.equal(result.exitCode, 0);
     assert.equal(writes, 2);
-    assert.deepEqual(
-      history.map((row) => row.epoch).sort(),
-      [concurrent, incoming, kept].sort(),
-    );
+    assert.deepEqual(history.map((row) => row.epoch).sort(), [concurrent, incoming, kept].sort());
     assert.equal(new Set(history.map((row) => `${row.norad}|${row.epoch}`)).size, history.length);
+  });
+
+  it("re-reads and retries when put throws BlobPreconditionFailedError", async () => {
+    const kept = "2026-10-25T00:00:00.000000";
+    const concurrent = "2026-10-26T01:00:00.000000";
+    const incoming = "2026-10-26T06:50:43.131552";
+    let history = [{ norad: 68360, name: "RASSVET-3 1", epoch: kept, alt_km: 500 }];
+    let reads = 0;
+    let puts = 0;
+    const store = blobDataStore({
+      async readBlobJson(pathname) {
+        if (String(pathname).endsWith("reentries.json")) {
+          return { ok: true, data: { records: [] }, etag: "re-etag" };
+        }
+        if (String(pathname).endsWith("gp-latest.json")) {
+          return { ok: true, data: { objects: [] }, etag: "gp-etag" };
+        }
+        reads += 1;
+        return {
+          ok: true,
+          data: {
+            v: 1,
+            updated: "2026-10-26T00:00:00.000Z",
+            rows: history.map((row) => ({ ...row })),
+          },
+          etag: reads === 1 ? "etag-1" : "etag-2",
+        };
+      },
+      writeBlobJson(pathname, value, options) {
+        return writeBlobJson(pathname, value, {
+          token: "test-token",
+          ...options,
+          put: async () => {
+            if (!String(pathname).endsWith("altitude-history.json")) {
+              return { url: `https://example.public.blob.vercel-storage.com/${pathname}` };
+            }
+            puts += 1;
+            if (puts === 1) {
+              assert.equal(options.ifMatch, "etag-1");
+              history = [
+                ...history,
+                { norad: 68360, name: "RASSVET-3 1", epoch: concurrent, alt_km: 501 },
+              ];
+              throw new BlobPreconditionFailedError();
+            }
+            assert.equal(options.ifMatch, "etag-2");
+            history = value.rows;
+            return {
+              url: "https://example.public.blob.vercel-storage.com/data/altitude-history.json",
+            };
+          },
+        });
+      },
+    });
+    const { fetchImpl } = scriptedFetch([
+      { status: 200, body: [gpRow(68360, incoming, "RASSVET-3 1")] },
+    ]);
+    const result = await recordAltitudes({
+      store,
+      config: config(),
+      fetchImpl,
+      sleep: async () => {},
+      now: new Date("2026-10-26T12:00:00Z"),
+      log() {},
+      warn() {},
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(reads, 2);
+    assert.equal(puts, 2);
+    assert.deepEqual(history.map((row) => row.epoch).sort(), [concurrent, incoming, kept].sort());
   });
 });
 
